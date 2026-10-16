@@ -265,8 +265,8 @@ jobs:
           # Release é gerado FORA da árvore e só então movido para dentro,
           # senão ele hash a si mesmo (arquivo meio escrito) e ao .raw.
           apt-ftparchive release \
-            -o APT::FTPArchive::Release::Origin=Chronos \
-            -o APT::FTPArchive::Release::Label=Chronos \
+            -o APT::FTPArchive::Release::Origin=Guardinha \
+            -o APT::FTPArchive::Release::Label=Guardinha \
             -o APT::FTPArchive::Release::Suite=stable \
             -o APT::FTPArchive::Release::Codename=stable \
             -o APT::FTPArchive::Release::Architectures=amd64 \
