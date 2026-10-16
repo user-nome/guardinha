@@ -92,6 +92,14 @@ Cada app lançado recebe um `HOME` e um `GUARDINHA_VAULT_DIR` próprios
 usuário. `ELECTRON_RENDERER_URL` é removido para o entrypoint servir a SPA
 compilada por `guardinha://`, e não o dev server.
 
+A remoção do temporário espera o app morrer. O alvo empacotado sobe como
+processo comum e o `SIGTERM` é dado ao **grupo** de processos (o app é líder do
+grupo, com `detached: true`), porque o Chromium tem zygote, GPU e crashpad:
+sinalizar só o líder deixaria auxiliares escrevendo no `HOME` enquanto a árvore
+é apagada. A promessa do `close()` só resolve no `exit` do líder, e o `rmSync`
+vai com repetição. Sem essa espera a limpeza dá `ENOTEMPTY` de forma
+intermitente, e o CI, mais lento, perdia sempre: era o que reprovava o job.
+
 ## CI
 
 O job "Testes E2E" de `.github/workflows/quality.yml` compila (`npm run
