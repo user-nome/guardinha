@@ -33,6 +33,24 @@ export function makeTempEnv(prefix: string): TempEnv {
   return { root, env };
 }
 
+/**
+ * Apaga uma árvore sem reprovar a suíte por causa dela.
+ *
+ * Quem chama costuma estar desligando um app ainda vivo: o Chromium escreve no
+ * `HOME` (cache, `settings.json`) e o crashpad solta arquivo no `userData`
+ * enquanto a remoção acontece, e a árvore volta a ficar não vazia no meio do
+ * caminho. Por isso o `rmSync` vai com repetição (o Node refaz a operação em
+ * ENOTEMPTY com espera linear) e, se mesmo assim sobrar algo, o resto é um
+ * diretório temporário do sistema: sobra ele avisa e a suíte segue.
+ */
+export function removeTree(target: string): void {
+  try {
+    fs.rmSync(target, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
+  } catch (error) {
+    console.warn(`[e2e] Não foi possível apagar ${target}: ${(error as Error).message}`);
+  }
+}
+
 export function removeTempEnv(temp: TempEnv): void {
-  fs.rmSync(temp.root, { recursive: true, force: true });
+  removeTree(temp.root);
 }

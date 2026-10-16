@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromium, _electron as electron } from 'playwright-core';
 import type { Browser, ElectronApplication, Page } from 'playwright-core';
-import { makeTempEnv, removeTempEnv } from './env.ts';
+import { makeTempEnv, removeTempEnv, removeTree } from './env.ts';
 
 /**
  * Como subir o app e falar com ele.
@@ -27,6 +27,8 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
 const APP_URL_PREFIX = 'guardinha://';
 const CONNECT_ATTEMPTS = 120;
 const CONNECT_DELAY_MS = 500;
+/** Folga para o Electron sair sozinho antes do `SIGKILL` do grupo. */
+const STOP_GRACE_MS = 5_000;
 
 /** O app em execução, reduzido ao que os fluxos precisam. */
 export interface LaunchedApp {
@@ -83,7 +85,15 @@ export async function launchPackaged(binary: string): Promise<LaunchedApp> {
   const child = spawn(binary, [`--remote-debugging-port=${port}`, '--no-sandbox'], {
     env: temp.env,
     stdio: 'ignore',
+    detached: true,
   });
+  // O app é líder do próprio grupo de processos (ver `detached`), então dá para
+  // sinalizar o Chromium inteiro. Se o runner morrer no meio do teste, o grupo
+  // não sobrevive a ele: este é o gancho que garante isso.
+  const killOnRunnerExit = (): void => {
+    if (isRunning(child)) killGroup(child, 'SIGKILL');
+  };
+  process.once('exit', killOnRunnerExit);
   try {
     const browser = await connectOverCdp(port);
     const page = await firstAppPage(browser);
@@ -92,12 +102,14 @@ export async function launchPackaged(binary: string): Promise<LaunchedApp> {
       page,
       close: async (): Promise<void> => {
         await browser.close();
-        stopChild(child);
+        await stopChild(child);
+        process.off('exit', killOnRunnerExit);
         removeTempEnv(temp);
       },
     };
   } catch (error) {
-    stopChild(child);
+    await stopChild(child);
+    process.off('exit', killOnRunnerExit);
     removeTempEnv(temp);
     throw asError(error);
   }
@@ -123,7 +135,7 @@ function extractLatestDeb(): string | null {
     if (deb !== undefined) {
       const dest = fs.mkdtempSync(path.join(os.tmpdir(), 'guardinha-e2e-deb-'));
       process.once('exit', () => {
-        fs.rmSync(dest, { recursive: true, force: true });
+        removeTree(dest);
       });
       const result = spawnSync('dpkg-deb', ['-x', path.join(releaseDir, deb), dest], {
         stdio: 'ignore',
@@ -182,12 +194,51 @@ async function firstAppPage(browser: Browser): Promise<Page> {
   throw new Error('A janela do app não apareceu.');
 }
 
-function stopChild(child: ChildProcess): void {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  child.kill('SIGTERM');
-  setTimeout(() => {
-    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-  }, 2000).unref();
+/**
+ * Derruba o app e **espera ele morrer**.
+ *
+ * Sinalizar e voltar não basta: enquanto o Electron não saiu, ele e os
+ * auxiliares (zygote, GPU, crashpad) continuam escrevendo no `HOME`
+ * temporário, e apagar a árvore nesse meio-tempo dá ENOTEMPTY. Aqui o
+ * primeiro sinal é o `SIGTERM` do grupo inteiro, o `SIGKILL` é o prazo, e a
+ * promessa só resolve no evento `exit` do líder, que é o garantido de que
+ * ninguém mais está segurando arquivo.
+ */
+function stopChild(child: ChildProcess): Promise<void> {
+  if (!isRunning(child)) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const escalate = setTimeout(() => {
+      killGroup(child, 'SIGKILL');
+    }, STOP_GRACE_MS);
+    escalate.unref();
+    child.once('exit', () => {
+      clearTimeout(escalate);
+      resolve();
+    });
+    killGroup(child, 'SIGTERM');
+  });
+}
+
+/**
+ * Sinaliza o grupo de processos do app, e não só o líder: com o `detached`, o
+ * `pid` do filho é também o `pgid`, então o negativo alcança o Chromium todo.
+ * Cai para o sinal no líder quando o grupo já não existe mais.
+ */
+function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
+  const { pid } = child;
+  if (pid === undefined) {
+    child.kill(signal);
+    return;
+  }
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    if (isRunning(child)) child.kill(signal);
+  }
+}
+
+function isRunning(child: ChildProcess): boolean {
+  return child.exitCode === null && child.signalCode === null;
 }
 
 function delay(ms: number): Promise<void> {
