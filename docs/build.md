@@ -148,8 +148,26 @@ pelo uid) e assina com `--local-user`, de modo que o secret e o valor do
 workflow não puedan combinar em silêncio: se divergirem, o job morre com
 `::error::` na linha da checagem, antes de subir qualquer asset.
 
-Trocar a chave (passphrase perdida, chave renovada, uid novo) é quatro passos,
-nenhum deles opcional:
+**Essa chave não assina commit.** Ela existe para uma coisa só: assinar o
+`Release` do repo APT, que é o que faz o `apt update` aceitar o índice. O
+trabalho no dia a dia (commit e push) passa pela chave SSH, e a assinatura de
+commit está desligada:
+
+```bash
+git config --global commit.gpgsign false
+```
+
+Com isso, `git commit` não pede chave nenhuma, nem GPG nem SSH, e funciona
+direto no VS Code. O efeito é o GitHub não mostrar o selo de "Verified" nos
+commits, o que aqui é uma troca boa: o selo obrigava a ter uma chave privada
+com passphrase presente em cada commit, e a passphrase perdida trancava o
+trabalho inteiro. Se algum commit precisar ser assinado mesmo assim, é
+`git commit -S` (a chave do APT, com a frase) ou `gpg.format ssh` com um
+`ssh-agent` do OpenSSH (o agente do GNOME Keyring recusa a assinatura, com
+`agent refused operation`).
+
+Trocar a chave do APT (passphrase perdida, chave renovada, uid novo) é três
+passos:
 
 1. Gerar o par e exportar o bloco privado:
 
@@ -167,16 +185,9 @@ nenhum deles opcional:
    `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
    inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
 
-4. Apontar o `git` para a chave nova, senão o commit para de ser assinado:
-
-   ```bash
-   git config user.signingkey <impressao-nova>
-   ```
-
-A chave antiga **fica** no keyring local: ela não consegue mais assinar nada
-(a passphrase foi perdida), mas continua verificando os commits e as Releases
-já assinados. Publicar a chave nova em Settings → SSH and GPG keys do GitHub é o
-que faz o badge de assinatura dos commits novos aparecer como verificado.
+Como a assinatura de commit está desligada, trocar a chave do APT não mexe em
+nenhuma configuração de repositório local. A chave antiga **fica** no keyring:
+ela continua verificando as Releases já assinadas.
 
 Para quem já instalou pelo APT, a rotação não muda a instrução do `README.md`
 (o `public.key` vem de `releases/latest/download/`), mas o keyring antigo não
