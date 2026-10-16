@@ -9,6 +9,8 @@ cifradas na sua máquina: sem conta, sem nuvem, sem telemetria.
 
 </div>
 
+<b> Esses links são antigos e não funcionam, estou lidando com a hospedagem do novo site primeiro, depois arrumo esse README </b>
+
 ---
 
 ## Instalação
