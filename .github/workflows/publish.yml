@@ -236,9 +236,9 @@ jobs:
           # na UI do Actions sem precisar abrir o log cru).
           printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import || true
           # Impressão digital da chave do próprio repo (usuário
-          # user-nome@noreply.github.com); trocar junto com o secret se a chave
+          # user-nome@users.noreply.github.com); trocar junto com o secret se a chave
           # for renovada.
-          if ! gpg --list-secret-keys AF2D89E7BA96175450D9B351C2CB2AF64D5653E5 >/dev/null 2>&1; then
+          if ! gpg --list-secret-keys 5937512BDE28D8538A72D37DAC0BAA6E7F242C8C >/dev/null 2>&1; then
             echo "::error::GPG_PRIVATE_KEY inválido ou incompleto: cole o bloco inteiro do arquivo, COM as linhas -----BEGIN PGP PRIVATE KEY BLOCK----- e -----END PGP PRIVATE KEY BLOCK----- (sem elas o gpg não reconhece o formato)."
             exit 1
           fi
@@ -251,7 +251,7 @@ jobs:
           # (ou secret GPG_PASSPHRASE ausente; no CI não há pinentry).
           echo preflight > apt/.sign-test
           if ! gpg "${GPG_OPTS[@]}" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
-            echo "::error::GPG_PASSPHRASE incorreto (ou secret ausente) para a chave AF2D89E7BA96175450D9B351C2CB2AF64D5653E5."
+            echo "::error::GPG_PASSPHRASE incorreto (ou secret ausente) para a chave 5937512BDE28D8538A72D37DAC0BAA6E7F242C8C."
             exit 1
           fi
           rm -f apt/.sign-test apt/.sign-test.asc
