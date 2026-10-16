@@ -38,8 +38,8 @@
     "test:e2e:packaged": "vitest run --config vitest.e2e.config.mts e2e/packaged.e2e.test.ts",
     "test:mutation": "node tools/mutation/run.ts",
     "test:mutation:plan": "node tools/mutation/run.ts --list",
-    "dist": "npm run build && electron-builder --linux deb",
-    "dist:dir": "npm run build && electron-builder --linux deb --dir",
+    "dist": "npm run build && electron-builder --linux deb --publish never",
+    "dist:dir": "npm run build && electron-builder --linux deb --dir --publish never",
     "postinstall": "node node_modules/electron/install.js"
   },
   "dependencies": {

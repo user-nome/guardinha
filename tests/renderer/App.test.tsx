@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '@zero/renderer/App';
 import { autoLockedListeners, LOCKED, UNLOCKED, installApi } from '../mocks/api.ts';
 import type { Credential } from '@zero/types';
@@ -78,6 +78,73 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByText(/Crie o seu cofre/i)).toBeInTheDocument();
+  });
+});
+
+describe('polling de segurança do status', () => {
+  // `STATUS_POLL_MS` é privado do `App`; o valor está escrito aqui para que uma
+  // mudança de lado sem ajuste aqui apareça como falha de teste.
+  const POLL_MS = 15_000;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reconsulta o cofre quando o auto-lock não chega', async () => {
+    // A rede de segurança: se o push do main se perder (renderizador recriado,
+    // `onAutoLocked` sem registro), quem tira a tela do cofre é o
+    // `setInterval`. Sem este teste, apagar o timer inteiro passava pela
+    // suíte, porque o efeito do Observer continua coberto pelo evento disparado
+    // à mão no teste acima.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const api = installApi({ status: UNLOCKED, entries: [ENTRY] });
+    const status = vi.fn().mockResolvedValue(UNLOCKED);
+    api.vault.status = status;
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Senhas' });
+    const chamadasIniciais = status.mock.calls.length;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_MS);
+    });
+
+    expect(status.mock.calls.length).toBeGreaterThan(chamadasIniciais);
+  });
+
+  it('não consulta o cofre enquanto ele está travado', async () => {
+    // com o cofre travado o efeito nem cria o timer: uma tela de autenticação
+    // consultando o status a cada 15 s gastaria IPC com o usuário parado na
+    // frente dela
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const api = installApi({ status: LOCKED });
+    const status = vi.fn().mockResolvedValue(LOCKED);
+    api.vault.status = status;
+    render(<App />);
+    await screen.findByRole('button', { name: /Desbloquear/i });
+    const chamadasIniciais = status.mock.calls.length;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_MS * 2);
+    });
+
+    expect(status).toHaveBeenCalledTimes(chamadasIniciais);
+  });
+
+  it('para de consultar quando a tela é desmontada', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const api = installApi({ status: UNLOCKED, entries: [ENTRY] });
+    const status = vi.fn().mockResolvedValue(UNLOCKED);
+    api.vault.status = status;
+    const { unmount } = render(<App />);
+    await screen.findByRole('heading', { name: 'Senhas' });
+
+    unmount();
+    const chamadasNoDesmonte = status.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_MS * 2);
+    });
+
+    expect(status).toHaveBeenCalledTimes(chamadasNoDesmonte);
   });
 });
 

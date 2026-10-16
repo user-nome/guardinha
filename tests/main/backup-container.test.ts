@@ -134,9 +134,14 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
   });
 
   it('recusa manifesto de tamanho zero', () => {
-    const manifest = { app: 'Guardinha', version: '1.0.0', createdAt: 1, files: [] };
-    const packed = rawPack(manifest, Buffer.alloc(0));
-    packed.writeUInt32BE(0, 12);
+    // comprimento zero **com digest em dia**: é o pacote que passa pela
+    // integridade global e só morre na conferência do cabeçalho, que é o ponto
+    // deste teste (mudar o campo depois de empacotar cairia no digest global).
+    const header = Buffer.alloc(16);
+    Buffer.from('ZKBACKUP', 'ascii').copy(header, 0);
+    header.writeUInt32BE(1, 8);
+    header.writeUInt32BE(0, 12);
+    const packed = Buffer.concat([header, crypto.createHash('sha256').update(header).digest()]);
     expect(() => unpackBackup(packed)).toThrow(M.errors.backupCorrupted);
   });
 
@@ -150,6 +155,35 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
     expect(() => unpackBackup(packed)).toThrow(M.errors.backupCorrupted);
   });
 
+  it('recusa manifesto que declara mais bytes do que o pacote tem', () => {
+    // o comprimento do manifesto vem do cabeçalho, não do próprio JSON: um
+    // valor maior que o corpo faria o `JSON.parse` ler bytes do payload, e é
+    // por isso que o pacote é recusado antes de qualquer parse
+    const packed = packBackup([FILE], '1.0.0');
+    packed.writeUInt32BE(4096, 12);
+    expect(() => unpackBackup(packed)).toThrow(M.errors.backupCorrupted);
+  });
+
+  it('recusa arquivo que o manifesto diz ser maior que o payload inteiro', () => {
+    // manifesto coerente por dentro, mas o `size` do arquivo aponta para além do
+    // fim do pacote: o `subarray` devolveria menos bytes do que o SHA-256 exige
+    const manifest = {
+      app: 'Guardinha',
+      version: '1.0.0',
+      createdAt: 1,
+      files: [
+        {
+          path: 'vault.zkv',
+          size: 4096,
+          sha256: crypto.createHash('sha256').update(Buffer.alloc(4096)).digest('hex'),
+        },
+      ],
+    };
+    expect(() => unpackBackup(rawPack(manifest, Buffer.from('apenas quatro bytes')))).toThrow(
+      M.errors.backupCorrupted,
+    );
+  });
+
   it('recusa manifesto com campo faltando ou fora do formato', () => {
     const casos: unknown[] = [
       null,
@@ -158,6 +192,10 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
       { app: 'Guardinha', version: 1, createdAt: 1, files: [] },
       { app: 'Guardinha', version: '1', createdAt: 'hoje', files: [] },
       { app: 'Guardinha', version: '1', createdAt: 1, files: 'x' },
+      // item da lista que não é registro: o manifesto é dado de fora, então
+      // cada elemento precisa ser conferido antes de virar segmento
+      { app: 'Guardinha', version: '1', createdAt: 1, files: ['vault.zkv'] },
+      { app: 'Guardinha', version: '1', createdAt: 1, files: [null] },
       {
         app: 'Guardinha',
         version: '1',

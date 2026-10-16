@@ -22,6 +22,13 @@ empacotado em `.deb` pelo electron-builder. Nada disso entra no git: `out/`,
 Os binários `bin/osv-scanner` e `bin/shellcheck` não são versionados; copie-os
 de `Chronos/Biblioteca/bin/` ou baixe as releases correspondentes.
 
+`dist` e `dist:dir` passam `--publish never` ao electron-builder, e isso não é
+detalhe: sem a flag, num runner com `CI=true` ele aciona a publicação implícita
+("Implicit publishing triggered by CI detection") e morre com
+`GitHub Personal Access Token is not set`, porque este projeto não tem provedor
+de publicação configurado no bloco `build`. Quem publica é o `publish.yml`, que
+empacota com a flag e anexa os assets com `softprops/action-gh-release`.
+
 ## O banner do README
 
 `docs/assets/banner.png` é a capa do README; [`build/banner.html`](../build/banner.html)
@@ -132,6 +139,49 @@ usuário instala. Com ele, a falha aparece no pull request.
 
 Secrets necessários: `GPG_PRIVATE_KEY` (e `GPG_PASSPHRASE`, se houver). As
 actions estão fixadas por SHA e atualizadas pelo Dependabot.
+
+### A chave que assina o repo APT
+
+`GPG_FINGERPRINT`, no `env` do topo do `publish.yml`, é a **fonte única** da
+impressão digital. O passo de gerar o repo APT confere a chave por ela (e não
+pelo uid) e assina com `--local-user`, de modo que o secret e o valor do
+workflow não puedan combinar em silêncio: se divergirem, o job morre com
+`::error::` na linha da checagem, antes de subir qualquer asset.
+
+Trocar a chave (passphrase perdida, chave renovada, uid novo) é quatro passos,
+nenhum deles opcional:
+
+1. Gerar o par e exportar o bloco privado:
+
+   ```bash
+   gpg --quick-generate-key 'user-nome <user-nome@users.noreply.github.com>' ed25519 sign never
+   gpg --armor --export-secret-keys <impressao-nova> > guardinha-apt.asc
+   ```
+
+   Guarde o arquivo **fora** do repositório: ele é o segredo do APT.
+
+2. Trocar `GPG_FINGERPRINT` no `publish.yml`.
+
+3. No repositório do GitHub (Settings → Secrets and variables → Actions),
+   sobrescrever `GPG_PRIVATE_KEY` com o bloco inteiro (as linhas
+   `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
+   inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
+
+4. Apontar o `git` para a chave nova, senão o commit para de ser assinado:
+
+   ```bash
+   git config user.signingkey <impressao-nova>
+   ```
+
+A chave antiga **fica** no keyring local: ela não consegue mais assinar nada
+(a passphrase foi perdida), mas continua verificando os commits e as Releases
+já assinados. Publicar a chave nova em Settings → SSH and GPG keys do GitHub é o
+que faz o badge de assinatura dos commits novos aparecer como verificado.
+
+Para quem já instalou pelo APT, a rotação não muda a instrução do `README.md`
+(o `public.key` vem de `releases/latest/download/`), mas o keyring antigo não
+valida a assinatura nova: é preciso repetir a linha do `public.key` e depois
+`sudo apt update`.
 
 ## Versão do runner (`ubuntu-24.04`, não `ubuntu-latest`)
 

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { authDir, containerFile, entriesDir } from '@zero/main/layout';
 import { exportBackup, restoreBackup } from '@zero/main/backup/backup';
 import { packBackup, unpackBackup } from '@zero/main/backup/backup-container';
@@ -13,6 +13,7 @@ import { saveEntry } from '@zero/main/entries';
 import { saveToken } from '@zero/main/authenticator';
 import { vaultStorage } from '@zero/main/facade';
 import { createVault } from '@zero/main/vault';
+import * as privilege from '@zero/main/privilege';
 
 /**
  * O backup integral é o caminho de quem formatou a máquina: o pacote é cópia
@@ -129,5 +130,90 @@ describe('backup integral do cofre', () => {
     expect(listAuthIds().length).toBe(expectedAuth);
     expect(fs.existsSync(path.join(entriesDir(), `${listEntryIds()[0]}.zke`))).toBe(true);
     expect(fs.existsSync(path.join(authDir(), `${listAuthIds()[0]}.zka`))).toBe(true);
+  });
+});
+
+describe('backup: destino e pasta do cofre indisponíveis', () => {
+  const m = currentMessages();
+
+  beforeAll(() => {
+    // A restauração valida o pacote inteiro **antes** de tentar criar as pastas,
+    // então a falha que se quer provocar aqui (escrita e permissão) só aparece
+    // com um `.gbk` de verdade na mão: um pacote válido do mesmo cofre serve.
+    exportBackup(exportTo('cofre.gbk'), '1.0.0');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('devolve erro próprio quando o destino não pode ser gravado', () => {
+    // pendrive sem ponto de montagem, pasta removida no meio do caminho: o
+    // `.gbk` é montado em memória, mas a escrita é o que pode falhar
+    const destino = path.join(outDir, 'pasta-que-nao-existe', 'cofre.gbk');
+
+    expect(() => exportBackup(destino, '1.0.0')).toThrow(m.errors.backupWriteFailed);
+    expect(fs.existsSync(destino)).toBe(false);
+  });
+
+  it('devolve erro próprio quando o destino existe e é uma pasta', () => {
+    // destino já é um diretório: o `.tmp` chega a ser escrito e o `rename`
+    // falha. O erro que volta é o do backup, não o do `rename` cru, para que a
+    // tela não exponha nome de arquivo interno.
+    const destino = exportTo('destino-que-e-pasta');
+    fs.mkdirSync(destino, { recursive: true });
+
+    expect(() => exportBackup(destino, '1.0.0')).toThrow(m.errors.backupWriteFailed);
+  });
+
+  it('repassa erro de disco que não é falta de permissão, sem abrir o pkexec', () => {
+    // `EACCES` é o caso do `/var/lib`; qualquer outra falha (disco cheio, disco
+    // sumindo) é do host e não se resolve com diálogo de sistema
+    const setup = vi.spyOn(privilege, 'setupVaultDirectory');
+    vi.spyOn(vaultStorage, 'ensureStructure').mockImplementationOnce(() => {
+      throw new Error('disco cheio');
+    });
+
+    expect(() => restoreBackup(exportTo('cofre.gbk'))).toThrow('disco cheio');
+    expect(setup).not.toHaveBeenCalled();
+  });
+
+  it('cancela a restauração quando o setup privilegiado é recusado', () => {
+    vi.spyOn(vaultStorage, 'ensureStructure').mockImplementationOnce(() => {
+      throw new Error(m.errors.vaultDirUnavailable);
+    });
+    vi.spyOn(privilege, 'setupVaultDirectory').mockReturnValue(false);
+
+    expect(() => restoreBackup(exportTo('cofre.gbk'))).toThrow(m.errors.vaultAuthCancelled);
+    // recusar o diálogo não pode virar cofre apagado: o erase vem depois
+    expect(fs.existsSync(containerFile())).toBe(true);
+  });
+
+  it('reporta a falha quando a pasta continua inacessível depois do setup', () => {
+    vi.spyOn(vaultStorage, 'ensureStructure')
+      .mockImplementationOnce(() => {
+        throw new Error(m.errors.vaultDirUnavailable);
+      })
+      .mockImplementationOnce(() => {
+        throw new Error('ainda sem permissão');
+      });
+    vi.spyOn(privilege, 'setupVaultDirectory').mockReturnValue(true);
+
+    expect(() => restoreBackup(exportTo('cofre.gbk'))).toThrow('ainda sem permissão');
+    expect(fs.existsSync(containerFile())).toBe(true);
+  });
+
+  it('usa erro interno quando a retentativa falha sem valor Error', () => {
+    const falhaSemError: unknown = 'falha sem Error';
+    vi.spyOn(vaultStorage, 'ensureStructure')
+      .mockImplementationOnce(() => {
+        throw new Error(m.errors.vaultDirUnavailable);
+      })
+      .mockImplementationOnce(() => {
+        throw falhaSemError;
+      });
+    vi.spyOn(privilege, 'setupVaultDirectory').mockReturnValue(true);
+
+    expect(() => restoreBackup(exportTo('cofre.gbk'))).toThrow(falhaSemError);
   });
 });

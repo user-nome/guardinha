@@ -276,6 +276,29 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
     }
   });
 
+  it('recusa container sem manifesto quando o selo não chega a ser gravado', () => {
+    // `verifyManifest` começa selando o manifesto, e o selo só é defesa se ficar
+    // no disco. Aqui a gravação está barrada (cofre marcado como destruído) e
+    // o arquivo segue sem manifesto: seguir adiante trataria um cofre sem
+    // linha de base como se estivesse íntegro, que é a falha aberta que o
+    // manifesto existe para fechar.
+    const data = container();
+    data.manifest = null;
+    writeVaultContainer(data);
+    const noDisco = fs.readFileSync(containerFile());
+
+    markVaultDestroyed();
+    try {
+      expect(() => verifyManifest(Buffer.alloc(32, 5))).toThrow(
+        currentMessages().errors.vaultTampered,
+      );
+      expect(fs.readFileSync(containerFile()).equals(noDisco)).toBe(true);
+    } finally {
+      clearDestroyedFlag();
+      fs.writeFileSync(containerFile(), noDisco);
+    }
+  });
+
   it('só sela o manifesto uma vez: re-selar apagaria a defesa', () => {
     // O manifesto é a linha de base do cofre. Se `initManifest` re-selasse a cada
     // chamada, o desbloqueio seguinte adotaria como normale um `.zke` plantado
