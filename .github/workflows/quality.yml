@@ -132,7 +132,7 @@ jobs:
 
       # `json-summary` entra como reporter extra (o `text` e o `html` já são o
       # padrão do `vitest.config.mts`): é dele que sai a tabela do resumo da
-      # execução, com o mesmo número que o gate de 90% aplicou.
+      # execução, com o mesmo número que o gate de 95% aplicou.
       - name: Testes com cobertura
         run: npm run test:coverage -- --coverage.reporter=json-summary
 
@@ -155,7 +155,7 @@ jobs:
               "| " + cell("lines") + " | " + cell("branches") + " | " + cell("functions")
                 + " | " + cell("statements") + " |",
               "",
-              "Meta: 90% nos quatro (definida em `vitest.config.mts`).",
+              "Meta: 95% nos quatro (definida em `vitest.config.mts`).",
             ];
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
           '
@@ -201,7 +201,10 @@ jobs:
             libxtst6 libatspi2.0-0t64 libuuid1 xdg-utils
 
       # Um build serve aos dois alvos: `out/` para o compilado e `release/`
-      # (`.deb` e árvore descompactada) para o empacotado.
+      # (`.deb` e árvore descompactada) para o empacotado. O `--publish never`
+      # já vem no script `dist:dir` do package.json: sem ele o
+      # electron-builder detecta o CI, tentaria publicar sozinho ("Implicit
+      # publishing") e morreria sem GH_TOKEN.
       - name: Compila o app e o pacote
         run: npm run dist:dir
 

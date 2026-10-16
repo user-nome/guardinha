@@ -94,6 +94,17 @@ describe('loadSettings', () => {
     expect(loadSettings()).toEqual({ language: 'pt-BR' });
   });
 
+  it('aceita arquivo que não é objeto, como `null` ou lista', () => {
+    // JSON válido que não é um registro de preferências: o `asRecord` do
+    // leitor precisa devolver objeto vazio em vez de espalhar o valor (`{...42}`
+    // e `{...null}` não dão o que ler) e deixar o idioma num estado indefinido.
+    fs.ensureDirSync(path.join(temp, 'guardinha'));
+    for (const conteudo of ['null', '42', '"en"', '[]', '[{"language":"en"}]']) {
+      fs.writeFileSync(file(), conteudo);
+      expect(loadSettings(), conteudo).toEqual({ language: 'pt-BR' });
+    }
+  });
+
   it('cai no XDG do HOME quando XDG_CONFIG_HOME não está definido', () => {
     // O caminho tem de ser o do HOME de verdade, conferido no disco: montar a
     // mesma string aqui e conferir a string não mede o código, mede o teste.

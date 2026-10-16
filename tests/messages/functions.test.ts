@@ -119,6 +119,19 @@ describe('funções de mensagem', () => {
     expect(unsupported(5)).toContain('v5');
   });
 
+  it.each(LOCALIZED_BUNDLES)(
+    '%s formata o backup de formato desconhecido com e sem o número',
+    (_language, bundle) => {
+      // mesmo par da função do cofre: o número do formato é o que diz ao usuário
+      // qual versão gravou o arquivo, e a frase sem número é a que aparece
+      // quando o pacote nem esse campo tem
+      const unsupported = bundle.errors.backupUnsupportedVersion;
+      expect(unsupported()).toContain('Guardinha');
+      expect(unsupported()).not.toContain('undefined');
+      expect(unsupported(5)).toContain('v5');
+    },
+  );
+
   it('nenhuma mensagem vazia ou com marcador quebrado', () => {
     const leaves = new Map<string, unknown>();
     collect(ptBR, '', leaves);

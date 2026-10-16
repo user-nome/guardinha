@@ -6,6 +6,8 @@ em português do Brasil.
 
 ## [Não lançado]
 
+## [1.7.1] - 2026-10-16
+
 ### Adicionado
 
 - **Backup e restauração do cofre num pendrive.** O cofre inteiro, já cifrado,
@@ -16,6 +18,63 @@ em português do Brasil.
   achar o pendrive ainda precisa do PIN ou da senha mestra, e o pacote é
   validado por inteiro (magic, versão, digest global e cada SHA-256) antes de o
   cofre atual ser tocado.
+
+### Corrigido
+
+- **O segredo de 2FA do GitHub era recusado.** O piso de tamanho estava em 128
+  bits (16 bytes), e o serviço emite segredo de 16 caracteres, ou seja, 80 bits
+  (10 bytes): colar o `otpauth://` do GitHub, do Google, do Discord, da AWS ou
+  da Coinbase era recusado com "chave precisa ter pelo menos 128 bits", sem
+  chance de resolver, porque a pessoa não tem como pedir um segredo maior ao
+  serviço. O piso agora são 80 bits. Para esbarrar num código de 6 dígitos por
+  força bruta seria preciso adivinhar um em um milhão dentro da janela de 30 s,
+  com o segredo trocando a cada período.
+- **A construção do `.deb` no CI morria sem token do GitHub.** Os scripts
+  `dist` e `dist:dir` passaram a chamar o electron-builder com
+  `--publish never`: num runner, a detecção de CI faz o electron-builder
+  tentar publicar sozinho ("Implicit publishing") e o job "Testes E2E" caía com
+  `GitHub Personal Access Token is not set` mesmo com a Release perto de
+  succeeding.
+
+### Segurança
+
+- **O `publish.yml` confere a chave que assina o repo APT pela impressão
+  digital.** A impressão ficou num único lugar (`GPG_FINGERPRINT`, no `env` do
+  workflow) e as três assinaturas usam `--local-user`: se o secret e o valor do
+  workflow divergirem, o job morre na checagem com `::error::` antes de subir
+  qualquer asset, em vez de assinar com a chave errada em silêncio.
+
+### Alterado
+
+- **O repositório passou a ser `user-nome/guardinha`**, com o `Origin` e o
+  `Label` do repo APT como `Guardinha` e o e-mail de release
+  `user-nome@users.noreply.github.com`.
+- **Dependências atualizadas** dentro das faixas já declaradas: Electron
+  44.8.0, `electron-vite` 6.0.0 (saiu do beta), React 19.3.1, Vitest 5.0.5,
+  jsdom 30.1.3, lucide-react 1.58.0. O TypeScript ficou no 6.0.3 porque o
+  `typescript-eslint` declara paridade abaixo de 6.1, e o linter é parte do
+  `npm run check`.
+- **A auditoria de licença aprendeu a declarar, e não a congelar.** O scanner
+  resolve licença pela API do deps.dev, que ainda não tinha registro do
+  `caniuse-lite` 1.0.30001816 (cuja licença é a mesma `CC-BY-4.0` da versão
+  anterior, conferida no tarball). A licença passa a ser declarada em
+  `.osv-scanner.toml`, com validade e motivo, em vez de prender a dependência
+  numa versão antiga por causa de uma lacuna de dado.
+
+### Documentação
+
+- **`docs/build.md`: a chave que assina o repo APT.** Procedimento de rotação
+  (gerar, exportar, trocar `GPG_FINGERPRINT`, sobrescrever os secrets) e o
+  registro de que essa chave não assina commit: a assinatura de commit está
+  desligada de propósito, para o trabalho no dia a dia não depender de chave
+  privada com frase.
+- **`docs/testes.md`**: o arquivo `tests/main/entrypoint.backup.test.ts` entrou
+  no mapa da suíte.
+
+### Notas
+
+- Cobertura em 100% das linhas, 99,72% dos comandos, 99,68% das funções e 98,24%
+  dos ramos (limiar de 95% nos quatro, em `vitest.config.mts`).
 
 ## [1.6.3] - 2026-10-14
 

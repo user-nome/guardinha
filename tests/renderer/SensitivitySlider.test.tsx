@@ -174,4 +174,19 @@ describe('SensitivitySlider: arraste', () => {
     fireEvent.pointerMove(slider(), { clientX: 10_000, pointerId: 1 });
     expect(onChange).toHaveBeenCalledWith(20);
   });
+
+  it('termina o arraste sem soltar captura que o elemento não tem', () => {
+    // `hasPointerCapture` falso é o caso do ponteiro que já saiu (ou de um
+    // ambiente que nega a captura): soltar captura inexistente lança
+    // `NotFoundError`, e o erro subiria no fim do arraste.
+    CAPTURE.hasPointerCapture.mockReturnValueOnce(false);
+    CAPTURE.releasePointerCapture.mockClear();
+    setup(10, 0, 20);
+    fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 7 });
+
+    expect(() => {
+      fireEvent.pointerUp(slider(), { clientX: 0, pointerId: 7 });
+    }).not.toThrow();
+    expect(CAPTURE.releasePointerCapture).not.toHaveBeenCalled();
+  });
 });

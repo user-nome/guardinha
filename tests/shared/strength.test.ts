@@ -107,6 +107,21 @@ describe('evaluatePhrase', () => {
     expect(partial).toMatchObject({ blocked: false });
     expect(partial.reasons).not.toContain('fewUniqueWords');
   });
+
+  it('frase só de espaço é o mesmo que frase vazia: nada a medir', () => {
+    // Quem cola a frase Space dá de cara com o campo vazio; o medidor não pode
+    // tratar a barra como "muito fraca" nem acusar repetição de uma palavra que
+    // não existe.
+    for (const frase of ['', '   ', '\n\t ']) {
+      const resultado = evaluatePhrase(frase);
+      expect(resultado, JSON.stringify(frase)).toMatchObject({
+        blocked: false,
+        level: 'veryWeak',
+        score: 0,
+        reasons: [],
+      });
+    }
+  });
 });
 
 /**

@@ -36,6 +36,7 @@ e o score é uma medida de tendência, não um portão.
 | `tests/main/crypto.test.ts`                     | Argon2id, cifragem de registros, gerador e frase de recuperação.            |
 | `tests/main/entries.rules.test.ts`              | Validações das credenciais salvas.                                          |
 | `tests/main/entrypoint.test.ts`                 | Inicialização e registro dos canais do processo principal.                  |
+| `tests/main/entrypoint.backup.test.ts`          | Diálogo de backup, cancelamento e aviso de sessão na restauração.           |
 | `tests/main/entrypoint-ready-rejection.test.ts` | Falha de `whenReady` registrada, sem inicialização silenciosa.              |
 | `tests/main/entrypoint-single-instance.test.ts` | Lock de instância única e o encerramento sem abrir janela.                  |
 | `tests/main/erase.test.ts`                      | Cryptographic Erase, temporários e prevenção contra recriação do container. |

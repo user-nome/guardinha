@@ -13,7 +13,7 @@ cifradas na sua máquina: sem conta, sem nuvem, sem telemetria.
 
 ## Instalação
 
-Baixe o `.deb` da [última versão](https://github.com/chronos-atalante/guardinha/releases/latest)
+Baixe o `.deb` da [última versão](https://github.com/user-nome/guardinha/releases/latest)
 e instale:
 
 ```bash
@@ -23,8 +23,8 @@ sudo apt install ./guardinha_<versão>_amd64.deb
 <b>Ou</b>
 
 ```bash
-curl -fsSL https://github.com/chronos-atalante/guardinha/releases/latest/download/public.key | sudo gpg --dearmor --yes -o /usr/share/keyrings/guardinha.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/guardinha.gpg] https://github.com/chronos-atalante/guardinha/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/guardinha.list
+curl -fsSL https://github.com/user-nome/guardinha/releases/latest/download/public.key | sudo gpg --dearmor --yes -o /usr/share/keyrings/guardinha.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/guardinha.gpg] https://github.com/user-nome/guardinha/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/guardinha.list
 sudo apt update && sudo apt install guardinha
 ```
 

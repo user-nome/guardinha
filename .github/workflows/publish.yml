@@ -40,6 +40,12 @@ concurrency:
 # secrets não pode ser usado em `if:`; copia para env (padrão do GitHub).
 env:
   VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+  # Impressão digital da chave que assina o repo APT. Fonte única: trocar a
+  # chave é trocar este valor **e** o secret `GPG_PRIVATE_KEY`, nada mais. Ela
+  # é conferida em dois lugares (checagem da chave e mensagem de erro), então
+  # escrevê-la à mão nos dois pontos era um convite para a metade ficar na chave
+  # antiga. Ver docs/build.md.
+  GPG_FINGERPRINT: A838DFD9576B7C669F1BDCFC6FE0C233D7511D61
 
 jobs:
   resolver-versao:
@@ -235,8 +241,12 @@ jobs:
           # Falhas aqui viram ::error:: explícito (annotations são legíveis
           # na UI do Actions sem precisar abrir o log cru).
           printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import || true
-          if ! gpg --list-secret-keys F2B0A3843C9FF986 >/dev/null 2>&1; then
-            echo "::error::GPG_PRIVATE_KEY inválido ou incompleto: cole o bloco inteiro do arquivo, COM as linhas -----BEGIN PGP PRIVATE KEY BLOCK----- e -----END PGP PRIVATE KEY BLOCK----- (sem elas o gpg não reconhece o formato)."
+          # A chave tem de ser exatamente a de `GPG_FINGERPRINT` (uid
+          # user-nome@users.noreply.github.com). Conferir pela impressão digital
+          # e não pelo uid pega o caso real de rotação: o secret novo e o valor
+          # antigo no env não podem combinar em silêncio.
+          if ! gpg --list-secret-keys "$GPG_FINGERPRINT" >/dev/null 2>&1; then
+            echo "::error::GPG_PRIVATE_KEY não contém a chave $GPG_FINGERPRINT: cole o bloco inteiro do arquivo, COM as linhas -----BEGIN PGP PRIVATE KEY BLOCK----- e -----END PGP PRIVATE KEY BLOCK----- (sem elas o gpg não reconhece o formato). Se a chave foi renovada, troque também GPG_FINGERPRINT no topo deste arquivo."
             exit 1
           fi
           if [ -n "${GPG_PASSPHRASE:-}" ]; then
@@ -247,8 +257,8 @@ jobs:
           # Teste de assinatura antes de gerar nada: falha = passphrase errada
           # (ou secret GPG_PASSPHRASE ausente; no CI não há pinentry).
           echo preflight > apt/.sign-test
-          if ! gpg "${GPG_OPTS[@]}" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
-            echo "::error::GPG_PASSPHRASE incorreto (ou secret ausente) para a chave F2B0A3843C9FF986."
+          if ! gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
+            echo "::error::GPG_PASSPHRASE incorreto (ou secret ausente) para a chave $GPG_FINGERPRINT."
             exit 1
           fi
           rm -f apt/.sign-test apt/.sign-test.asc
@@ -262,8 +272,8 @@ jobs:
           # Release é gerado FORA da árvore e só então movido para dentro,
           # senão ele hash a si mesmo (arquivo meio escrito) e ao .raw.
           apt-ftparchive release \
-            -o APT::FTPArchive::Release::Origin=Chronos \
-            -o APT::FTPArchive::Release::Label=Chronos \
+            -o APT::FTPArchive::Release::Origin=Guardinha \
+            -o APT::FTPArchive::Release::Label=Guardinha \
             -o APT::FTPArchive::Release::Suite=stable \
             -o APT::FTPArchive::Release::Codename=stable \
             -o APT::FTPArchive::Release::Architectures=amd64 \
@@ -271,10 +281,13 @@ jobs:
             -o APT::FTPArchive::Release::Description="Guardinha" \
             . > ../Release.tmp
           mv ../Release.tmp Release
-          gpg "${GPG_OPTS[@]}" --clearsign -o InRelease Release
-          gpg "${GPG_OPTS[@]}" -abs -o Release.gpg Release
-          gpg --armor --export > public.key
-          echo "Repo APT flat gerado:" && ls -l
+          # `--local-user` nas três assinaturas e no `export`: o runner é limpo,
+          # mas fixar a chave deixa a assinatura atrelada à impressão digital do
+          # topo do arquivo, e não a "a primeira chave que o gpg achar".
+          gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o InRelease Release
+          gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" -abs -o Release.gpg Release
+          gpg --armor --export "$GPG_FINGERPRINT" > public.key
+          echo "Repo APT flat gerado (chave $GPG_FINGERPRINT):" && ls -l
 
       - name: Anexar repo APT à Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3

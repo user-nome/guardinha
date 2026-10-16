@@ -130,15 +130,22 @@ describe('parseOtpAuthUri', () => {
   it('recusa segredo ausente, curto ou fora do alfabeto base32', () => {
     expect(parseOtpAuthUri('otpauth://totp/Site:eu')).toBeNull();
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=')).toBeNull();
+    // `1` não existe no alfabeto Base32: o Google usa `1` em nenhum segredo.
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=JBSWY3DP1EHPK3PXP')).toBeNull();
-    expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=JBSWY3DPEHPK3PXP')).toBeNull();
+    // 15 caracteres carregam 9 bytes, um a menos que o piso de 10.
+    expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=JBSWY3DPEHPK3PX')).toBeNull();
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=AA')).toBeNull();
-    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${'A'.repeat(25)}`)).toBeNull();
+    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${'A'.repeat(15)}`)).toBeNull();
   });
 
-  it('aceita o limite mínimo exato de 128 bits (16 bytes)', () => {
-    const secret = 'A'.repeat(26);
+  it('aceita o limite mínimo exato de 80 bits (10 bytes)', () => {
+    // 16 caracteres Base32 carregam 80 bits, e é o que GitHub, Google,
+    // Discord e AWS emitem: recusar aqui é recusar todo serviço real.
+    const secret = 'A'.repeat(16);
     expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${secret}`)?.secret).toBe(secret);
+    expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=JBSWY3DPEHPK3PXP')?.secret).toBe(
+      'JBSWY3DPEHPK3PXP',
+    );
   });
 
   it('recusa parâmetro repetido, em vez de escolher um dos dois', () => {
