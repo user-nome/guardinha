@@ -1,0 +1,57 @@
+name: Relato de bug
+description: Algo não funcionou como esperado no Guardinha.
+title: '[Bug]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por relatar o problema. Quanto mais detalhes, mais rápido é
+        de corrigir. **Vulnerabilidade de segurança**: não abra issue pública,
+        siga o SECURITY.md.
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do app
+      description: Veja no nome do arquivo `.deb` ou em Configurações.
+      placeholder: 1.3.1
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema operacional
+      options:
+        - Linux Mint 22.x
+        - Ubuntu
+        - Outro Linux
+    validations:
+      required: true
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Passos para reproduzir
+      description: Sequência exata de cliques/comandos que dispara o bug.
+      placeholder: |
+        1. Abro o app em ...
+        2. Clico em ...
+        3. Vejo o erro ...
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: observado
+    attributes:
+      label: Comportamento observado
+      description: Inclua mensagem de erro, prints ou saída do terminal.
+    validations:
+      required: true
+  - type: textarea
+    id: extras
+    attributes:
+      label: Informações adicionais
+      description: Contexto que possa ajudar (distribuição usada, política do cofre, idioma, etc).

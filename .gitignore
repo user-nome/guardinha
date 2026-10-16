@@ -1,0 +1,18 @@
+node_modules/
+out/
+release/
+# workspace temporário do repo APT flat gerado no CI (publish.yml)
+apt/
+coverage/
+implementar/
+# relatório da varredura de mutação, na raiz (artefatos fora do git).
+# Ancorado de propósito: sem a barra, `mutation/` casaria também com
+# `tools/mutation/`, que é código-fonte e precisa estar no git (sem ele o
+# `vitest.mutation.config.mts` não resolve o import e o `tsc` do CI quebra).
+/mutation/
+*.deb
+.DS_Store
+.dev-vault/
+bin/osv-scanner
+bin/shellcheck
+

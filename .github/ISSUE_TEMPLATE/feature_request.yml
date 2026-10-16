@@ -1,0 +1,35 @@
+name: Sugestão de funcionalidade
+description: Uma ideia para melhorar o Guardinha.
+title: '[Feat]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Conte o que você gostaria de ver. Ideias bem descritas costumam virar
+        implementação mais rápido.
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema ou necessidade
+      description: O que você tenta fazer hoje e o que trava.
+      placeholder: Hoje eu preciso ... e não consigo porque ...
+    validations:
+      required: true
+  - type: textarea
+    id: solucao
+    attributes:
+      label: Solução proposta
+      description: Como você imagina que deveria funcionar.
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+      description: Outros caminhos que você pensou ou ferramentas parecidas.
+  - type: checkboxes
+    id: contribuicao
+    attributes:
+      label: Contribuição
+      options:
+        - label: Posso ajudar a implementar esta funcionalidade

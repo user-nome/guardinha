@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Segurança (não abra issue)
+    url: https://github.com/chronos-atalante/guardinha/blob/main/SECURITY.md
+    about: Reporte falhas de segurança pelo canal privado descrito no SECURITY.md.
+  - name: Como contribuir
+    url: https://github.com/chronos-atalante/guardinha/blob/main/CONTRIBUTING.md
+    about: Ambiente, scripts, convenções e fluxo de PR antes de abrir uma issue.

@@ -1,0 +1,18 @@
+out/
+release/
+node_modules/
+package-lock.json
+build/*.png
+*.deb
+coverage/
+
+# Artefatos que o `.gitignore` já tira do versionamento. O Prettier não lê
+# `.gitignore`, ele só lê este arquivo: sem estas linhas, `npm run format:check`
+# percorre diretório inteiro de arquivo gerado (o relatório de mutação em
+# `mutation/` sozinho tem milhares de JSON) e pode reprovar num arquivo que
+# ninguém edita à mão e que nem entra no git.
+mutation/
+implementar/
+apt/
+.dev-vault/
+bin/

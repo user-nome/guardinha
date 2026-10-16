@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+
+/*
+ * Fallback de fonte CJK. Os bundles `zh-CN`, `ko` e `ja` só aparecem com hanzi e
+ * hangul; numa instalação sem fonte CJK (o `fonts-noto-cjk` não vem por padrão
+ * em toda distro) esses caracteres sairiam como quadradinhos vazios. O
+ * `system-ui` do Electron resolve sozinho quando existe fonte instalada, então
+ * esta pilha só entra como plano B. Ordem: Noto (o pacote mais comum no Linux),
+ * Source Han (o mesmo desenho com outro nome) e, por último, o genérico
+ * `sans-serif`, que sempre devolve alguma coisa legível.
+ */
+:root {
+  --font-cjk:
+    'Noto Sans CJK SC', 'Noto Sans CJK TC', 'Noto Sans CJK JP', 'Noto Sans CJK KR', 'Noto Sans KR',
+    'Noto Sans JP', 'Noto Sans SC', 'Source Han Sans SC', 'Source Han Sans KR',
+    'Source Han Sans JP', 'WenQuanYi Zen Hei', 'Microsoft YaHei', 'Malgun Gothic', 'Hiragino Sans',
+    'Yu Gothic', 'PingFang SC', 'sans-serif';
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: #000;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    var(--font-cjk);
+}
+
+/* Scrollbar discreta no estilo da UI */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #020617;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 8px;
+}
+
+/* Pós-créditos de cinema: rolagem lenta, contínua e em loop */
+@keyframes movie-credits {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.credits-track {
+  animation: movie-credits 40s linear infinite;
+}
+
+.credits-viewport:hover .credits-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credits-track {
+    animation: none;
+  }
+}

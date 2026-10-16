@@ -1,0 +1,162 @@
+# Perfil AppArmor do Guardinha.
+#
+# Substitui o perfil decorativo que o electron-builder gera por padrão
+# (`flags=(unconfined)`, que dá nome ao processo mas não restringe nada).
+#
+# O electron-builder roda este arquivo pelo `writeConfigFile`, que troca
+# `${...}` e **derruba o build** se a macro não existir: só `${executable}` e
+# `${sanitizedProductName}` podem aparecer aqui.
+#
+# Ciclo de teste: carregar em complain (`apparmor_parser -C -r`), rodar o app,
+# ler as negações no `/var/log/kern.log` e repetir até não sobrar negação de
+# operação legítima; só então promover a enforce (`apparmor_parser -r`).
+#
+# A negação é padrão do AppArmor: só entra aqui o que o app realmente precisa.
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile ${executable} /opt/${sanitizedProductName}/${executable} {
+  # O sandbox do Chromium/Electron monta namespaces de usuário.
+  userns,
+
+  # ---------- base do sistema ----------
+  include <abstractions/base>
+  include <abstractions/ssl_certs>
+  include <abstractions/fonts>
+  include <abstractions/gtk>
+  include <abstractions/dconf>
+  include <abstractions/X>
+  include <abstractions/wayland>
+  include <abstractions/dri-common>
+  include <abstractions/mesa>
+  include <abstractions/vulkan>
+  include <abstractions/dbus-session>
+  include <abstractions/freedesktop.org>
+  include <abstractions/user-tmp>
+  include <abstractions/ibus>
+
+  # NSS do glibc (getpwuid/getgrgid) sem puxar abstractions/nameservice,
+  # que concederia rede inet: o app é offline.
+  @{etc_ro}/passwd         r,
+  @{etc_ro}/group          r,
+  @{etc_ro}/nsswitch.conf  r,
+  @{etc_ro}/hosts          r,
+  @{etc_ro}/host.conf      r,
+  @{etc_ro}/resolv.conf    r,
+  @{etc_ro}/machine-id     r,
+  /var/lib/dbus/machine-id r,
+  @{run}/systemd/resolve/** r,
+
+  # ---------- executáveis do pacote ----------
+  /opt/${sanitizedProductName}/**                          mr,
+  /opt/${sanitizedProductName}/${executable}               mrix,
+  /opt/${sanitizedProductName}/chrome_crashpad_handler     ux,
+  /opt/${sanitizedProductName}/chrome-sandbox              ux,
+
+  # O app só dispara dois programas do sistema: o helper do PolicyKit
+  # (criação da pasta do cofre) e o abridor de URLs do navegador.
+  /usr/bin/pkexec ux,
+  # xdg-open é o mecanismo do sistema usado por shell.openExternal
+  # (src/main/index.ts). ux entrega a cadeia inteira (dash, gio,
+  # gio-launch-desktop, navegador) sem confinamento: sem isso o wrapper do
+  # navegador e o próprio navegador são negados na execução. É a única
+  # porta de saída do perfil e está registrada como risco aceito em
+  # SECURITY.md (ler a cadeia exigiria listar todos os navegadores).
+  /usr/bin/xdg-open ux,
+
+  # ---------- estado do app (Electron userData) ----------
+  owner @{HOME}/.config/Guardinha/      rw,
+  owner @{HOME}/.config/Guardinha/**    rwkl,
+  owner @{HOME}/.cache/Guardinha/       rw,
+  owner @{HOME}/.cache/Guardinha/**     rwkl,
+  owner @{HOME}/.local/share/Guardinha/ rw,
+  owner @{HOME}/.local/share/Guardinha/** rwkl,
+
+  # settings.json (src/main/settings.ts) usa $XDG_CONFIG_HOME/guardinha.
+  owner @{HOME}/.config/guardinha/   rw,
+  owner @{HOME}/.config/guardinha/** rwkl,
+
+  # Cache de teclado do GTK (compose table); o GTK recria se faltar.
+  owner @{HOME}/.cache/gtk-3.0/   rw,
+  owner @{HOME}/.cache/gtk-3.0/** rwkl,
+
+  # Socket do IBus, o método de entrada. Com `GTK_IM_MODULE=ibus` (o padrão do
+  # Cinnamon no Mint), o contexto de IME do GTK conversa com o ibus-daemon por
+  # `~/.cache/ibus/dbus-*`. `<abstractions/ibus>` só cobre a forma **abstrata**
+  # desse endereço (a concreta está comentada lá dentro), então sem esta linha a
+  # conexão é negada e o campo de texto fica mudo: a tecla entra no IME e não
+  # volta como caractere. Os campos que dispensam IME (os de senha) continuam
+  # aceitando digitação, o que faz o defeito parecer isolado no campo de frase.
+  owner @{HOME}/.cache/ibus/       r,
+  owner @{HOME}/.cache/ibus/dbus-* rw,
+
+  # ---------- cofre ----------
+  # Raiz root:root 0711: só navegação, sem listagem.
+  /var/lib/                 r,
+  /var/lib/.guardinha/      r,
+  owner /var/lib/.guardinha/.vault/   rw,
+  owner /var/lib/.guardinha/.vault/** rwkl,
+
+  # ---------- mídia removível (backup em pendrive) ----------
+  # O Linux Mint monta em /media/$USER/<rótulo> e, em algumas sessões, em
+  # /run/media/$USER/. O app só toca o que o usuário é dono; backup e
+  # restauração passam por aqui com o caminho vindo do diálogo nativo.
+  owner /media/** rwk,
+  owner /run/media/** rwk,
+
+  # ---------- memória compartilhada, terminais e runtime ----------
+  /dev/shm/          rw,
+  /dev/shm/**        rwkl,
+  /dev/pts/[0-9]*    rw,
+  /dev/tty           w,
+  owner @{run}/user/[0-9]*/          rw,
+  owner @{run}/user/[0-9]*/dconf/    rw,
+  owner @{run}/user/[0-9]*/dconf/**  rwkl,
+
+  # ---------- /proc e /sys ----------
+  # O zygote do Chromium lê cmdline/stat/fd dos próprios filhos e grava
+  # uid_map/gid_map/setgroups neles durante a montagem do sandbox.
+  @{PROC}/                 r,
+  @{PROC}/sys/**           r,
+  @{PROC}/*/cmdline        r,
+  @{PROC}/*/stat           r,
+  @{PROC}/*/status         r,
+  @{PROC}/*/maps           r,
+  @{PROC}/*/auxv           r,
+  @{PROC}/*/fd/            r,
+  @{PROC}/*/fd/*           r,
+  @{PROC}/*/net/**         r,
+  @{PROC}/*/uid_map        rw,
+  @{PROC}/*/gid_map        rw,
+  @{PROC}/*/setgroups      rw,
+  @{PROC}/@{pid}/**        rw,
+
+  # sysfs é somente leitura: informação pública do kernel (CPU, PCI, tty).
+  # Escrita continua negada pela negação padrão.
+  @{sys}/**                r,
+
+  # CAP_SYS_ADMIN/CAP_SYS_CHROOT/CAP_SYS_PTRACE só existem dentro do
+  # namespace de usuário que o próprio Chromium monta (sys_chroot e
+  # sys_ptrace são etapas do sandbox dele; sem elas o Electron aborta).
+  # O AppArmor filtra; o kernel continua negando essas capacidades em
+  # qualquer namespace que não o do próprio processo.
+  capability sys_admin,
+  capability sys_chroot,
+  capability sys_ptrace,
+
+  # Qualquer processo do mesmo usuário pode mandar sinal (o kernel já
+  # separa por uid); sem isso, SIGTERM de um app confinado é recusado.
+  signal (receive),
+
+  # ---------- rede ----------
+  # Guardinha é 100% offline: nenhuma conexão sai da máquina. Unix (D-Bus,
+  # X11, PulseAudio) e netlink (interfaces) seguem liberados.
+  network unix,
+  network netlink,
+  deny network inet,
+  deny network inet6,
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/${executable}>
+}

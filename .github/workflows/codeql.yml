@@ -1,0 +1,44 @@
+name: CodeQL
+
+# Análise estática de segurança do código (JS/TS) em push/PR para main e
+# semanalmente. Complementa o `npm run security:audit` (OSV, dependências).
+# Ressalva: code scanning é gratuito em repositório público; em privado
+# exige GitHub Advanced Security.
+# Actions fixadas por SHA completo (com a tag na comentário); o Dependabot
+# (`github-actions`) atualiza os pins.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analisar (javascript-typescript)
+    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
+    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
+    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
+    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
+    # Como sair do 24.04 está em `docs/build.md`.
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: javascript-typescript
+
+      # Linguagens interpretadas não precisam de build: o analisador
+      # varre o fonte diretamente.
+      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: '/language:javascript-typescript'

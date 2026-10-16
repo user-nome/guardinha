@@ -1,0 +1,295 @@
+name: Publicar .deb
+
+# Publica o .deb na GitHub Release correspondente e, junto, o repositório
+# APT flat (índices assinados + alias estável do .deb) como assets da mesma
+# Release, base: .../releases/latest/download/ (suite ./).
+# Gatilhos:
+# - push na main: lê package.json → se ainda não existir Release para
+#   v<versão>, publica automaticamente (é assim que a versão nova sai);
+# - tag v* enviada manualmente (ex.: git push origin v1.0.1), ou
+# - Release criada na UI do GitHub, ou
+# - execução manual na UI (workflow_dispatch, que também serve para reanexar
+#   assets de uma Release que falhou no meio).
+# Sem loop: pushes de tag/Release feitos com o GITHUB_TOKEN desta execução
+# não disparam novos runs, e a tag só é criada antes do upload dos assets.
+# `concurrency` serializa as publicações para duas corridas na main não
+# publicarem a mesma versão duas vezes.
+# Actions fixadas por SHA completo (com a tag na comentário) para não depender
+# da segurança da tag movível; o Dependabot (`github-actions`) atualiza os pins.
+# Gate de qualidade: o job "Verificar qualidade" (npm run check + npm test)
+# roda em paralelo ao "Verificar versão" e o "Gerar e publicar" só começa se
+# os dois passarem; falha de tipo, lint, formato, auditoria OSV, shellcheck ou
+# teste interrompe a publicação.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-deb
+  cancel-in-progress: false
+
+# secrets não pode ser usado em `if:`; copia para env (padrão do GitHub).
+env:
+  VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+
+jobs:
+  resolver-versao:
+    name: Verificar versão
+    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
+    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
+    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
+    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
+    # Como sair do 24.04 está em `docs/build.md`.
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      publicar: ${{ steps.version.outputs.publicar }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Comparar package.json com as Releases existentes
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v$VERSION"
+          PUBLICAR=true
+
+          # Ref explícita (tag manual, Release da UI ou dispatch numa tag)
+          # manda mais que o package.json.
+          if [ "$REF_TYPE" = "tag" ]; then
+            TAG="$REF_NAME"
+          elif [ "$EVENT_NAME" = "release" ] && [ -n "$RELEASE_TAG" ]; then
+            TAG="$RELEASE_TAG"
+          fi
+
+          echo "package.json: $VERSION"
+          echo "Tag da Release: $TAG"
+
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::warning::Tag $TAG não confere com v$VERSION do package.json."
+          fi
+          if [ -f CHANGELOG.md ] && ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md não tem a entrada '## [$VERSION]'."
+          fi
+
+          # Push na main: só interessa publicar se ainda não houver Release.
+          # (Se a tag existe mas a Release não, publica mesmo assim: é o
+          # caso de um run anterior que morreu antes do upload.)
+          if [ "$EVENT_NAME" = "push" ] && [ "$REF_TYPE" = "branch" ]; then
+            CODE="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" || true)"
+            if [ "$CODE" = "200" ]; then
+              PUBLICAR=false
+              echo "::notice::Release $TAG já existe; nada a publicar nesta execução."
+            elif [ "$CODE" != "404" ]; then
+              echo "::warning::Não deu para conferir a Release $TAG (HTTP ${CODE:-erro}); seguirei publicando."
+            fi
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "publicar=$PUBLICAR" >> "$GITHUB_OUTPUT"
+          echo "Resultado: tag=$TAG publicar=$PUBLICAR"
+
+  qualidade:
+    name: Verificar qualidade
+    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
+    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
+    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
+    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
+    # Como sair do 24.04 está em `docs/build.md`.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ferramentas de auditoria (binários fora do git; versões fixadas)
+        run: |
+          set -euo pipefail
+          # `bin/osv-scanner` e `bin/shellcheck` são gitignored (ver
+          # `.gitignore`): a pasta não existe no checkout do CI e o curl
+          # falharia com exit 23 (não consegue criar o arquivo). `mkdir -p`
+          # antes. Versões idênticas às de `docs/build.md`.
+          mkdir -p bin
+          curl -fsSL -o bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64
+          curl -fsSL -o /tmp/shellcheck.tar.xz \
+            https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+          chmod +x bin/osv-scanner
+          # O tarball tem shellcheck-v0.11.0/shellcheck; `--strip-components=1`
+          # joga o diretório fora e o tarball vai para /tmp (fora da pasta que
+          # o `npm run check` lê, para não sobrar lixo no workspace).
+          tar -xJf /tmp/shellcheck.tar.xz --strip-components=1 -C bin shellcheck-v0.11.0/shellcheck
+          rm -f /tmp/shellcheck.tar.xz
+          bin/osv-scanner --version
+          bin/shellcheck --version | head -2
+
+      - name: Typecheck + lint + formato + auditoria OSV + shellcheck
+        run: npm run check
+
+      - name: Testes (Vitest)
+        run: npm test
+
+  build-deb:
+    name: Gerar e publicar
+    needs: [resolver-versao, qualidade]
+    if: needs.resolver-versao.outputs.publicar == 'true'
+    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
+    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
+    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
+    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
+    # Como sair do 24.04 está em `docs/build.md`.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # tags completas para conferir/criar a tag da Release
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Dependências do sistema (electron-builder --linux deb)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot
+
+      - run: npm ci
+
+      - name: Gerar .deb (compila e empacota; o upload é no step seguinte)
+        # --publish never: sem isso, o electron-builder tenta publicar
+        # sozinho por causa da tag ("Implicit publishing") e falha sem token.
+        run: npm run build && npx electron-builder --linux deb --publish never
+
+      - name: Criar tag da Release (se ainda não existir)
+        env:
+          TAG: ${{ needs.resolver-versao.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TAG" ]; then
+            echo "::error::Tag vazia: o job 'Verificar versão' não rodou?"
+            exit 1
+          fi
+          # Identidade do autor: sem user.name/user.email no runner o
+          # `git tag -a` aborta com "Please tell me who you are".
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "Tag $TAG já existe; vou anexar os assets nela."
+          else
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "refs/tags/$TAG"
+            echo "Tag $TAG criada no commit $(git rev-parse --short HEAD)."
+          fi
+
+      - name: Anexar .deb à Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: release/guardinha_*_amd64.deb
+          # Se a Release ainda não existe (tag manual), ela é criada aqui.
+          generate_release_notes: true
+          tag_name: ${{ needs.resolver-versao.outputs.tag }}
+
+      - name: Gerar repo APT flat assinado (assets estáveis)
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "::error::Secret GPG_PRIVATE_KEY ausente em Settings → Secrets → Actions (repo guardinha)."
+            exit 1
+          fi
+          sudo apt-get install -y --no-install-recommends dpkg-dev apt-utils gnupg
+          mkdir -p apt
+          # Alias estável SEM versão: o APT resolve Filename relativo à base
+          # .../releases/latest/download/, que só redireciona nomes exatos.
+          cp release/guardinha_*_amd64.deb apt/guardinha_amd64.deb
+          # Falhas aqui viram ::error:: explícito (annotations são legíveis
+          # na UI do Actions sem precisar abrir o log cru).
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import || true
+          if ! gpg --list-secret-keys F2B0A3843C9FF986 >/dev/null 2>&1; then
+            echo "::error::GPG_PRIVATE_KEY inválido ou incompleto: cole o bloco inteiro do arquivo, COM as linhas -----BEGIN PGP PRIVATE KEY BLOCK----- e -----END PGP PRIVATE KEY BLOCK----- (sem elas o gpg não reconhece o formato)."
+            exit 1
+          fi
+          if [ -n "${GPG_PASSPHRASE:-}" ]; then
+            GPG_OPTS=(--batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE")
+          else
+            GPG_OPTS=(--batch --yes)
+          fi
+          # Teste de assinatura antes de gerar nada: falha = passphrase errada
+          # (ou secret GPG_PASSPHRASE ausente; no CI não há pinentry).
+          echo preflight > apt/.sign-test
+          if ! gpg "${GPG_OPTS[@]}" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
+            echo "::error::GPG_PASSPHRASE incorreto (ou secret ausente) para a chave F2B0A3843C9FF986."
+            exit 1
+          fi
+          rm -f apt/.sign-test apt/.sign-test.asc
+          cd apt
+          dpkg-scanpackages . /dev/null > Packages.raw
+          # Filename precisa ser o nome puro do asset (sem ./ nem pool/).
+          sed 's#^\(\s*Filename:\s*\)\./#\1#' Packages.raw > Packages
+          grep -qx 'Filename: guardinha_amd64.deb' Packages
+          gzip -9nc Packages > Packages.gz
+          rm Packages.raw
+          # Release é gerado FORA da árvore e só então movido para dentro,
+          # senão ele hash a si mesmo (arquivo meio escrito) e ao .raw.
+          apt-ftparchive release \
+            -o APT::FTPArchive::Release::Origin=Chronos \
+            -o APT::FTPArchive::Release::Label=Chronos \
+            -o APT::FTPArchive::Release::Suite=stable \
+            -o APT::FTPArchive::Release::Codename=stable \
+            -o APT::FTPArchive::Release::Architectures=amd64 \
+            -o APT::FTPArchive::Release::Components=main \
+            -o APT::FTPArchive::Release::Description="Guardinha" \
+            . > ../Release.tmp
+          mv ../Release.tmp Release
+          gpg "${GPG_OPTS[@]}" --clearsign -o InRelease Release
+          gpg "${GPG_OPTS[@]}" -abs -o Release.gpg Release
+          gpg --armor --export > public.key
+          echo "Repo APT flat gerado:" && ls -l
+
+      - name: Anexar repo APT à Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: |
+            apt/guardinha_amd64.deb
+            apt/Packages
+            apt/Packages.gz
+            apt/Release
+            apt/Release.gpg
+            apt/InRelease
+            apt/public.key
+          tag_name: ${{ needs.resolver-versao.outputs.tag }}
+
+      - name: Disparar redeploy da landing (Vercel Deploy Hook)
+        # Sem hook configurado, pula em silêncio; a Release funciona igual.
+        if: ${{ env.VERCEL_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"

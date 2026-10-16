@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# guardinha-setup: executado como root via pkexec (PolicyKit) quando o app
+# precisa criar/reparar a pasta do cofre em /var/lib. Só cria os diretórios
+# FIXOS abaixo com modos fixos: nenhum caminho vem do chamador, então não há
+# como explorá-lo. O dono vem de PKEXEC_UID (definido pelo pkexec).
+set -eu
+
+CALLER_UID="${PKEXEC_UID:-}"
+[ -n "$CALLER_UID" ] || exit 1
+
+CALLER_USER="$(getent passwd "$CALLER_UID" | cut -d: -f1)"
+[ -n "$CALLER_USER" ] || exit 1
+CALLER_GROUP="$(id -gn "$CALLER_USER")"
+
+# raiz: root sem listagem (exige sudo para navegar/excluir o topo da árvore)
+install -d -m 0711 -o root -g root /var/lib/.guardinha
+
+# área de trabalho do app: dono = usuário que autenticou (0700, oculta)
+install -d -m 0700 -o "$CALLER_USER" -g "$CALLER_GROUP" /var/lib/.guardinha/.vault
+
+exit 0

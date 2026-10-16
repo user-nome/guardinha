@@ -1,0 +1,213 @@
+Guardinha: Avisos de Terceiros (Third-Party Notices)
+=====================================================
+
+Este arquivo lista os componentes de terceiros distribuídos junto com o
+Guardinha (pacote .deb), conforme exigido pelas licenças aplicáveis. As
+versões exatas são as do `package-lock.json` da release correspondente. Os
+textos legais abaixo estão na íntegra, no idioma original de publicação.
+
+Este arquivo é distribuído com o app: ao lado de `package.json` dentro do
+`app.asar` (extraível com `npx @electron/asar extract`). As dependências
+exclusivas de desenvolvimento (build, teste e lint) não são distribuídas no
+pacote; os créditos de todas as dependências diretas aparecem na tela de
+Atribuições do app (fonte: `src/renderer/src/attributions.ts`).
+
+Componentes distribuídos
+------------------------
+
+1. Electron 44.6.0
+   Copyright (c) Electron contributors
+   Copyright (c) 2013-2020 GitHub Inc.
+   Licença: MIT (texto na seção "MIT License (Electron)")
+   https://www.electronjs.org
+   O Electron incorpora o Chromium (BSD-3-Clause e centenas de outras
+   licenças de componentes). Os créditos completos estão em
+   chrome://credits (dentro do app) e em
+   https://github.com/chromium/chromium/blob/main/LICENSE
+
+2. React 19.3.0
+   Copyright (c) Meta Platforms, Inc. and affiliates.
+   Licença: MIT (seção "MIT License (React, React DOM e Scheduler)")
+   https://react.dev
+
+3. React DOM 19.3.0
+   Copyright (c) Meta Platforms, Inc. and affiliates.
+   Licença: MIT (seção "MIT License (React, React DOM e Scheduler)")
+   https://react.dev
+
+4. Scheduler 0.28.0 (dependência do React DOM)
+   Copyright (c) Meta Platforms, Inc. and affiliates.
+   Licença: MIT (seção "MIT License (React, React DOM e Scheduler)")
+   https://github.com/facebook/scheduler
+
+5. fs-extra 11.4.1
+   Copyright (c) 2011-2024 JP Richardson
+   Licença: MIT (seção "MIT License (fs-extra, jsonfile e universalify)")
+   https://github.com/jprichardson/node-fs-extra
+
+6. graceful-fs 4.2.11 (dependência do fs-extra)
+   Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors
+   Licença: ISC (seção "ISC License (graceful-fs)")
+   https://github.com/isaacs/node-graceful-fs
+
+7. jsonfile 6.2.1 (dependência do fs-extra)
+   Copyright (c) 2012-2015, JP Richardson <jprichardson@gmail.com>
+   Licença: MIT (seção "MIT License (fs-extra, jsonfile e universalify)")
+   https://github.com/jprichardson/node-jsonfile
+
+8. universalify 2.0.1 (dependência do fs-extra)
+   Copyright (c) 2017, Ryan Zimmerman <opensrc@ryanzim.com>
+   Licença: MIT (seção "MIT License (fs-extra, jsonfile e universalify)")
+   https://github.com/RyanZim/universalify
+
+9. hash-wasm 4.12.0
+   Copyright (c) 2020 Dani Biró
+   Licença: MIT (seção "MIT License (hash-wasm)")
+   https://github.com/Daninet/hash-wasm
+
+10. lucide-react 0.547.0
+    Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2023 as
+    part of Feather (MIT). All other copyright (c) for Lucide are held by
+    Lucide Contributors 2025.
+    Licença: ISC (seção "ISC License (lucide-react)")
+    https://lucide.dev
+
+Textos das licenças
+-------------------
+
+MIT License (React, React DOM e Scheduler)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+MIT License (Electron)
+^^^^^^^^^^^^^^^^^^^^^^
+
+Copyright (c) Electron contributors
+Copyright (c) 2013-2020 GitHub Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+MIT License (fs-extra, jsonfile e universalify)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Copyright (c) 2011-2024 JP Richardson
+Copyright (c) 2012-2015, JP Richardson <jprichardson@gmail.com>
+Copyright (c) 2017, Ryan Zimmerman <opensrc@ryanzim.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+MIT License (hash-wasm)
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Copyright (c) 2020 Dani Biró
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ISC License (graceful-fs)
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ISC License
+
+Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+ISC License (lucide-react)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ISC License
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2023 as part
+of Feather (MIT). All other copyright (c) for Lucide are held by Lucide
+Contributors 2025.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.

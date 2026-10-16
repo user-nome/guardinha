@@ -1,0 +1,47 @@
+# Configuração do osv-scanner (`npm run security:audit`).
+# Roda sobre o package-lock.json com o filtro de alarmes falsos.
+#
+# Mecanismo: `[[IgnoredVulns]]` com `id` + `ignoreUntil` (YYYY-MM-DD) mantém um
+# alerta suprimido só até a data; depois disso ele volta e precisa ser
+# resolvido de verdade. `reason` documenta por que vale manter suprimido.
+#
+# Histórico: nenhum ignore ativo neste repositório.
+#
+# Exemplo (adicionar só quando houver alerta real):
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = "2026-12-31"
+# reason = "só em dependência de build; não entra no .deb"
+#
+# ----- o que mora no comando e não aqui -----
+#
+# Este arquivo só aceita `IgnoredVulns` e `PackageOverrides`: o resto da
+# política de auditoria são bandeiras do comando, em `package.json`
+# (`scripts.security:audit`). Para não ficar política espalhada em dois lugares,
+# aqui fica o registro do que cada bandeira faz:
+#
+# - `--all-vulns`: mostra também a vulnerabilidade que o scanner julga sem
+#   importance ou não chamada. Sem ela, o resultado é o subconjunto que o
+#   scanner considera relevante, e o relatório cala o resto sem avisar.
+# - `--experimental-flag-deprecated-packages`: pacote em versão abandonada é
+#   dívida que ninguém vai corrigir, então entra na fila.
+# - `--licenses=…`: allowlist de licença. Copilaget livre (GPL, AGPL, SSPL,
+#   BUSL) e pacote sem licença declarada ficam de fora e reprovam o `check`,
+#   que é o ponto: o `.deb` é distribuído e há `THIRD-PARTY-NOTICES.txt` para
+#   manter honesto.
+#
+# Sobre a allowlist, duas entradas não são óbvias e precisam de motivo:
+#
+# - `MPL-2.0` (lightningcss) e `CC-BY-4.0` (caniuse-lite): os dois chegam por
+#   `devDependencies` (Vite/Tailwind) e **não** entram no `.deb`, que embarca
+#   só `out/**`, `build/icon.png`, `THIRD-PARTY-NOTICES.txt` e `package.json`
+#   (ver `files` no `package.json`). São copyleft de arquivo, então só
+#   obrigariam quem distribuísse o arquivo. Se algum dia entrarem em
+#   `dependencies`, tire daqui e resolva a obrigação.
+# - `WTFPL` (truncate-utf8-bytes) e `BlueOak-1.0.0` (cadeia de ferramentas do
+#   npm): permissivas, e colocá-las aqui evita alarme falso em toda atualização
+#   de dependência transitiva.
+#
+# Licença nova que aparecer reprova o `check`: isso é proposital. É pedido de
+# revisão, não defeito; a resposta é acrescentar aqui depois de ler a licença.

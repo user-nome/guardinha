@@ -1,0 +1,29 @@
+# Alinha o que o editor faz com o que o Prettier e o Git exigem. Sem este
+# arquivo, cada editor decide sozinho e o `npm run format:check` reprova
+# arquivo que ninguém "editou": final de linha misto e espaço no fim da linha
+# são exatamente o que um salvamento automático de editor Windows insere.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 100
+
+# Markdown e JSON seguem o padrão do Prettier (2 espaços), mas sem
+# `trim_trailing_whitespace`: dois espaços no fim da linha são quebra de linha
+# em Markdown, e cortar isso quebra o texto renderizado.
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{json,jsonc,yml,yaml,cjs,mjs,ts,tsx,css}]
+indent_size = 2
+
+# Shell: o shellcheck (npm run lint:shell) cuida da semântica; aqui é só para o
+# editor não indentationar tab com espaço no arquivo que o postinst do `.deb`
+# executa.
+[*.sh]
+indent_size = 2
