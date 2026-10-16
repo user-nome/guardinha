@@ -1,12 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  resetElectronMock,
-} from '../mocks/electron.ts';
+import { app, BrowserWindow, dialog, ipcMain, resetElectronMock } from '../mocks/electron.ts';
 import type { IpcHandler } from '../mocks/electron.ts';
 
 // O pacote é cópia de bytes já cifrados: o que este arquivo prova é só a
@@ -88,14 +82,15 @@ describe('canal backup:export', () => {
 
     call('backup:export', appFrame());
 
-    expect(dialog.showSaveDialogSync).toHaveBeenCalledWith(
-      BOOT_WINDOW,
-      expect.objectContaining({
-        title: m.backup.exportAction,
-        defaultPath: expect.stringMatching(/^guardinha-backup-\d{4}-\d{2}-\d{2}\.gbk$/),
-        filters: [{ name: 'Backup Guardinha', extensions: ['gbk'] }],
-      }),
-    );
+    // O nome sugerido sai da data em UTC, a mesma que o main usa; as opções
+    // são conferidas inteiras, porque um `defaultPath` com a extensão errada
+    // faria o diálogo salvar um arquivo sem o `.gbk`.
+    const hoje = new Date().toISOString().slice(0, 10);
+    expect(dialog.showSaveDialogSync).toHaveBeenCalledWith(BOOT_WINDOW, {
+      title: m.backup.exportAction,
+      defaultPath: `guardinha-backup-${hoje}.gbk`,
+      filters: [{ name: 'Backup Guardinha', extensions: ['gbk'] }],
+    });
   });
 });
 
@@ -138,14 +133,11 @@ describe('canal backup:restore', () => {
 
     call('backup:restore', appFrame());
 
-    expect(dialog.showOpenDialogSync).toHaveBeenCalledWith(
-      BOOT_WINDOW,
-      expect.objectContaining({
-        title: currentMessages().backup.restoreAction,
-        properties: ['openFile'],
-        filters: [{ name: 'Backup Guardinha', extensions: ['gbk'] }],
-      }),
-    );
+    expect(dialog.showOpenDialogSync).toHaveBeenCalledWith(BOOT_WINDOW, {
+      title: currentMessages().backup.restoreAction,
+      properties: ['openFile'],
+      filters: [{ name: 'Backup Guardinha', extensions: ['gbk'] }],
+    });
   });
 
   it('propaga o erro do pacote inválido, que é erro de domínio e não de sessão', () => {

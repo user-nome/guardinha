@@ -1,5 +1,6 @@
 // @vitest-environment node
 import fs from 'node:fs';
+import fsExtra from 'fs-extra';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -145,6 +146,35 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('grava o pacote mesmo em mídia que recusa o modo do arquivo', () => {
+    // Pendrive FAT/exFAT não tem dono nem modo: o `chmod` falha e o backup
+    // precisa ter saído mesmo assim. O conteúdo continua cifrado, então perder o
+    // 0600 ali não expõe nada; perder o arquivo, sim.
+    const destino = exportTo('sem-modo.gbk');
+    // Só o `chmod` do **destino** falha: as pastas do cofre usam `chmodSync`
+    // também, e um espelho que recusasse toda chamada derrubaria a montagem do
+    // pacote antes de ele ser escrito. O filtro pelo caminho é o que separa as
+    // duas coisas, como no pendrive de verdade, onde só o arquivo novo é
+    // recusado.
+    const original = fsExtra.chmodSync;
+    const chmod = vi.spyOn(fsExtra, 'chmodSync').mockImplementation((target, mode) => {
+      if (String(target) === destino) {
+        throw new Error('operação não suportada pelo sistema de arquivos');
+      }
+      original(target, mode);
+    });
+
+    try {
+      const resultado = exportBackup(destino, '1.0.0');
+
+      expect(resultado.files).toBeGreaterThan(0);
+      expect(fs.readFileSync(destino).subarray(0, 8).toString('ascii')).toBe('ZKBACKUP');
+      expect(chmod).toHaveBeenCalledWith(destino, 0o600);
+    } finally {
+      chmod.mockRestore();
+    }
   });
 
   it('devolve erro próprio quando o destino não pode ser gravado', () => {

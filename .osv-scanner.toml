@@ -14,6 +14,11 @@
 # ignoreUntil = "2026-12-31"
 # reason = "só em dependência de build; não entra no .deb"
 #
+# `[[PackageOverrides]]` é o outro meio, e é o que cabe em licença: ele declara
+# a licença de um pacote específico sem calar a varredura de vulnerabilidade
+# dele. Os dois usos ativos estão no fim do arquivo, cada um com `reason` e
+# `effectiveUntil`.
+#
 # ----- o que mora no comando e não aqui -----
 #
 # Este arquivo só aceita `IgnoredVulns` e `PackageOverrides`: o resto da
@@ -45,3 +50,23 @@
 #
 # Licença nova que aparecer reprova o `check`: isso é proposital. É pedido de
 # revisão, não defeito; a resposta é acrescentar aqui depois de ler a licença.
+
+# ----- overrides ativos -----
+#
+# caniuse-lite 1.0.30001816 (via browserslist, que vem do @babel/core do
+# electron-vite): o scanner resolve a licença pela API do deps.dev, e o
+# deps.dev ainda não tem registro dessa versão, então a licença voltava
+# UNKNOWN e reprovava o `check` num pacote cuja licença não mudou em nada. O
+# campo `license` do tarball e do registro, e o arquivo LICENSE dentro do
+# pacote, são idênticos aos da 1.0.30001815 (que o deps.dev já responde):
+# `CC-BY-4.0`. Declarar a licença aqui é mais honesto do que prender a
+# dependência numa versão antiga por causa de uma lacuna de dado: o override
+# só vale para esta versão, expira, e a varredura de vulnerabilidade continua
+# valendo. Quando o deps.dev publicar o registro, o override pode sair.
+[[PackageOverrides]]
+name = "caniuse-lite"
+ecosystem = "npm"
+version = "1.0.30001816"
+license.override = ["CC-BY-4.0"]
+effectiveUntil = 2026-12-31
+reason = "deps.dev ainda não tem esta versão; licença conferida no tarball e no registro: CC-BY-4.0, igual à da 1.0.30001815"

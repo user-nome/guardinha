@@ -107,7 +107,7 @@ describe('App: aba de backup', () => {
     installApi({
       status: UNLOCKED,
       backup: {
-        export: () => Promise.resolve({ path: '/pendrive/cofre.gbk' }),
+        export: () => Promise.resolve({ path: '/pendrive/cofre.gbk', files: 3, bytes: 2048 }),
         restore: () => Promise.reject(new Error('não usado neste teste')),
       },
     });
@@ -116,7 +116,10 @@ describe('App: aba de backup', () => {
     await user.click(await screen.findByRole('button', { name: 'Backup' }));
     await user.click(await screen.findByRole('button', { name: 'Salvar backup em um pendrive' }));
 
-    expect(await screen.findByText('/pendrive/cofre.gbk')).toBeInTheDocument();
+    // o toast é do `App`, não da tela: é o roteador que confirma a operação
+    expect(
+      await screen.findByText(/Backup gravado em \/pendrive\/cofre\.gbk\./),
+    ).toBeInTheDocument();
   });
 
   it('trata diálogo cancelado como operação encerrada, sem toast de sucesso', async () => {
