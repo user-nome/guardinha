@@ -6,14 +6,41 @@ em português do Brasil.
 
 ## [Não lançado]
 
+## [1.7.2] - 2026-10-16
+
+### Adicionado
+
+- **Cobertura E2E ampliada.** A jornada do app compilado agora verifica
+  validações, busca, edição e exclusão de credenciais, opções do gerador,
+  tokens TOTP, backup e restauração, configurações de segurança e caminhos de
+  desbloqueio. O auto-lock faz parte da suíte completa, e a ausência do artefato
+  empacotado causa uma falha explícita em vez de pular os testes.
+
+### Corrigido
+
+- **Retorno à tela inicial após bloqueio ou restauração.** A aba ativa volta
+  para Início quando o cofre fica bloqueado, evitando reabrir uma tela interna
+  após o desbloqueio.
+- **Teste de geração de senha.** O E2E aguarda o resultado atualizado antes de
+  verificar o comprimento e as categorias selecionadas.
+
 ### Alterado
 
 - **Autoria e mantenedor do pacote.** As atribuições da interface e o campo
   `maintainer` do `.deb` passam a nomear **Otaku Delirante**, e as referências
   ao dono dos binários de `bin/` e ao repositório do projeto de apoio usam o
   usuário `user-nome`, o mesmo já usado no repositório e no e-mail de release.
-  Nenhuma functionality mudou: os dados dos testes (`otaku-delirante` no lugar
-  de `chronos-atalante`) são só fixtures.
+  Os dados dos testes (`otaku-delirante` no lugar de `chronos-atalante`) são só
+  fixtures.
+- **Tipos compartilhados e validação de dados.** `Argon2Params` e
+  `SaltedPayload` agora ficam em `src/types/`, os registros decifrados são
+  tratados como `unknown` até a validação e os guards substituem asserções
+  frágeis nas fronteiras de dados.
+
+### Documentação
+
+- **Guia E2E atualizado** com os fluxos cobertos, o auto-lock obrigatório e a
+  exigência de gerar o `.deb` antes de executar a suíte completa.
 
 ## [1.7.1] - 2026-10-16
 

@@ -3,19 +3,28 @@ import { launchBundled } from './support/launch.ts';
 import type { LaunchedApp } from './support/launch.ts';
 import {
   addCredential,
+  addEditAndRemoveManualToken,
   addTotpToken,
   clearPanicPin,
+  confirmDestroyRequiresExactWord,
   configurePanicPin,
   copyCredentialPassword,
   createVault,
+  deleteCredential,
   disableNukeLimit,
   generatePassword,
+  generatePasswordWithOptions,
   lockVault,
+  roundTripBackup,
   resetVaultPin,
+  searchAndEditCredential,
   setNukeLimit,
   toEnglish,
   toPortuguese,
+  triggerPanicPin,
   unlockVault,
+  unlockWithMaster,
+  visitCredits,
   VAULT,
 } from './support/flows.ts';
 
@@ -51,6 +60,14 @@ describe('App compilado (out/)', () => {
     await addCredential(current().page);
   });
 
+  it('busca e edita uma credencial', async () => {
+    await searchAndEditCredential(current().page);
+  });
+
+  it('adiciona e exclui uma credencial com confirmação', async () => {
+    await deleteCredential(current().page);
+  });
+
   it('copia a senha da credencial', async () => {
     await copyCredentialPassword(current());
   });
@@ -59,8 +76,16 @@ describe('App compilado (out/)', () => {
     await generatePassword(current());
   });
 
+  it('respeita comprimento, categorias e a última categoria ativa no gerador', async () => {
+    await generatePasswordWithOptions(current().page);
+  });
+
   it('adiciona um token de 2FA e lê o código', async () => {
     await addTotpToken(current());
+  });
+
+  it('cria, edita e exclui um token manual de 2FA', async () => {
+    await addEditAndRemoveManualToken(current().page);
   });
 
   it('define e remove o PIN de coação', async () => {
@@ -78,9 +103,25 @@ describe('App compilado (out/)', () => {
     await toPortuguese(current().page);
   });
 
+  it('abre a tela de atribuições', async () => {
+    await visitCredits(current().page);
+  });
+
+  it('não destrói o cofre sem a palavra exata de confirmação', async () => {
+    await confirmDestroyRequiresExactWord(current().page);
+  });
+
+  it('exporta e restaura o backup completo', async () => {
+    await roundTripBackup(current());
+  });
+
   it('bloqueia e desbloqueia com o PIN', async () => {
     await lockVault(current().page);
     await unlockVault(current().page, VAULT.pin);
+  });
+
+  it('também desbloqueia com a senha mestra', async () => {
+    await unlockWithMaster(current().page);
   });
 
   it('redefine o PIN pela frase de recuperação', async () => {
@@ -89,5 +130,9 @@ describe('App compilado (out/)', () => {
     await resetVaultPin(current().page);
     await lockVault(current().page);
     await unlockVault(current().page, VAULT.newPin);
+  });
+
+  it('abre o cofre decoy e destrói os dados pelo PIN de coação', async () => {
+    await triggerPanicPin(current().page);
   });
 });

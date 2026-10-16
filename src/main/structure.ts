@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import { currentMessages } from '@zero/main/i18n';
 import { authDir, entriesDir, vaultDir } from '@zero/main/layout';
+import { isRecord } from '@zero/shared/record';
 
 /**
  * Estrutura de diretórios do cofre: garante as pastas com o modo certo, sabe
@@ -36,8 +37,8 @@ export function writeSecretFile(file: string, data: Buffer | string): void {
 }
 
 export function isPermissionError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false;
-  const code = (error as NodeJS.ErrnoException).code;
+  if (!isRecord(error)) return false;
+  const code = error.code;
   return code === 'EACCES' || code === 'EPERM' || code === 'EROFS';
 }
 

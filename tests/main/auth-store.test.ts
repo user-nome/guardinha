@@ -8,7 +8,7 @@ import { deleteAuth, listAuthIds, readAuthPayload, writeAuthPayload } from '@zer
 import { encryptAuthRecord } from '@zero/main/crypto';
 import { currentMessages } from '@zero/main/i18n';
 import { createVault, requireSessionKey } from '@zero/main/vault';
-import type { SaltedPayload } from '@zero/main/crypto';
+import type { SaltedPayload } from '@zero/types/crypto';
 
 /**
  * O `.auth/` é um diretório que o app monta a partir de um id. Cada ramo aqui

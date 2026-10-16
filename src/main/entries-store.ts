@@ -11,7 +11,7 @@ import {
 } from '@zero/main/structure';
 import { randomBytes } from '@zero/main/crypto';
 import { SHRED_PASSES, shredFile } from '@zero/main/shred';
-import type { SaltedPayload } from '@zero/main/crypto';
+import type { SaltedPayload } from '@zero/types/crypto';
 import type { TempCleanupResult } from '@zero/types';
 
 /**

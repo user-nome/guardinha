@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { protocol } from 'electron';
 import { currentMessages } from '@zero/main/i18n';
+import { isRecord } from '@zero/shared/record';
 
 /**
  * Scheme `guardinha://` e a guarda de origem do IPC.
@@ -150,13 +151,17 @@ function isAppFrameUrl(url: string | undefined): boolean {
 }
 
 /**
- * O pedaço do evento do IPC que a guarda precisa: o frame que o emitiu e a URL
- * dele. Nomeado em vez de escrito na hora porque a forma aninhada e toda
- * opcional (`senderFrame` pode não existir) é justamente o tipo de coisa que
- * se esquece de conferir e vira `undefined` silencioso.
+ * O pedaço do evento do IPC que a guarda precisa. A forma aninhada e opcional
+ * é validada aqui para que a URL nunca seja lida de um frame desconhecido.
  */
 interface FrameEmitter {
   senderFrame?: { url?: unknown } | null;
+}
+
+function isFrameEmitter(value: unknown): value is FrameEmitter {
+  if (!isRecord(value)) return false;
+  const frame = value.senderFrame;
+  return frame === undefined || frame === null || isRecord(frame);
 }
 
 /**
@@ -168,10 +173,7 @@ interface FrameEmitter {
  * no idioma escolhido.
  */
 export function assertAppFrame(event: unknown): void {
-  if (typeof event !== 'object' || event === null) {
-    throw new Error(currentMessages().errors.foreignFrame);
-  }
-  const url = (event as FrameEmitter).senderFrame?.url;
+  const url = isFrameEmitter(event) ? event.senderFrame?.url : undefined;
   if (!isAppFrameUrl(typeof url === 'string' ? url : undefined)) {
     throw new Error(currentMessages().errors.foreignFrame);
   }

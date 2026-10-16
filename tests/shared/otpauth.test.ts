@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as base32 from '@zero/shared/base32';
-import { buildOtpAuthUri, parseOtpAuthUri } from '@zero/shared/otpauth';
+import { buildOtpAuthUri, isOtpAlgorithm, parseOtpAuthUri } from '@zero/shared/otpauth';
 
 /**
  * O formato `otpauth://` é o que os serviços entregam quando o usuário escolhe
@@ -11,6 +11,16 @@ import { buildOtpAuthUri, parseOtpAuthUri } from '@zero/shared/otpauth';
 
 const STRONG_SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 const GITHUB = `otpauth://totp/GitHub:alice@github.com?secret=${STRONG_SECRET}&issuer=GitHub`;
+
+describe('isOtpAlgorithm', () => {
+  it('reconhece apenas algoritmos OTP suportados', () => {
+    expect(isOtpAlgorithm('SHA1')).toBe(true);
+    expect(isOtpAlgorithm('SHA256')).toBe(true);
+    expect(isOtpAlgorithm('SHA512')).toBe(true);
+    expect(isOtpAlgorithm('sha1')).toBe(false);
+    expect(isOtpAlgorithm(null)).toBe(false);
+  });
+});
 
 /** Nomes dos parâmetros de consulta da URI, na ordem em que saem. */
 function parametrosDe(uri: string): string[] {

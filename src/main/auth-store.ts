@@ -5,7 +5,7 @@ import { currentMessages } from '@zero/main/i18n';
 import { authDir } from '@zero/main/layout';
 import { ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
 import { SHRED_PASSES, shredFile } from '@zero/main/shred';
-import type { SaltedPayload } from '@zero/main/crypto';
+import type { SaltedPayload } from '@zero/types/crypto';
 
 /**
  * Arquivos individuais dos tokens de 2FA (`.auth/<uuid>.zka`).

@@ -1,6 +1,7 @@
 import { decryptRecord, encryptRecord, isValidKdfParams } from '@zero/main/crypto';
 import { currentMessages } from '@zero/main/i18n';
-import type { Argon2Params, SaltedPayload } from '@zero/main/crypto';
+import { isRecord } from '@zero/shared/record';
+import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
 
 /**
  * Formato binário do cofre. Nenhum arquivo legível de fora do app:
@@ -351,7 +352,9 @@ export function sealManifest(vaultKey: Buffer, ids: string[], authIds: string[])
  */
 export function openManifest(vaultKey: Buffer, payload: SaltedPayload): ManifestContent {
   const m = currentMessages();
-  const value = decryptRecord(payload, vaultKey) as Record<string, unknown>;
+  const decoded = decryptRecord(payload, vaultKey);
+  if (!isRecord(decoded)) throw new Error(m.errors.invalidManifest);
+  const value = decoded;
   const ids = stringList(value.ids);
   if (ids === null) throw new Error(m.errors.invalidManifest);
   if (value.v !== MANIFEST_VERSION) throw new Error(m.errors.invalidManifest);

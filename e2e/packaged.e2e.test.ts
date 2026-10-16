@@ -17,16 +17,16 @@ import {
  * é por CDP: `readClipboard` não existe e a verificação do clipboard fica só
  * no aviso da tela.
  *
- * A suíte é pulada com um aviso quando nada foi empacotado ainda; rode
- * `npm run dist:dir` (ou `npm run dist`) antes de `npm run test:e2e`.
+ * A suíte exige o artefato empacotado; rode `npm run dist:dir` (ou
+ * `npm run dist`) antes de `npm run test:e2e`.
  */
 const binary = resolvePackagedBinary();
 
 if (binary === null) {
-  console.warn('[e2e] Nada empacotado em release/: a suíte do .deb foi pulada.');
+  throw new Error('Binário empacotado ausente: execute `npm run dist:dir` antes dos E2E.');
 }
 
-describe.runIf(binary !== null)('Payload do .deb', () => {
+describe('Payload do .deb', () => {
   let app: LaunchedApp | undefined;
 
   function current(): LaunchedApp {
@@ -35,7 +35,6 @@ describe.runIf(binary !== null)('Payload do .deb', () => {
   }
 
   beforeAll(async () => {
-    if (binary === null) throw new Error('Binário empacotado não encontrado.');
     app = await launchPackaged(binary);
   }, 180_000);
 

@@ -22,9 +22,8 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function normalizeLanguage(value: unknown): Language {
-  if (typeof value === 'string' && (LANGUAGES as readonly string[]).includes(value)) {
-    return value as Language;
-  }
+  const language = LANGUAGES.find((candidate) => candidate === value);
+  if (language !== undefined) return language;
   return 'pt-BR';
 }
 
