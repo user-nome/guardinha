@@ -1,7 +1,7 @@
 {
   "name": "guardinha",
   "productName": "Guardinha",
-  "version": "1.6.3",
+  "version": "1.7.1",
   "description": "Cofre de credenciais 100% offline para Linux Mint 22.X (Zena)",
   "main": "out/main/index.js",
   "desktopName": "guardinha.desktop",
