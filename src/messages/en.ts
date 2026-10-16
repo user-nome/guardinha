@@ -343,7 +343,7 @@ export const en: Messages = {
       'Invalid `otpauth://` address. Check that you pasted the whole address, ' +
       'starting with `otpauth://totp/`, and that the issuer matches the label.',
     invalidAuthSecret:
-      'The setup key must be valid Base32 (A-Z and 2-7) and contain at least 128 bits (16 bytes).',
+      'The setup key must be valid Base32 (A-Z and 2-7) and contain at least 80 bits (10 bytes).',
     authTokenNotFound: '2FA token not found.',
     // ---- full vault backup ----
     backupInvalid: 'Invalid backup file.',
