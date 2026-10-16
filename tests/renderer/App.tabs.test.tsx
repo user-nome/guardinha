@@ -80,6 +80,90 @@ describe('App: navegação entre abas', () => {
   });
 });
 
+describe('App: aba de backup', () => {
+  it('leva à tela de backup pelo menu, que é onde o pendrive entra', async () => {
+    // A aba de backup é a única cujas ações não dependem da chave do cofre
+    // (exportar e restaurar works em máquina formatada), então ela precisa
+    // estar alcançável pelo roteiro do `App`, e não só testada como componente
+    // solto: um item de menu fora de ordem ou com o rótulo errado só aparece
+    // aqui.
+    const user = userEvent.setup();
+    installApi({ status: UNLOCKED });
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Backup' }));
+
+    expect(await screen.findByRole('heading', { name: 'Backup do cofre' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Salvar backup em um pendrive' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Restaurar de um backup' })).toBeInTheDocument();
+  });
+
+  it('avisa o que foi salvo quando a exportação termina', async () => {
+    // o `onToast` é o que dá retorno da aba: um clique que não avisa deixa o
+    // usuário sem saber se o pendrive recebeu o cofre
+    const user = userEvent.setup();
+    installApi({
+      status: UNLOCKED,
+      backup: {
+        export: () => Promise.resolve({ path: '/pendrive/cofre.gbk' }),
+        restore: () => Promise.reject(new Error('não usado neste teste')),
+      },
+    });
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Backup' }));
+    await user.click(await screen.findByRole('button', { name: 'Salvar backup em um pendrive' }));
+
+    expect(await screen.findByText('/pendrive/cofre.gbk')).toBeInTheDocument();
+  });
+
+  it('trata diálogo cancelado como operação encerrada, sem toast de sucesso', async () => {
+    // o `{ canceled: true }` que volta do main quando o usuário fecha o diálogo
+    // nativo não pode virar "backup salvo": mentir sobre o que foi gravado no
+    // pendrive seria o pior erro possível numa tela de backup.
+    const user = userEvent.setup();
+    installApi({
+      status: UNLOCKED,
+      backup: {
+        export: () => Promise.resolve({ canceled: true }),
+        restore: () => Promise.resolve({ canceled: true }),
+      },
+    });
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Backup' }));
+    await user.click(await screen.findByRole('button', { name: 'Salvar backup em um pendrive' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Salvar backup em um pendrive' })).toBeEnabled();
+    });
+    expect(screen.queryByText(/cofre\.gbk/)).not.toBeInTheDocument();
+  });
+
+  it('pede confirmação antes de restaurar, porque a restauração apaga o cofre', async () => {
+    const user = userEvent.setup();
+    const restore = vi.fn(() => Promise.resolve({ path: '/pendrive/cofre.gbk', files: 3 }));
+    installApi({
+      status: UNLOCKED,
+      backup: {
+        export: () => Promise.reject(new Error('não usado neste teste')),
+        restore,
+      },
+    });
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Backup' }));
+    await user.click(await screen.findByRole('button', { name: 'Restaurar de um backup' }));
+
+    // o primeiro clique só abre a confirmação: o canal do main não é chamado
+    // antes da segunda etapa
+    expect(await screen.findByRole('button', { name: 'Restaurar agora' })).toBeInTheDocument();
+    expect(restore).not.toHaveBeenCalled();
+  });
+});
+
 describe('App: bloqueio do cofre', () => {
   it('bloqueia pela barra lateral e volta para a autenticação', async () => {
     const user = userEvent.setup();
