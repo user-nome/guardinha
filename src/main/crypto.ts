@@ -1,12 +1,7 @@
 import crypto from 'node:crypto';
 import { argon2id } from 'hash-wasm';
-
-/** Parâmetros do Argon2id usados na derivação da chave do cofre. */
-export interface Argon2Params {
-  memoryKiB: number;
-  iterations: number;
-  parallelism: number;
-}
+import { isRecord } from '@zero/shared/record';
+import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
 
 /**
  * Faixa aceita na *leitura* de um container. Serve só para que um arquivo
@@ -43,23 +38,12 @@ function within(value: unknown, [min, max]: readonly [number, number]): boolean 
 
 /** Parâmetros legíveis dentro da faixa (inteiro, sem NaN, sem estouro). */
 export function isValidKdfParams(value: unknown): value is Argon2Params {
-  if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
+  if (!isRecord(value)) return false;
   return (
-    within(record.memoryKiB, KDF_LIMITS.memoryKiB) &&
-    within(record.iterations, KDF_LIMITS.iterations) &&
-    within(record.parallelism, KDF_LIMITS.parallelism)
+    within(value.memoryKiB, KDF_LIMITS.memoryKiB) &&
+    within(value.iterations, KDF_LIMITS.iterations) &&
+    within(value.parallelism, KDF_LIMITS.parallelism)
   );
-}
-
-export interface EncryptedPayload {
-  iv: string;
-  tag: string;
-  encryptedData: string;
-}
-
-export interface SaltedPayload extends EncryptedPayload {
-  salt: string;
 }
 
 /** Derivação de chave primária via Argon2id com os parâmetros do chamador. */
@@ -143,7 +127,7 @@ export function decryptRecord(
   payload: SaltedPayload,
   vaultKey: Buffer,
   info = KEY_INFO_ENTRY,
-): object {
+): unknown {
   const salt = Buffer.from(payload.salt, 'hex');
   const entryKey = deriveRecordKey(vaultKey, salt, info);
   const decipher = crypto.createDecipheriv('aes-256-gcm', entryKey, Buffer.from(payload.iv, 'hex'));
@@ -153,7 +137,8 @@ export function decryptRecord(
   decrypted += decipher.final('utf8');
   entryKey.fill(0);
 
-  return JSON.parse(decrypted) as object;
+  const value: unknown = JSON.parse(decrypted);
+  return value;
 }
 
 /** Cifra um registro no domínio dos tokens de 2FA. */
@@ -162,7 +147,7 @@ export function encryptAuthRecord(data: object, key: Buffer): SaltedPayload {
 }
 
 /** Decifra um registro no domínio dos tokens de 2FA. */
-export function decryptAuthRecord(payload: SaltedPayload, vaultKey: Buffer): object {
+export function decryptAuthRecord(payload: SaltedPayload, vaultKey: Buffer): unknown {
   return decryptRecord(payload, vaultKey, KEY_INFO_AUTH);
 }
 

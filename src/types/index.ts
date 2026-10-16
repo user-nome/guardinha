@@ -6,6 +6,7 @@ export type {
   AuthTokenInput,
 } from '@zero/types/authenticator';
 export type { GeneratorOptions } from '@zero/types/generator';
+export type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
 export type { AppSettings, Language } from '@zero/types/settings';
 export type {
   BackupCancelled,

@@ -27,8 +27,9 @@ import { ensureVaultStructure, isVaultDirUnavailable, vaultPath } from '@zero/ma
 import { cleanStaleTempFiles } from '@zero/main/entries-store';
 import { eraseVault } from '@zero/main/erase';
 import { currentMessages } from '@zero/main/i18n';
-import { OTP_ALGORITHMS } from '@zero/shared';
+import { isOtpAlgorithm } from '@zero/shared';
 import type { OtpAlgorithm } from '@zero/shared';
+import { isRecord } from '@zero/shared/record';
 import type { VaultContainerData } from '@zero/main/container';
 import type { Credential, EraseResult, PersistedAuthState, TempCleanupResult } from '@zero/types';
 
@@ -37,8 +38,9 @@ function tampered(): Error {
 }
 
 /** Valida a forma decifrada antes de usar (arquivo corrompido vira adulteração). */
-function asCredential(value: object): Credential | null {
-  const record = value as Record<string, unknown>;
+function asCredential(value: unknown): Credential | null {
+  if (!isRecord(value)) return null;
+  const record = value;
   if (
     typeof record.id !== 'string' ||
     typeof record.title !== 'string' ||
@@ -81,8 +83,9 @@ export interface AuthSecret {
 }
 
 /** Forma do registro decifrado; fora do contrato vira adulteração. */
-function asAuthSecret(value: object): AuthSecret | null {
-  const record = value as Record<string, unknown>;
+function asAuthSecret(value: unknown): AuthSecret | null {
+  if (!isRecord(value)) return null;
+  const record = value;
   if (
     typeof record.id !== 'string' ||
     typeof record.issuer !== 'string' ||
@@ -92,7 +95,7 @@ function asAuthSecret(value: object): AuthSecret | null {
     typeof record.period !== 'number' ||
     typeof record.createdAt !== 'number' ||
     typeof record.updatedAt !== 'number' ||
-    !OTP_ALGORITHMS.includes(record.algorithm as OtpAlgorithm)
+    !isOtpAlgorithm(record.algorithm)
   ) {
     return null;
   }
@@ -100,7 +103,7 @@ function asAuthSecret(value: object): AuthSecret | null {
     id: record.id,
     issuer: record.issuer,
     account: record.account,
-    algorithm: record.algorithm as OtpAlgorithm,
+    algorithm: record.algorithm,
     digits: record.digits,
     period: record.period,
     secret: record.secret,

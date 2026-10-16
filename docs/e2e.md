@@ -26,11 +26,11 @@ npm run dist:dir     # para o alvo empacotado (release/, gera o .deb)
 
 Depois:
 
-| Comando                     | O que roda                                           |
-| --------------------------- | ---------------------------------------------------- |
-| `npm run test:e2e`          | Os dois alvos (o empacotado é pulado sem `release/`) |
-| `npm run test:e2e:bundled`  | Só o app compilado (`out/`)                          |
-| `npm run test:e2e:packaged` | Só o payload do `.deb`                               |
+| Comando                     | O que roda                                       |
+| --------------------------- | ------------------------------------------------ |
+| `npm run test:e2e`          | Jornada compilada, auto-lock e fumaça empacotada |
+| `npm run test:e2e:bundled`  | Só o app compilado (`out/`)                      |
+| `npm run test:e2e:packaged` | Só o payload do `.deb`                           |
 
 Não há seletor por classe Tailwind: os testes casam por papel acessível
 (`getByRole`, `getByLabel`) e por `title`, e os textos vêm de `@zero/messages`,
@@ -43,12 +43,19 @@ a mesma fonte que a tela usa.
 | Compilado (`out/`)  | O que sai do `electron-vite build`, antes do pacote | `_electron.launch` do Playwright | Sim       |
 | Empacotado (`.deb`) | O payload que o usuário instala                     | `--remote-debugging-port` + CDP  | Não       |
 
-O alvo compilado é a jornada completa: criar o cofre, adicionar credencial,
-copiar, gerar senha, token de 2FA, PIN de coação, autodestruição por tentativas,
-troca de idioma, bloquear, desbloquear e redefinir o PIN pela frase. O alvo
-empacotado é a fumaça: criar o cofre, adicionar credencial, copiar, bloquear e
-desbloquear. Não é para repetir a jornada inteira no pacote, e sim para provar
-que o artefato que o usuário instala abre e faz o essencial.
+O alvo compilado cobre os fluxos visíveis da aplicação: validações e criação do
+cofre; busca, edição e exclusão de credenciais; cópia e geração de senha com
+opções; criação, edição, exclusão e uso de tokens TOTP pelos dois formatos;
+configurações de pânico; troca de idioma; créditos; exportação e restauração de
+backup; bloqueio, login por PIN e senha mestra, redefinição do PIN, confirmação
+de destruição e PIN de coação. O auto-lock também roda nessa suíte, após cinco
+minutos reais de ociosidade.
+
+O alvo empacotado continua sendo fumaça de instalação: criar cofre, adicionar e
+copiar credencial, bloquear e desbloquear. Não repete cada jornada da variante
+compilada; prova que o artefato instalado abre e executa os caminhos essenciais.
+`test:e2e` exige que os dois alvos existam: gere-os com `npm run dist:dir`. A
+suíte não marca um alvo ausente como skip silencioso.
 
 ### Por que o `.deb` não sobe pelo Playwright
 
@@ -75,14 +82,9 @@ use `GUARDINHA_E2E_APP=/caminho/para/guardinha`.
 
 A trava automática acontece depois de cinco minutos reais de ociosidade e não há
 costura de relógio no app. O teste que a mede ponta a ponta fica em
-`e2e/autolock.e2e.test.ts` e só roda quando pedido:
-
-```bash
-GUARDINHA_E2E_AUTOLOCK=1 npm run test:e2e:bundled
-```
-
-Fora disso ele aparece como pulado e o `ActivityMonitor` continua coberto pelos
-testes de unidade (`tests/main/activity.test.ts`, `tests/main/session.test.ts`).
+`e2e/autolock.e2e.test.ts` e faz parte de `npm run test:e2e` e
+`npm run test:e2e:bundled`. O teste observa o IPC do auto-lock e o retorno à
+tela de desbloqueio, além da cobertura unitária do `ActivityMonitor`.
 
 ## Isolamento
 

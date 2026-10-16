@@ -8,6 +8,7 @@ import {
 } from '@zero/main/crypto';
 import type { VaultKdfParams, WrappedMethod } from '@zero/main/container';
 import { currentMessages } from '@zero/main/i18n';
+import { isRecord } from '@zero/shared/record';
 import type { UnlockKind } from '@zero/types';
 
 /** Todo método que embrulha a chave, inclusive a frase e o PIN de coação. */
@@ -46,8 +47,8 @@ function kdfFor(kind: CredentialKind): VaultKdfParams {
 }
 
 /** A chave desembrulhada tem 32 bytes; qualquer outra forma é container corrompido. */
-function asVaultKey(unwrapped: object): Buffer {
-  if (!('key' in unwrapped) || typeof unwrapped.key !== 'string' || unwrapped.key.length !== 64) {
+function asVaultKey(unwrapped: unknown): Buffer {
+  if (!isRecord(unwrapped) || typeof unwrapped.key !== 'string' || unwrapped.key.length !== 64) {
     throw new Error(currentMessages().errors.containerCorrupted);
   }
   return Buffer.from(unwrapped.key, 'hex');

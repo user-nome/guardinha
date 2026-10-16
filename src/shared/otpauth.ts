@@ -14,6 +14,10 @@ export type OtpAlgorithm = 'SHA1' | 'SHA256' | 'SHA512';
 /** Parâmetros que o app sabe gerar. O algoritmo vem do serviço, nunca de nós. */
 export const OTP_ALGORITHMS: readonly OtpAlgorithm[] = ['SHA1', 'SHA256', 'SHA512'];
 
+export function isOtpAlgorithm(value: unknown): value is OtpAlgorithm {
+  return OTP_ALGORITHMS.some((algorithm) => algorithm === value);
+}
+
 /**
  * O padrão de GitHub, Discord, Google, AWS, Coinbase e de quase todo serviço é
  * SHA1 com 6 dígitos a cada 30 s. Os outros dois existem porque alguns serviços
@@ -134,8 +138,8 @@ export function parseOtpAuthUri(uri: string): OtpUri | null {
   let algorithm = OTP_DEFAULT_ALGORITHM;
   if (rawAlgorithm !== null && rawAlgorithm !== '') {
     const upper = rawAlgorithm.toUpperCase();
-    if (!OTP_ALGORITHMS.includes(upper as OtpAlgorithm)) return null;
-    algorithm = upper as OtpAlgorithm;
+    if (!isOtpAlgorithm(upper)) return null;
+    algorithm = upper;
   }
 
   const rawDigits = params.get('digits');

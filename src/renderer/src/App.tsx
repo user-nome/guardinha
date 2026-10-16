@@ -33,6 +33,10 @@ function Shell({ status, language, onLanguageChange, onRefresh }: ShellProps): J
   const askDestroy = useCallback((): void => setConfirmDestroy(true), []);
   const cancelDestroy = useCallback((): void => setConfirmDestroy(false), []);
 
+  useEffect(() => {
+    if (status === null || !status.exists || status.locked) setActiveTab('home');
+  }, [status]);
+
   const handleLock = async (): Promise<void> => {
     await window.api.vault.lock();
     setActiveTab('home');
@@ -54,7 +58,12 @@ function Shell({ status, language, onLanguageChange, onRefresh }: ShellProps): J
   }
 
   if (!status.exists || status.locked) {
-    return <AuthModal status={status} onRefresh={onRefresh} />;
+    return (
+      <>
+        <AuthModal status={status} onRefresh={onRefresh} />
+        <Toast message={toast} onClose={closeToast} />
+      </>
+    );
   }
 
   return (

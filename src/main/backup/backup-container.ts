@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { currentMessages } from '@zero/main/i18n';
+import { isRecord } from '@zero/shared/record';
 
 /**
  * Formato do arquivo de backup do cofre (`.gbk`).
@@ -80,10 +81,7 @@ function unsupportedVersion(version: number): Error {
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return null;
+  return isRecord(value) ? value : null;
 }
 
 /** Confere o manifesto lido do disco, campo a campo (fail-closed). */

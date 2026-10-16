@@ -33,11 +33,15 @@ const STOP_GRACE_MS = 5_000;
 /** O app em execução, reduzido ao que os fluxos precisam. */
 export interface LaunchedApp {
   readonly page: Page;
+  /** Resolve arquivos dentro do HOME temporário desta instância. */
+  tempPath(name: string): string;
   /**
    * Lê o clipboard nativo do main. Só existe no alvo compilado: o alvo
    * empacotado não expõe a main ao runner.
    */
   readonly readClipboard?: () => Promise<string>;
+  /** Define as respostas dos diálogos nativos, somente no alvo compilado. */
+  configureFileDialogs?: (savePath: string, openPath: string) => Promise<void>;
   close(): Promise<void>;
 }
 
@@ -53,7 +57,17 @@ export async function launchBundled(): Promise<LaunchedApp> {
     await page.waitForLoadState('domcontentloaded');
     return {
       page,
+      tempPath: (name: string): string => path.join(temp.root, name),
       readClipboard: (): Promise<string> => app.evaluate(({ clipboard }) => clipboard.readText()),
+      configureFileDialogs: async (savePath, openPath): Promise<void> => {
+        await app.evaluate(
+          ({ dialog }, paths) => {
+            dialog.showSaveDialogSync = () => paths.savePath;
+            dialog.showOpenDialogSync = () => [paths.openPath];
+          },
+          { savePath, openPath },
+        );
+      },
       close: async (): Promise<void> => {
         await app.close();
         removeTempEnv(temp);
@@ -100,6 +114,7 @@ export async function launchPackaged(binary: string): Promise<LaunchedApp> {
     await page.waitForLoadState('domcontentloaded');
     return {
       page,
+      tempPath: (name: string): string => path.join(temp.root, name),
       close: async (): Promise<void> => {
         await browser.close();
         await stopChild(child);

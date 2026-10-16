@@ -146,7 +146,7 @@ describe('ciclo de vida do cofre (integração)', () => {
 
     const created = saveEntry({
       title: 'GitHub',
-      username: 'chronos-atalante',
+      username: 'otaku-delirante',
       password: 's3nh@-forte',
       domain: 'GitHub.com',
       notes: 'conta pessoal',
@@ -154,7 +154,7 @@ describe('ciclo de vida do cofre (integração)', () => {
     expect(created).toHaveLength(1);
     expect(created[0]).toMatchObject({
       title: 'GitHub',
-      username: 'chronos-atalante',
+      username: 'otaku-delirante',
       domain: 'github.com',
       notes: 'conta pessoal',
     });
@@ -165,7 +165,7 @@ describe('ciclo de vida do cofre (integração)', () => {
     const updated = saveEntry({
       id,
       title: 'GitHub Pessoal',
-      username: 'chronos',
+      username: 'otaku',
       password: 'outra-senha',
       domain: 'github.com',
       notes: '',
