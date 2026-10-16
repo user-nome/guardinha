@@ -8,7 +8,7 @@ export interface Attribution {
 }
 
 export const DEPENDENCIES: readonly Attribution[] = [
-  { role: 'DESENVOLVIMENTO & CONCEITO', name: 'Chronos Atalante' },
+  { role: 'DESENVOLVIMENTO & CONCEITO', name: 'Otaku Delirante' },
   { role: 'SISTEMA OPERACIONAL ALVO', name: 'Linux Mint 22.X (Zena)' },
   { role: 'INTERFACE & FRAMEWORK', name: 'Electron + React + TypeScript' },
   { role: 'ESTILIZAÇÃO VISUAL', name: 'Tailwind CSS & Lucide Icons' },

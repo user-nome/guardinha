@@ -167,7 +167,7 @@ Camadas:
   `--licenses`, todas em `package.json`) + `lint:shell` (shellcheck nos
   scripts de `build/scripts/`). Obrigatório antes de concluir qualquer
   mudança. As duas ferramentas ficam em `bin/` e não entram no git:
-  `bin/osv-scanner` (copiar de `Chronos/Biblioteca/bin/`) e `bin/shellcheck`
+  `bin/osv-scanner` (copiar de `user-nome/Biblioteca/bin/`) e `bin/shellcheck`
   (release `koalaman/shellcheck` no GitHub). O lint também guarda as fronteiras
   que este arquivo descreve: a lista de módulos autorizados a tocar `fs` e a
   proibição de `fs`/`child_process` no renderer e no preload estão em

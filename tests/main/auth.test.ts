@@ -169,10 +169,10 @@ describe('contadores separados por método (atemptsMaster)', () => {
 describe('validações de formato', () => {
   it('usuário: palavra, kebab-case ou snake_case', () => {
     expect(validateUsernameFormat('')).toBe(true);
-    expect(validateUsernameFormat('chronos')).toBe(true);
-    expect(validateUsernameFormat('chronos-atalante')).toBe(true);
-    expect(validateUsernameFormat('chronos_atalante')).toBe(true);
-    expect(validateUsernameFormat('Chronos Atalante')).toBe(false);
+    expect(validateUsernameFormat('otaku')).toBe(true);
+    expect(validateUsernameFormat('otaku-delirante')).toBe(true);
+    expect(validateUsernameFormat('otaku_delirante')).toBe(true);
+    expect(validateUsernameFormat('Otaku Delirante')).toBe(false);
     expect(validateUsernameFormat('-inválido')).toBe(false);
   });
 

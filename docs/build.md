@@ -20,7 +20,7 @@ empacotado em `.deb` pelo electron-builder. Nada disso entra no git: `out/`,
 | `python3 build/make-icon.py` | Regenera `build/icon.png` (requer PIL)                       |
 
 Os binários `bin/osv-scanner` e `bin/shellcheck` não são versionados; copie-os
-de `Chronos/Biblioteca/bin/` ou baixe as releases correspondentes.
+de `user-nome/Biblioteca/bin/` ou baixe as releases correspondentes.
 
 `dist` e `dist:dir` passam `--publish never` ao electron-builder, e isso não é
 detalhe: sem a flag, num runner com `CI=true` ele aciona a publicação implícita

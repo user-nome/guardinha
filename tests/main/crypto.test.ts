@@ -77,7 +77,7 @@ describe('perfis de custo do Argon2id', () => {
 describe('encryptRecord / decryptRecord (AES-256-GCM)', () => {
   it('faz o roundtrip com os campos íntegros', () => {
     const key = randomBytes(32);
-    const data = { title: 'GitHub', username: 'chronos', password: 's3nh@-forte' };
+    const data = { title: 'GitHub', username: 'otaku', password: 's3nh@-forte' };
     const payload = encryptRecord(data, key);
     expect(payload.salt).toHaveLength(32); // 128 bits em hex
     expect(payload.iv).toHaveLength(32); // 128 bits em hex

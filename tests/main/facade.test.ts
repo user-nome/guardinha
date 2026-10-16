@@ -20,7 +20,7 @@ function record(id: string): Credential {
   return {
     id,
     title: 'Banco',
-    username: 'chronos-atalante',
+    username: 'otaku-delirante',
     password: 's3nh@-forte',
     domain: 'banco.com.br',
     notes: '',

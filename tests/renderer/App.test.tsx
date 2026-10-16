@@ -8,7 +8,7 @@ import type { Credential } from '@zero/types';
 const ENTRY: Credential = {
   id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
   title: 'GitHub',
-  username: 'chronos-atalante',
+  username: 'otaku-delirante',
   password: 's3nh@-forte',
   domain: 'github.com',
   notes: '',

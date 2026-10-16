@@ -130,7 +130,7 @@
       "category": "Utility",
       "executableName": "guardinha",
       "syncDesktopName": true,
-      "maintainer": "Chronos Atalante <chronos.biblioteca@proton.me>",
+      "maintainer": "Otaku Delirante <user-nome@users.noreply.github.com>",
       "synopsis": "Cofre de credenciais offline com criptografia AES-256-GCM"
     },
     "deb": {
