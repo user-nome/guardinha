@@ -163,15 +163,25 @@ export const ko: Messages = {
 
   generator: {
     title: '비밀번호 생성기',
-    subtitle: '길이(0~72)를 정하고 개인 취향을 넣어 엔트로피를 높이세요.',
+    subtitle: '길이, 문자 종류별 개수와 개인 설정을 지정하세요.',
     lengthLabel: '비밀번호 길이',
     lengthValue: (n: number): string => `${n}자`,
     upper: '대문자',
     lower: '소문자',
     numbers: '숫자',
     symbols: '기호',
-    entropyTitle: '개인 엔트로피 주입 (무작위 취향 항목 5개)',
+    quantityCount: '개수',
+    entropyTitle: '비밀번호 개인 설정',
+    personalWordCount: '개인 단어 수 (0~5)',
     entropyPlaceholders: ['물건', '숫자', '자동차', '가구', '가전제품'],
+    includePersonalWords: '개인 단어를 비밀번호에 그대로 포함',
+    personalWordsWarning:
+      '입력한 단어가 그대로 포함되어 비밀번호의 강도가 크게 낮아질 수 있습니다.',
+    missingPersonalWords: '선택한 단어를 모두 입력하거나 그대로 포함 옵션을 끄세요.',
+    personalWordsTooLong: '개인 단어의 길이가 비밀번호 전체 길이를 초과합니다.',
+    manualCharacterUsage: (used: number, limit: number): string =>
+      `설정한 문자: ${used}/${limit}개 (최대 40%).`,
+    manualLimitExceeded: '개인 설정이 비밀번호 길이의 40% 제한을 초과합니다.',
     generate: '암호학적 비밀번호 생성',
     copyTitle: '생성한 비밀번호 복사',
     emptyLength: '0보다 큰 길이를 선택하세요.',

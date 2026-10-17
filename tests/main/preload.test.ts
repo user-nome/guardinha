@@ -145,10 +145,15 @@ describe('preload: canais de credenciais e gerador', () => {
     const options = {
       length: 24,
       useLower: true,
+      countLower: 0,
       useUpper: true,
+      countUpper: 0,
       useNumbers: true,
+      countNumbers: 0,
       useSymbols: false,
+      countSymbols: 0,
       customEntropyWords: ['a'],
+      includeCustomEntropyWords: false,
     };
     await loaded.api.generator.generate(options);
     expect(loaded.last()).toEqual(['generator:generate', options]);

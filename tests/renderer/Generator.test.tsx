@@ -47,10 +47,15 @@ describe('Generator', () => {
     expect(generate).toHaveBeenCalledWith({
       length: 24,
       useLower: true,
+      countLower: 0,
       useUpper: true,
+      countUpper: 0,
       useNumbers: true,
+      countNumbers: 0,
       useSymbols: true,
+      countSymbols: 0,
       customEntropyWords: ['', '', '', '', ''],
+      includeCustomEntropyWords: false,
     });
     expect(await screen.findByText('Senha-Forte-123!')).toBeInTheDocument();
   });
@@ -73,6 +78,63 @@ describe('Generator', () => {
         useSymbols: false,
         customEntropyWords: ['fone', '2001', '', '', ''],
       }),
+    );
+  });
+
+  it('envia quantidades por classe e só as palavras pessoais escolhidas', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    open();
+
+    const lowercaseCount = screen.getByRole('textbox', {
+      name: 'Minúsculas: Quantidade',
+    });
+    await user.clear(lowercaseCount);
+    await user.type(lowercaseCount, '2');
+
+    const wordCount = screen.getByRole('textbox', {
+      name: 'Quantidade de palavras pessoais (0 a 5)',
+    });
+    await user.clear(wordCount);
+    await user.type(wordCount, '2');
+    await user.type(screen.getByPlaceholderText('Objeto'), 'lago');
+    await user.type(screen.getByPlaceholderText('Número'), '42');
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+    const symbolCount = screen.getByRole('textbox', { name: 'Símbolos: Quantidade' });
+    await user.clear(symbolCount);
+    await user.type(symbolCount, '4');
+    expect(symbolCount).toHaveValue('1');
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        countLower: 2,
+        countSymbols: 1,
+        customEntropyWords: ['lago', '42'],
+        includeCustomEntropyWords: true,
+      }),
+    );
+  });
+
+  it('exige palavras preenchidas antes de incluí-las literalmente', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    const onToast = open();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(generate).not.toHaveBeenCalled();
+    expect(onToast).toHaveBeenCalledWith(
+      'Preencha todas as palavras selecionadas ou desative a inclusão literal.',
     );
   });
 

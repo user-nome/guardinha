@@ -166,15 +166,26 @@ export const ja: Messages = {
 
   generator: {
     title: 'パスワード生成',
-    subtitle: '長さ（0〜72）を調整し、個人の、好みを注入してエントロピーを上げます。',
+    subtitle: '長さ、文字種ごとの文字数、個人設定を指定します。',
     lengthLabel: 'パスワードの長さ',
     lengthValue: (n: number): string => `${n} 文字`,
     upper: '大文字',
     lower: '小文字',
     numbers: '数字',
     symbols: '記号',
-    entropyTitle: '個人エントロピー注入（ランダムな好み 5 件）',
+    quantityCount: '個数',
+    entropyTitle: 'パスワードの個人設定',
+    personalWordCount: '個人用の単語数（0〜5）',
     entropyPlaceholders: ['物', '数字', '車', '家具', '家電'],
+    includePersonalWords: '個人用の単語をそのままパスワードに含める',
+    personalWordsWarning:
+      '入力した単語がそのまま含まれるため、パスワードの強度が大幅に下がる可能性があります。',
+    missingPersonalWords:
+      '選択した単語をすべて入力するか、そのまま含める設定をオフにしてください。',
+    personalWordsTooLong: '個人用の単語がパスワード全体の長さを超えています。',
+    manualCharacterUsage: (used: number, limit: number): string =>
+      `設定済み文字数: ${used}/${limit}（上限 40%）。`,
+    manualLimitExceeded: '個人設定がパスワード長の 40% 上限を超えています。',
     generate: '暗号学的パスワードを生成',
     copyTitle: '生成したパスワードをコピー',
     emptyLength: '0 より大きい長さを選んでください。',

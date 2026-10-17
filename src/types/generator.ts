@@ -6,8 +6,13 @@
 export interface GeneratorOptions {
   length: number;
   useLower: boolean;
+  countLower: number;
   useUpper: boolean;
+  countUpper: number;
   useNumbers: boolean;
+  countNumbers: number;
   useSymbols: boolean;
+  countSymbols: number;
   customEntropyWords: string[];
+  includeCustomEntropyWords: boolean;
 }

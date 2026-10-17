@@ -108,9 +108,9 @@ a chave do cofre e com rótulo de domínio HKDF próprio
 
 ## `window.api.generator`
 
-| Método              | Canal                | Payload → retorno           | Descrição                                                                                                                                                                                     |
-| ------------------- | -------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `generate(options)` | `generator:generate` | `GeneratorOptions → string` | Senha de 0 a 72 caracteres, com maiúsculas, minúsculas, números, símbolos e entropia pessoal (5 palavras). O conjunto é só o que está marcado; sem nenhuma categoria marcada, o canal recusa. |
+| Método              | Canal                | Payload → retorno           | Descrição                                                                                                                                                                                                   |
+| ------------------- | -------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `generate(options)` | `generator:generate` | `GeneratorOptions → string` | Senha de 0 a 72 caracteres. As quantidades reservadas por classe e as palavras pessoais literais compartilham um limite de 40% do comprimento; o main valida essas opções e gera o restante aleatoriamente. |
 
 ## `window.api.backup`
 

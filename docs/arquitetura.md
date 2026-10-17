@@ -51,7 +51,7 @@ entrypoints que o Electron exige) e arquivo no teto de ~500 linhas é quebrado.
 | `authenticator.ts` | Regras dos tokens de 2FA sobre a fachada; o segredo nunca sai daqui                |
 | `totp.ts`          | HOTP (RFC 4226) e TOTP (RFC 6238); o algoritmo é o que o serviço escolher          |
 | `crypto.ts`        | Argon2id, AES-256-GCM e HKDF (por domínio) do cofre                                |
-| `generator.ts`     | Gerador de senha de alta entropia (não tem relação com a chave do cofre)           |
+| `generator.ts`     | Gerador aleatório de senha (independente da chave do cofre)                        |
 | `layout.ts`        | Onde o cofre mora: resolve caminhos, sem `fs` e sem Electron                       |
 | `structure.ts`     | Pastas do cofre, permissões e a escrita atômica `writeSecretFile`                  |
 | `storage.ts`       | Leitura e escrita do `vault.zkv`, chamada pela fachada                             |

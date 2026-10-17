@@ -158,15 +158,25 @@ export const en: Messages = {
 
   generator: {
     title: 'Password Generator',
-    subtitle: 'Adjust the length (0 to 72) and inject personal taste for high entropy.',
+    subtitle: 'Set the length, character counts per class, and personalization.',
     lengthLabel: 'Password length',
     lengthValue: (n: number): string => `${n} characters`,
     upper: 'Uppercase',
     lower: 'Lowercase',
     numbers: 'Numbers',
     symbols: 'Symbols',
-    entropyTitle: 'Personal entropy injection (5 random taste items)',
+    quantityCount: 'Count',
+    entropyTitle: 'Password personalization',
+    personalWordCount: 'Number of personal words (0 to 5)',
     entropyPlaceholders: ['Object', 'Number', 'Car', 'Furniture', 'Appliance'],
+    includePersonalWords: 'Include the words literally in the password',
+    personalWordsWarning:
+      'The words are included exactly as entered and can significantly reduce password strength.',
+    missingPersonalWords: 'Fill in all selected words or turn off literal inclusion.',
+    personalWordsTooLong: 'The personal words exceed the total password length.',
+    manualCharacterUsage: (used: number, limit: number): string =>
+      `Configured characters: ${used} of ${limit} available (40% limit).`,
+    manualLimitExceeded: 'The personal options exceed 40% of the password length.',
     generate: 'Generate cryptographic password',
     copyTitle: 'Copy generated password',
     emptyLength: 'Choose a length greater than 0.',

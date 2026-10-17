@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import { currentMessages } from '@zero/main/i18n';
+import { manualCharacterLimit, PASSWORD_CHARACTER_SETS } from '@zero/shared';
 import type { GeneratorOptions } from '@zero/types';
 
 /**
- * Gerador de senha de alta entropia.
+ * Gerador de senha aleatória criptograficamente segura.
  *
  * Mora no main e não em `crypto.ts` porque não tem nada a ver com o cofre: não
  * cifra nada, não deriva chave e nunca vê a chave do cofre. O segredo sai do
@@ -13,16 +14,6 @@ import type { GeneratorOptions } from '@zero/types';
 
 /** Teto de tamanho, o mesmo que a tela permite marcar. */
 const MAX_LENGTH = 72;
-
-/**
- * Conjuntos de caracteres por categoria. Ficam aqui, e não inline na função,
- * para que o teste do gerador possa conferir o mesmo conjunto que ele usa.
- */
-const CHARS_LOWER = 'abcdefghijklmnopqrstuvwxyz';
-const CHARS_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const CHARS_NUMBERS = '0123456789';
-const CHARS_SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
 /**
  * Conjunto de caracteres da senha: só as categorias marcadas na tela. Só
  * "Maiúsculas" sai só maiúsculas, só "Números" sai só números, e assim por
@@ -31,10 +22,10 @@ const CHARS_SYMBOLS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
  */
 export function passwordCharSet(options: GeneratorOptions): string {
   let charSet = '';
-  if (options.useLower) charSet += CHARS_LOWER;
-  if (options.useUpper) charSet += CHARS_UPPER;
-  if (options.useNumbers) charSet += CHARS_NUMBERS;
-  if (options.useSymbols) charSet += CHARS_SYMBOLS;
+  if (options.useLower) charSet += PASSWORD_CHARACTER_SETS.lower;
+  if (options.useUpper) charSet += PASSWORD_CHARACTER_SETS.upper;
+  if (options.useNumbers) charSet += PASSWORD_CHARACTER_SETS.numbers;
+  if (options.useSymbols) charSet += PASSWORD_CHARACTER_SETS.symbols;
   return charSet;
 }
 
@@ -48,7 +39,44 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
   if (!Number.isInteger(length) || length < 0 || length > MAX_LENGTH) {
     throw new Error(m.errors.invalidGenerator);
   }
-  if (!Array.isArray(options.customEntropyWords)) {
+  if (
+    typeof options.useLower !== 'boolean' ||
+    typeof options.useUpper !== 'boolean' ||
+    typeof options.useNumbers !== 'boolean' ||
+    typeof options.useSymbols !== 'boolean' ||
+    typeof options.includeCustomEntropyWords !== 'boolean'
+  ) {
+    throw new Error(m.errors.invalidGenerator);
+  }
+  const counts = [
+    options.countLower,
+    options.countUpper,
+    options.countNumbers,
+    options.countSymbols,
+  ];
+  if (counts.some((count) => !Number.isInteger(count) || count < 0 || count > MAX_LENGTH)) {
+    throw new Error(m.errors.invalidGenerator);
+  }
+  if (
+    (!options.useLower && options.countLower !== 0) ||
+    (!options.useUpper && options.countUpper !== 0) ||
+    (!options.useNumbers && options.countNumbers !== 0) ||
+    (!options.useSymbols && options.countSymbols !== 0)
+  ) {
+    throw new Error(m.errors.invalidGenerator);
+  }
+  if (
+    !Array.isArray(options.customEntropyWords) ||
+    options.customEntropyWords.length > 5 ||
+    options.customEntropyWords.some((word) => typeof word !== 'string')
+  ) {
+    throw new Error(m.errors.invalidGenerator);
+  }
+  if (
+    options.includeCustomEntropyWords &&
+    (options.customEntropyWords.length === 0 ||
+      options.customEntropyWords.some((word) => word.trim() === ''))
+  ) {
     throw new Error(m.errors.invalidGenerator);
   }
   // Categorias desmarcadas saem do conjunto; sem nenhuma marcada não há o que
@@ -56,10 +84,19 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
   if (passwordCharSet(options) === '') {
     throw new Error(m.errors.invalidGenerator);
   }
+  const personalCharacters = options.includeCustomEntropyWords
+    ? Array.from(options.customEntropyWords.join(''))
+    : [];
+  const manualCharacterCount =
+    options.countLower + options.countUpper + options.countNumbers + options.countSymbols;
+  if (manualCharacterCount + personalCharacters.length > manualCharacterLimit(length)) {
+    throw new Error(m.errors.invalidGenerator);
+  }
 }
 
 /**
- * Gerador com injeção de palavras de entropia personalizada.
+ * Gera a senha respeitando as quantidades reservadas por categoria e as
+ * palavras pessoais cuja inclusão literal foi explicitamente autorizada.
  */
 export function generateHighEntropyPassword(options: GeneratorOptions): string {
   const { length } = options;
@@ -67,21 +104,46 @@ export function generateHighEntropyPassword(options: GeneratorOptions): string {
   const charSet = passwordCharSet(options);
   if (charSet === '') return '';
 
-  // Mistura palavras pessoais com entropia criptográfica de sistema
   const combinedEntropy = options.customEntropyWords.join('');
   const personalDigest = crypto
     .createHash('sha512')
     .update(combinedEntropy + crypto.randomBytes(32).toString('hex'))
     .digest();
 
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    // Digest pessoal (entropia dos gostos) desloca o índice; o randomInt de
-    // hardware mantém a seleção uniforme sobre o conjunto de caracteres.
-    const personalByte = personalDigest[i % personalDigest.length] ?? 0;
-    const roll = (personalByte + crypto.randomInt(charSet.length)) % charSet.length;
-    password += charSet[roll] ?? '';
+  let digestIndex = 0;
+  const pickCharacter = (characters: string): string => {
+    const personalByte = personalDigest[digestIndex % personalDigest.length] ?? 0;
+    digestIndex += 1;
+    const roll = (personalByte + crypto.randomInt(characters.length)) % characters.length;
+    return characters[roll] ?? '';
+  };
+  const literalCharacters = options.includeCustomEntropyWords
+    ? Array.from(options.customEntropyWords.join(''))
+    : [];
+  const passwordCharacters: string[] = [];
+  const randomCharacterLength = length - literalCharacters.length;
+
+  const categoryCounts: readonly [string, number][] = [
+    [PASSWORD_CHARACTER_SETS.lower, options.countLower],
+    [PASSWORD_CHARACTER_SETS.upper, options.countUpper],
+    [PASSWORD_CHARACTER_SETS.numbers, options.countNumbers],
+    [PASSWORD_CHARACTER_SETS.symbols, options.countSymbols],
+  ];
+  for (const [characters, count] of categoryCounts) {
+    for (let i = 0; i < count; i++) passwordCharacters.push(pickCharacter(characters));
   }
 
-  return password;
+  while (passwordCharacters.length < randomCharacterLength) {
+    passwordCharacters.push(pickCharacter(charSet));
+  }
+
+  for (let i = passwordCharacters.length - 1; i > 0; i--) {
+    const swapIndex = crypto.randomInt(i + 1);
+    [passwordCharacters[i], passwordCharacters[swapIndex]] = [
+      passwordCharacters[swapIndex] ?? '',
+      passwordCharacters[i] ?? '',
+    ];
+  }
+
+  return passwordCharacters.join('') + literalCharacters.join('');
 }

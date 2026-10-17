@@ -177,10 +177,15 @@ describe('canal generator:generate', () => {
   const base = {
     length: 24,
     useLower: true,
+    countLower: 0,
     useUpper: true,
+    countUpper: 0,
     useNumbers: true,
+    countNumbers: 0,
     useSymbols: true,
+    countSymbols: 0,
     customEntropyWords: ['a'],
+    includeCustomEntropyWords: false,
   };
 
   it('gera senha com parâmetros válidos', () => {
@@ -206,6 +211,89 @@ describe('canal generator:generate', () => {
     expect(() =>
       call('generator:generate', appFrame(), { ...base, customEntropyWords: 'palavra' }),
     ).toThrow(currentMessages().errors.invalidGenerator);
+  });
+
+  it('recusa quantidades manuais acima do orçamento e de classes desligadas', () => {
+    const m = currentMessages();
+    expect(() =>
+      call('generator:generate', appFrame(), {
+        ...base,
+        countLower: 5,
+        countUpper: 5,
+        countNumbers: 5,
+        countSymbols: 5,
+      }),
+    ).toThrow(m.errors.invalidGenerator);
+    expect(() =>
+      call('generator:generate', appFrame(), {
+        ...base,
+        useLower: false,
+        countLower: 1,
+      }),
+    ).toThrow(m.errors.invalidGenerator);
+  });
+
+  it('recusa inclusão literal sem todas as palavras ou acima do comprimento', () => {
+    const m = currentMessages();
+    expect(() =>
+      call('generator:generate', appFrame(), {
+        ...base,
+        customEntropyWords: [''],
+        includeCustomEntropyWords: true,
+      }),
+    ).toThrow(m.errors.invalidGenerator);
+    expect(() =>
+      call('generator:generate', appFrame(), {
+        ...base,
+        length: 2,
+        customEntropyWords: ['palavra'],
+        includeCustomEntropyWords: true,
+      }),
+    ).toThrow(m.errors.invalidGenerator);
+  });
+
+  it('contabiliza palavras literais no limite manual de 40%', () => {
+    expect(() =>
+      call('generator:generate', appFrame(), {
+        ...base,
+        length: 40,
+        countLower: 2,
+        countUpper: 3,
+        countNumbers: 5,
+        countSymbols: 6,
+        customEntropyWords: ['a'],
+        includeCustomEntropyWords: true,
+      }),
+    ).toThrow(currentMessages().errors.invalidGenerator);
+  });
+
+  it('aceita as quantidades de classe do exemplo no limite de 40%', () => {
+    const senha = call('generator:generate', appFrame(), {
+      ...base,
+      length: 40,
+      countLower: 2,
+      countUpper: 3,
+      countNumbers: 5,
+      countSymbols: 6,
+    });
+
+    expect(senha).toHaveLength(40);
+  });
+
+  it('contabiliza as palavras literais junto com as quantidades no orçamento', () => {
+    const senha = call('generator:generate', appFrame(), {
+      ...base,
+      length: 20,
+      countLower: 1,
+      countUpper: 1,
+      countNumbers: 1,
+      countSymbols: 1,
+      customEntropyWords: ['aB7!'],
+      includeCustomEntropyWords: true,
+    });
+
+    expect(senha).toHaveLength(20);
+    expect(String(senha).endsWith('aB7!')).toBe(true);
   });
 
   it('gera só com a categoria que sobrou marcada', () => {
