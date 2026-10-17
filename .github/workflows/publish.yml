@@ -46,15 +46,21 @@ env:
   # escrevê-la à mão nos dois pontos era um convite para a metade ficar na chave
   # antiga. Ver docs/build.md.
   #
-  # Chave gerada em 17/10/2026. A anterior (A838...D7511D61) foi perdida junto
-  # com a frase, e a tentativa de substituir por uma chave sem frase também não
-  # funcionou: sem `--pinentry-mode loopback` o agente do gpg precisa promptar,
-  # o runner não tem terminal, e com uma senha vazia não existe argumento que o
-  # gpg aceite para desbloquear, então o resultado depende de heurística do
-  # agente e ora assina, ora dá "Operação cancelada". Com frase e loopback o
-  # desbloqueio é determinístico. Ver "A chave que assina o repo APT" em
-  # docs/build.md.
-  GPG_FINGERPRINT: 65105F349005C4A8E7DEB78BEA5778FAB1147BF3
+  # Chave gerada em 17/10/2026. A primeira (A838...D7511D61) foi perdida junto
+  # com a frase, e a tentativa de substituir por uma chave sem frase não
+  # funciona no CI: sem `--pinentry-mode loopback` o agente do gpg precisa
+  # promptar, o runner não tem terminal, e com uma senha vazia não existe
+  # argumento que o gpg aceite para desbloquear, então o resultado depende de
+  # heurística do agente e ora assina, ora dá "Operação cancelada". Com frase e
+  # loopback o desbloqueio é determinístico. Esta é a quinta rotação do dia:
+  # as anteriores (A838...D7511D61 perdida com a frase, 5C14...0CF7 sem frase,
+  # 6510...7BF3, 5F96...CAB20 e 1FF6...7D87 com frase) foram descartadas
+  # porque o `GPG_PASSPHRASE` do repositório não abria a chave que o
+  # `GPG_PRIVATE_KEY` entregava, e essa era a chave certa. O passo agora
+  # imprime o sha256 do secret recebido na falha, para comparar com
+  # `sha256sum ~/guardinha-apt-frase.txt`. Ver "A chave que assina o repo APT"
+  # em docs/build.md.
+  GPG_FINGERPRINT: AF9F8CEFA49C9284FEDFD8725EEEED4CE04486F7
 
 jobs:
   resolver-versao:
@@ -280,7 +286,14 @@ jobs:
           # mensagem que aponta a causa em vez de dizer só que "não assinou".
           echo preflight > apt/.sign-test
           if ! gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
-            echo "::error::O secret GPG_PASSPHRASE não é a frase da chave $GPG_FINGERPRINT. Se a frase foi trocada depois do export, o bloco privado do secret GPG_PRIVATE_KEY está protegido pela frase antiga: reexporte a chave e sobrescreva os dois secrets."
+            # Diagnóstico: "Bad passphrase" é ambíguo (frase trocada, secret
+            # colado pela metade, whitespace...), e a chave>importada já foi
+            # conferida acima. These dois números dizem de onde vem o texto
+            # que chegou no runner: compare com o arquivo local. sha256 do
+            # arquivo local: `sha256sum ~/guardinha-apt-frase.txt`.
+            echo "GPG_PASSPHRASE recebido: ${#GPG_PASSPHRASE} caracteres, sha256 $(printf '%s' "$GPG_PASSPHRASE" | sha256sum | cut -c1-16)"
+            echo "GPG_PRIVATE_KEY recebido: ${#GPG_PRIVATE_KEY} caracteres, sha256 $(printf '%s' "$GPG_PRIVATE_KEY" | sha256sum | cut -c1-16)"
+            echo "::error::O secret GPG_PASSPHRASE não é a frase da chave $GPG_FINGERPRINT. Compare os dois sha256 acima com 'sha256sum ~/guardinha-apt.asc ~/guardinha-apt-frase.txt' na sua máquina: se baterem, o secret está certo e o problema é outro; se não, o valor colado no repositório não é o arquivo."
             exit 1
           fi
           rm -f apt/.sign-test apt/.sign-test.asc
