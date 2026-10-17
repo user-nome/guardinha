@@ -66,6 +66,12 @@ describe('StrengthMeter', () => {
     ).toBe(3);
   });
 
+  it('mantém a barra sem classes de cor quando o score não é finito', () => {
+    const all = segments(renderMeter(result({ score: Number.NaN })));
+    expect(all).toHaveLength(4);
+    expect(all.every((className) => className.includes('bg-slate-800'))).toBe(true);
+  });
+
   it('mostra a nota vinda do resultado, não um índice calculado', () => {
     render(
       <MessagesProvider language="pt-BR">

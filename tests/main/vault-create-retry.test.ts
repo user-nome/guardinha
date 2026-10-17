@@ -63,6 +63,24 @@ describe('retentativa de criação após setup privilegiado', () => {
     });
   });
 
+  it('preserva a mensagem de erro da retentativa privilegiada', async () => {
+    const m = currentMessages();
+    vi.spyOn(vaultStorage, 'exists').mockReturnValue(false);
+    vi.spyOn(vaultStorage, 'ensureStructure')
+      .mockImplementationOnce(() => {
+        throw new Error(m.errors.vaultDirUnavailable);
+      })
+      .mockImplementationOnce(() => {
+        throw new Error('falha ao recriar a estrutura');
+      });
+    vi.spyOn(privilege, 'setupVaultDirectory').mockReturnValue(true);
+
+    await expect(createVault(INPUT)).resolves.toMatchObject({
+      ok: false,
+      error: 'falha ao recriar a estrutura',
+    });
+  });
+
   it('recusa se o cofre aparecer durante a retentativa privilegiada', async () => {
     const m = currentMessages();
     vi.spyOn(vaultStorage, 'exists').mockReturnValueOnce(false).mockReturnValue(true);

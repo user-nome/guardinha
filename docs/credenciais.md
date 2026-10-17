@@ -36,25 +36,37 @@ antiga, e toda gravação re-sella o manifesto de integridade.
 A aba **Gerador de Senhas** chama `window.api.generator.generate()` e monta a
 senha no processo main (`generateHighEntropyPassword`, em `src/main/generator.ts`):
 
-| Opção            | Faixa / padrão                               |
-| ---------------- | -------------------------------------------- |
-| Comprimento      | 0 a 72 caracteres (padrão 24)                |
-| Maiúsculas       | ligado por padrão                            |
-| Minúsculas       | ligado por padrão                            |
-| Números          | ligado por padrão                            |
-| Símbolos         | ligado por padrão                            |
-| Entropia pessoal | até 5 palavras do próprio usuário (opcional) |
+| Opção                 | Faixa / padrão                                 |
+| --------------------- | ---------------------------------------------- |
+| Comprimento           | 0 a 72 caracteres (padrão 24)                  |
+| Maiúsculas            | ligado por padrão                              |
+| Minúsculas            | ligado por padrão                              |
+| Números               | ligado por padrão                              |
+| Símbolos              | ligado por padrão                              |
+| Quantidade por classe | 0 até o orçamento disponível (padrão 0)        |
+| Palavras pessoais     | 0 a 5 palavras; os cinco campos começam vazios |
+| Incluir palavras      | desligado por padrão                           |
 
-O conjunto de caracteres da senha é só o que está marcado: marcar apenas
-Maiúsculas sai uma senha só de maiúsculas, apenas Minúsculas sai só de
-minúsculas, e o mesmo vale para Números e Símbolos. A última categoria ligada
+As categorias marcadas formam o conjunto de caracteres disponível para o
+preenchimento aleatório. O usuário pode reservar quantidades por classe, que
+somadas às palavras pessoais incluídas literalmente não podem exceder 40% do
+comprimento total (arredondado para baixo). O restante, pelo menos 60%, é
+preenchido aleatoriamente pelo processo main; esse preenchimento ainda pode
+conter caracteres das mesmas classes reservadas. A interface mostra o uso do
+orçamento e limita cada campo ao espaço restante. A última categoria ligada
 não desliga, porque sem nenhuma marcada o gerador não tem o que sortear; o
-canal `generator:generate` recusa esse caso em vez de devolver vazio.
+canal `generator:generate` recusa esse caso. O main também valida o orçamento
+e as classes escolhidas.
 
-A entropia pessoal entra como deslocamento do índice de seleção: um digest
-SHA-512 das palavras e 32 bytes aleatórios gerados por `crypto.randomBytes`,
-combinados com `crypto.randomInt` para manter a seleção uniforme sobre o
-conjunto de caracteres. Comprimento 0 devolve vazio e a tela avisa.
+O usuário escolhe quantas das cinco palavras preencher. Por padrão, elas não
+aparecem literalmente: são usadas apenas para personalizar o mapeamento dos
+sorteios, cuja imprevisibilidade continua dependendo do gerador criptográfico
+do sistema. Com **Incluir as palavras literalmente na senha** ativado, todas
+as palavras selecionadas são anexadas exatamente como digitadas e consomem o
+mesmo orçamento de 40%; se não couberem, a geração é recusada, sem truncar o
+texto. Essa opção vem desligada porque palavras pessoais conhecidas podem
+reduzir muito a força efetiva da senha. Comprimento 0 devolve vazio e a tela
+avisa.
 
 ## Checagem de força
 

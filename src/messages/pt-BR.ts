@@ -163,15 +163,25 @@ export const ptBR = {
 
   generator: {
     title: 'Gerador de Senhas',
-    subtitle: 'Ajuste o tamanho (0 a 72) e injete gostos pessoais para alta entropia.',
+    subtitle: 'Defina o tamanho, a quantidade por classe e a personalização.',
     lengthLabel: 'Tamanho da Senha',
     lengthValue: (n: number): string => `${n} caracteres`,
     upper: 'Maiúsculas',
     lower: 'Minúsculas',
     numbers: 'Números',
     symbols: 'Símbolos',
-    entropyTitle: 'Injeção de Entropia Pessoal (5 itens/gostos aleatórios)',
+    quantityCount: 'Quantidade',
+    entropyTitle: 'Personalização da senha',
+    personalWordCount: 'Quantidade de palavras pessoais (0 a 5)',
     entropyPlaceholders: ['Objeto', 'Número', 'Carro', 'Móvel', 'Eletro'],
+    includePersonalWords: 'Incluir as palavras literalmente na senha',
+    personalWordsWarning:
+      'As palavras entram exatamente como digitadas e podem reduzir bastante a força da senha.',
+    missingPersonalWords: 'Preencha todas as palavras selecionadas ou desative a inclusão literal.',
+    personalWordsTooLong: 'As palavras pessoais excedem o tamanho total da senha.',
+    manualCharacterUsage: (used: number, limit: number): string =>
+      `Caracteres definidos: ${used} de ${limit} disponíveis (limite de 40%).`,
+    manualLimitExceeded: 'As opções pessoais excedem o limite de 40% do tamanho da senha.',
     generate: 'Gerar Senha Criptográfica',
     copyTitle: 'Copiar senha gerada',
     emptyLength: 'Escolha um tamanho maior que 0.',

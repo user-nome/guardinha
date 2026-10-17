@@ -6,6 +6,20 @@ em português do Brasil.
 
 ## [Não lançado]
 
+## [1.8.1] - 2026-10-17
+
+### Adicionado
+
+- **Personalização do gerador de senhas nos testes E2E.** A jornada compilada
+  confere quantidades por classe, inclusão literal de palavras pessoais e o
+  limite combinado de 40% para opções manuais.
+
+### Corrigido
+
+- **Destino do container na restauração do backup.** O arquivo `vault.zkv`
+  também usa o resolvedor central de caminhos ao ser gravado, mantendo o
+  container como último arquivo restaurado.
+
 ## [1.7.3] - 2026-10-17
 
 ### Alterado

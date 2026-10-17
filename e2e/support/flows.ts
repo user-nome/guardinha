@@ -173,6 +173,64 @@ export async function generatePasswordWithOptions(page: Page): Promise<void> {
   expect(password).toMatch(/^\d{72}$/);
 }
 
+export async function generatePasswordWithManualOptions(page: Page): Promise<void> {
+  const slider = page.getByRole('slider', { name: pt.generator.lengthLabel, exact: true });
+  await slider.press('Home');
+  for (let step = 0; step < 4; step += 1) await slider.press('PageUp');
+  expect(await slider.getAttribute('aria-valuenow')).toBe('40');
+  await waitForText(page, pt.generator.lengthValue(40));
+
+  for (const category of [
+    pt.generator.upper,
+    pt.generator.lower,
+    pt.generator.numbers,
+    pt.generator.symbols,
+  ]) {
+    await page.getByLabel(category, { exact: true }).check();
+    await page.getByLabel(`${category}: ${pt.generator.quantityCount}`, { exact: true }).fill('3');
+  }
+
+  await page.getByLabel(pt.generator.personalWordCount, { exact: true }).fill('2');
+  const words = ['Ab', '7!'];
+  for (const [index, word] of words.entries()) {
+    const placeholder = pt.generator.entropyPlaceholders[index];
+    if (placeholder === undefined) throw new Error('Placeholder de palavra pessoal ausente.');
+    await page.getByPlaceholder(placeholder, { exact: true }).fill(word);
+  }
+  await page.getByLabel(pt.generator.includePersonalWords, { exact: true }).check();
+  await waitForText(page, pt.generator.manualCharacterUsage(16, 16));
+
+  const result = page.getByTitle(pt.generator.copyTitle);
+  const previousPassword = (
+    await result.locator('xpath=..').locator('span').first().innerText()
+  ).trim();
+  await clickButton(page, pt.generator.generate);
+  await expect
+    .poll(
+      async () => (await result.locator('xpath=..').locator('span').first().innerText()).trim(),
+      { timeout: 15_000 },
+    )
+    .not.toBe(previousPassword);
+
+  const password = (await result.locator('xpath=..').locator('span').first().innerText()).trim();
+  expect(password).toHaveLength(40);
+  expect(password.endsWith(words.join(''))).toBe(true);
+  expect(password.match(/[A-Z]/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  expect(password.match(/[a-z]/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  expect(password.match(/[0-9]/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  expect(password.match(/[^a-zA-Z0-9]/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+
+  await slider.press('PageDown');
+  await slider.press('PageDown');
+  expect(await slider.getAttribute('aria-valuenow')).toBe('20');
+  await waitForText(page, pt.generator.manualCharacterUsage(16, 8));
+  await clickButton(page, pt.generator.generate);
+  await waitForToast(page, pt.generator.manualLimitExceeded);
+  expect((await result.locator('xpath=..').locator('span').first().innerText()).trim()).toBe(
+    password,
+  );
+}
+
 export async function addTotpToken(app: LaunchedApp): Promise<void> {
   const { page } = app;
   await clickButton(page, pt.app.nav.authenticator);

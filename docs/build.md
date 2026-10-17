@@ -137,7 +137,7 @@ qualidade]`: só começa se **os dois** passarem. Falha de tipo, lint,
 Sem o gate, um erro de tipo ou um teste vermelho só apareceria no `.deb` que o
 usuário instala. Com ele, a falha aparece no pull request.
 
-Secrets necessários: `GPG_PRIVATE_KEY` (e `GPG_PASSPHRASE`, se houver). As
+Secrets necessários: `GPG_PRIVATE_KEY` e `GPG_PASSPHRASE`. As
 actions estão fixadas por SHA e atualizadas pelo Dependabot.
 
 ### A chave que assina o repo APT
@@ -145,7 +145,7 @@ actions estão fixadas por SHA e atualizadas pelo Dependabot.
 `GPG_FINGERPRINT`, no `env` do topo do `publish.yml`, é a **fonte única** da
 impressão digital. O passo de gerar o repo APT confere a chave por ela (e não
 pelo uid) e assina com `--local-user`, de modo que o secret e o valor do
-workflow não puedan combinar em silêncio: se divergirem, o job morre com
+workflow não possam combinar em silêncio: se divergirem, o job morre com
 `::error::` na linha da checagem, antes de subir qualquer asset.
 
 **Essa chave não assina commit.** Ela existe para uma coisa só: assinar o
@@ -172,7 +172,7 @@ passos:
 1. Gerar o par e exportar o bloco privado:
 
    ```bash
-   gpg --quick-generate-key 'user-nome <user-nome@users.noreply.github.com>' ed25519 sign never
+   gpg --quick-generate-key 'chronos.biblioteca@proton.me' ed25519 sign never
    gpg --armor --export-secret-keys <impressao-nova> > guardinha-apt.asc
    ```
 
@@ -185,27 +185,24 @@ passos:
    `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
    inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
 
-Na prática os dois arquivos ficam em `~/guardinha-apt.asc` e
-`~/guardinha-apt-frase.txt` (perm 600), e a chave em si no keyring do `gpg`
-(`~/.gnupg`). Para conferir o que está gravado no repositório contra o que
-está na máquina, o passo do repo APT imprime o sha256 dos dois secrets
-recebidos quando a assinatura falha; compare com
-`sha256sum ~/guardinha-apt.asc ~/guardinha-apt-frase.txt`.
+Na máquina de desenvolvimento, a chave fica no keyring padrão (`~/.gnupg`).
+Isso não a disponibiliza no runner efêmero do GitHub Actions: o workflow importa
+`GPG_PRIVATE_KEY` dos secrets do repositório, e precisa também de
+`GPG_PASSPHRASE`. Ao trocar a chave, exporte o bloco privado do keyring para
+atualizar o secret; mantenha o arquivo exportado fora do repositório. Se a
+assinatura de pré-verificação falhar, confira se os dois secrets foram
+atualizados e correspondem à chave e à frase atuais.
 
-A chave em uso desde 17/10/2026 é a `AF9F...86F7`, a quinta rotação do dia (a
-`A838...D7511D61` foi perdida com a frase, a `5C14...0CF7`, gerada sem frase, não
-roda no CI, e `6510...7BF3`, `5F96...CAB20` e `1FF6...7D87`, todas com frase, foram
-descartadas porque o secret `GPG_PASSPHRASE` do repositório não abria a chave que
-o `GPG_PRIVATE_KEY` entregava, e essa chave vinha certa). **Ela tem frase**, e isso é
+A chave atual, substituída em 17/10/2026 após a exclusão das chaves anteriores,
+é `25300DF604649306F87CDF777DC37BA3C21FFA81`. **Ela tem frase**, e isso é
 obrigatório no CI, não opcional: sem `--pinentry-mode loopback` o agente do gpg
 tenta pinentry, o runner não tem terminal e a assinatura morre com
 `Inappropriate ioctl for device`. E uma chave **sem frase não resolve**, porque
 não existe argumento de senha vazia que o gpg aceite para desbloquear: o
 `--passphrase ''` é descartado, e sem loopback o resultado depende de
-heurística do agente, ora assinando, ora dando `Operação cancelada`. Foi o que
-aconteceu na primeira tentativa de rotação (a `5C14...0CF7`), e a diferença só
-aparece em parte das execuções. Com frase e loopback o desbloqueio é
-determinístico, e o passo do `publish.yml` entrega a frase pelo
+heurística do agente, ora assinando, ora dando `Operação cancelada`. Esse
+comportamento foi observado na tentativa de rotação com chave sem frase. Com
+frase e loopback o desbloqueio é determinístico, e o passo do `publish.yml` entrega a frase pelo
 `--passphrase-file`, num arquivo temporário que é apagado no fim, em vez de
 `--passphrase`, que a deixaria no argv do processo.
 
@@ -215,13 +212,6 @@ estragaram uma troca de secret). Guarde-a num gerenciador de senhas: ela só é
 usada pelo CI, mas é a sua chave assinando o repositório. Trocar a frase depois
 de exportar o bloco privado deixa o `GPG_PRIVATE_KEY` protegido pela frase
 antiga, e aí é preciso reexportar a chave e sobrescrever os dois secrets.
-
-Como a assinatura de commit está desligada, trocar a chave do APT não mexe em
-nenhuma configuração de repositório local. A regra é manter a chave antiga no
-keyring, para ela continuar verificando as Releases já assinadas; na rotação de
-17/10/2026 ela foi apagada por inteiro (o material secreto não tinha mais uso
-sem a frase), com as duas chaves públicas de backup em
-`~/.local/share/guardinha-backup-gpg/`.
 
 Para quem já instalou pelo APT, a rotação não muda a instrução do `README.md`
 (o `public.key` vem de `releases/latest/download/`), mas o keyring antigo não

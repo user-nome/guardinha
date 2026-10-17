@@ -1,6 +1,7 @@
 export { base32Decode, base32Encode, isBase32, normalizeBase32 } from '@zero/shared/base32';
 export { errorMessage, formatCountdown } from '@zero/shared/format';
 export { isRecord } from '@zero/shared/record';
+export { manualCharacterLimit, PASSWORD_CHARACTER_SETS } from '@zero/shared/generator-policy';
 export {
   isMasterPasswordFormat,
   isPinFormat,

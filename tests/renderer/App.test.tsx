@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '@zero/renderer/App';
@@ -217,5 +217,26 @@ describe('a tela de autodestruição só existe quando o usuário pede', () => {
       expect(screen.queryByRole('button', { name: /Destruir cofre/i })).not.toBeInTheDocument();
     });
     expect(api.vault.destroy).not.toHaveBeenCalled();
+  });
+});
+
+describe('fechamento do aviso flutuante', () => {
+  it('limpa o aviso quando o timer do toast termina', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      installApi({ status: UNLOCKED, entries: [ENTRY] });
+      render(<App />);
+      await screen.findByRole('heading', { name: 'Senhas' });
+      fireEvent.click(screen.getByTitle('Copiar usuário'));
+      expect(await screen.findByText('Copiado para a área de transferência.')).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+
+      expect(screen.queryByText('Copiado para a área de transferência.')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

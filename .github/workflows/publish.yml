@@ -40,27 +40,16 @@ concurrency:
 # secrets não pode ser usado em `if:`; copia para env (padrão do GitHub).
 env:
   VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-  # Impressão digital da chave que assina o repo APT. Fonte única: trocar a
-  # chave é trocar este valor **e** o secret `GPG_PRIVATE_KEY`, nada mais. Ela
-  # é conferida em dois lugares (checagem da chave e mensagem de erro), então
-  # escrevê-la à mão nos dois pontos era um convite para a metade ficar na chave
-  # antiga. Ver docs/build.md.
+  # Impressão digital da chave que assina o repo APT. Fonte única: ao trocar a
+  # chave, atualize este valor e os secrets `GPG_PRIVATE_KEY` e
+  # `GPG_PASSPHRASE`. Ela é conferida em dois lugares (checagem da chave e
+  # mensagem de erro), então escrevê-la à mão nos dois pontos era um convite
+  # para a metade ficar na chave antiga. Ver docs/build.md.
   #
-  # Chave gerada em 17/10/2026. A primeira (A838...D7511D61) foi perdida junto
-  # com a frase, e a tentativa de substituir por uma chave sem frase não
-  # funciona no CI: sem `--pinentry-mode loopback` o agente do gpg precisa
-  # promptar, o runner não tem terminal, e com uma senha vazia não existe
-  # argumento que o gpg aceite para desbloquear, então o resultado depende de
-  # heurística do agente e ora assina, ora dá "Operação cancelada". Com frase e
-  # loopback o desbloqueio é determinístico. Esta é a quinta rotação do dia:
-  # as anteriores (A838...D7511D61 perdida com a frase, 5C14...0CF7 sem frase,
-  # 6510...7BF3, 5F96...CAB20 e 1FF6...7D87 com frase) foram descartadas
-  # porque o `GPG_PASSPHRASE` do repositório não abria a chave que o
-  # `GPG_PRIVATE_KEY` entregava, e essa era a chave certa. O passo agora
-  # imprime o sha256 do secret recebido na falha, para comparar com
-  # `sha256sum ~/guardinha-apt-frase.txt`. Ver "A chave que assina o repo APT"
-  # em docs/build.md.
-  GPG_FINGERPRINT: AF9F8CEFA49C9284FEDFD8725EEEED4CE04486F7
+  # Chave substituída em 17/10/2026. O runner é efêmero e não tem acesso ao
+  # ~/.gnupg local: GPG_PRIVATE_KEY e GPG_PASSPHRASE precisam conter a chave
+  # nova e sua frase nos secrets do repositório. Ver docs/build.md.
+  GPG_FINGERPRINT: 25300DF604649306F87CDF777DC37BA3C21FFA81
 
 jobs:
   resolver-versao:
@@ -257,7 +246,7 @@ jobs:
           # na UI do Actions sem precisar abrir o log cru).
           printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import || true
           # A chave tem de ser exatamente a de `GPG_FINGERPRINT` (uid
-          # user-nome@users.noreply.github.com). Conferir pela impressão digital
+          # chronos.biblioteca@proton.me). Conferir pela impressão digital
           # e não pelo uid pega o caso real de rotação: o secret novo e o valor
           # antigo no env não podem combinar em silêncio.
           if ! gpg --list-secret-keys "$GPG_FINGERPRINT" >/dev/null 2>&1; then
@@ -287,13 +276,12 @@ jobs:
           echo preflight > apt/.sign-test
           if ! gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
             # Diagnóstico: "Bad passphrase" é ambíguo (frase trocada, secret
-            # colado pela metade, whitespace...), e a chave>importada já foi
-            # conferida acima. These dois números dizem de onde vem o texto
-            # que chegou no runner: compare com o arquivo local. sha256 do
-            # arquivo local: `sha256sum ~/guardinha-apt-frase.txt`.
+            # colado pela metade, whitespace...), e a chave importada já foi
+            # conferida acima. Estes hashes permitem comparar os secrets
+            # recebidos no runner com os arquivos locais.
             echo "GPG_PASSPHRASE recebido: ${#GPG_PASSPHRASE} caracteres, sha256 $(printf '%s' "$GPG_PASSPHRASE" | sha256sum | cut -c1-16)"
             echo "GPG_PRIVATE_KEY recebido: ${#GPG_PRIVATE_KEY} caracteres, sha256 $(printf '%s' "$GPG_PRIVATE_KEY" | sha256sum | cut -c1-16)"
-            echo "::error::O secret GPG_PASSPHRASE não é a frase da chave $GPG_FINGERPRINT. Compare os dois sha256 acima com 'sha256sum ~/guardinha-apt.asc ~/guardinha-apt-frase.txt' na sua máquina: se baterem, o secret está certo e o problema é outro; se não, o valor colado no repositório não é o arquivo."
+            echo "::error::Falha ao assinar com a chave $GPG_FINGERPRINT. Confira se GPG_PRIVATE_KEY e GPG_PASSPHRASE correspondem à chave e à frase atuais."
             exit 1
           fi
           rm -f apt/.sign-test apt/.sign-test.asc

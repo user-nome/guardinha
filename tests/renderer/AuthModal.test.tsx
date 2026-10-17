@@ -446,6 +446,15 @@ describe('AuthModal: desbloqueio por senha mestra', () => {
 });
 
 describe('AuthModal: redefinição de PIN', () => {
+  it('mostra a trava ativa também durante a redefinição do PIN', async () => {
+    const user = userEvent.setup();
+    open({ ...LOCKED, lockRemainingMs: 65_000, lockUntil: Date.now() + 65_000 });
+
+    await user.click(screen.getByRole('button', { name: 'Esqueci o PIN' }));
+
+    expect(screen.getByText(/Muitas tentativas/)).toBeInTheDocument();
+  });
+
   it('abre pela tela de esqueci o PIN e volta ao PIN', async () => {
     const user = userEvent.setup();
     open(LOCKED);

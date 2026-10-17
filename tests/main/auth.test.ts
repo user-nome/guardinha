@@ -66,6 +66,13 @@ describe('trava exponencial', () => {
     expect(calculateLockout(99)).toBe(BASE + 86_400_000);
   });
 
+  it('usa o primeiro intervalo se a contagem não for um número válido', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(BASE);
+
+    expect(calculateLockout(Number.NaN)).toBe(BASE + 10_000);
+  });
+
   it('registerFailedAttempt incrementa e persiste o lockUntil', () => {
     vi.useFakeTimers();
     vi.setSystemTime(BASE);

@@ -79,6 +79,26 @@ describe('backup integral do cofre', () => {
     expect(byPath.has(`.auth/${authId}.zka`)).toBe(true);
   });
 
+  it('exporta credenciais mesmo quando o contêiner não existe', () => {
+    const destination = exportTo('sem-container-na-origem.gbk');
+    const original = fsExtra.existsSync;
+    const exists = vi.spyOn(fsExtra, 'existsSync').mockImplementation((target) => {
+      if (String(target) === containerFile()) return false;
+      return original(target);
+    });
+
+    try {
+      const result = exportBackup(destination, '1.0.0');
+      const opened = unpackBackup(fs.readFileSync(destination));
+
+      expect(result.files).toBeGreaterThan(0);
+      expect(opened.files.some((file) => file.path === 'vault.zkv')).toBe(false);
+      expect(exists).toHaveBeenCalledWith(containerFile());
+    } finally {
+      exists.mockRestore();
+    }
+  });
+
   it('recusa pacote adulterado sem tocar no cofre atual', () => {
     const destination = exportTo('adulterado.gbk');
     exportBackup(destination, '1.0.0');

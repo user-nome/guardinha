@@ -45,11 +45,17 @@ a mesma fonte que a tela usa.
 
 O alvo compilado cobre os fluxos visíveis da aplicação: validações e criação do
 cofre; busca, edição e exclusão de credenciais; cópia e geração de senha com
-opções; criação, edição, exclusão e uso de tokens TOTP pelos dois formatos;
+opções, incluindo quantidades por classe, palavras pessoais literais e o limite
+combinado de 40%; criação, edição, exclusão e uso de tokens TOTP pelos dois formatos;
 configurações de pânico; troca de idioma; créditos; exportação e restauração de
 backup; bloqueio, login por PIN e senha mestra, redefinição do PIN, confirmação
 de destruição e PIN de coação. O auto-lock também roda nessa suíte, após cinco
 minutos reais de ociosidade.
+
+Essa cobertura é de jornadas e integração entre o app compilado, o renderer, o
+IPC e o processo main; não significa que cada função ou ramo de todo o código
+seja exercitado por E2E. Os casos de validação e os ramos de erro ficam
+principalmente em `tests/**`, com dublês para dependências caras ou externas.
 
 O alvo empacotado continua sendo fumaça de instalação: criar cofre, adicionar e
 copiar credencial, bloquear e desbloquear. Não repete cada jornada da variante

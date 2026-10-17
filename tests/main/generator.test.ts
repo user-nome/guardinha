@@ -1,7 +1,11 @@
 // @vitest-environment node
 import crypto from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { generateHighEntropyPassword, passwordCharSet } from '@zero/main/generator';
+import {
+  assertGeneratorOptions,
+  generateHighEntropyPassword,
+  passwordCharSet,
+} from '@zero/main/generator';
 import type { GeneratorOptions } from '@zero/types';
 
 describe('generateHighEntropyPassword', () => {
@@ -10,10 +14,15 @@ describe('generateHighEntropyPassword', () => {
     return {
       length: 24,
       useLower: false,
+      countLower: 0,
       useUpper: false,
+      countUpper: 0,
       useNumbers: false,
+      countNumbers: 0,
       useSymbols: false,
+      countSymbols: 0,
       customEntropyWords: [],
+      includeCustomEntropyWords: false,
       ...over,
     };
   }
@@ -73,6 +82,48 @@ describe('generateHighEntropyPassword', () => {
     expect(senha).toMatch(/^[a-z]$/);
   });
 
+  it('reserva as quantidades solicitadas de cada categoria', () => {
+    const password = generateHighEntropyPassword(
+      options({
+        length: 40,
+        useLower: true,
+        useUpper: true,
+        useNumbers: true,
+        useSymbols: true,
+        countLower: 3,
+        countUpper: 4,
+        countNumbers: 5,
+        countSymbols: 2,
+      }),
+    );
+
+    expect(password).toHaveLength(40);
+    expect(password.match(/[a-z]/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(password.match(/[A-Z]/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(password.match(/[0-9]/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(password.match(/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('inclui as palavras pessoais literalmente apenas quando solicitado', () => {
+    const optionsWithWords = options({
+      length: 20,
+      useLower: true,
+      useUpper: true,
+      useNumbers: true,
+      useSymbols: true,
+      countLower: 1,
+      countUpper: 1,
+      countNumbers: 1,
+      countSymbols: 1,
+      customEntropyWords: ['aB', '7!'],
+      includeCustomEntropyWords: true,
+    });
+    const password = generateHighEntropyPassword(optionsWithWords);
+
+    expect(password).toHaveLength(20);
+    expect(password.endsWith('aB7!')).toBe(true);
+  });
+
   it('palavras pessoais mudam a distribuição sem quebrar o formato', () => {
     const withWords = generateHighEntropyPassword(
       options({
@@ -99,16 +150,129 @@ describe('passwordCharSet', () => {
     const base: GeneratorOptions = {
       length: 8,
       useLower: false,
+      countLower: 0,
       useUpper: false,
+      countUpper: 0,
       useNumbers: false,
+      countNumbers: 0,
       useSymbols: false,
+      countSymbols: 0,
       customEntropyWords: [],
+      includeCustomEntropyWords: false,
     };
     expect(passwordCharSet(base)).toBe('');
     expect(passwordCharSet({ ...base, useNumbers: true })).toBe('0123456789');
     expect(passwordCharSet({ ...base, useUpper: true, useNumbers: true })).toBe(
       'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
     );
+  });
+});
+
+describe('assertGeneratorOptions', () => {
+  function valid(overrides: Partial<GeneratorOptions> = {}): GeneratorOptions {
+    return {
+      length: 40,
+      useLower: true,
+      countLower: 0,
+      useUpper: true,
+      countUpper: 0,
+      useNumbers: true,
+      countNumbers: 0,
+      useSymbols: true,
+      countSymbols: 0,
+      customEntropyWords: [],
+      includeCustomEntropyWords: false,
+      ...overrides,
+    };
+  }
+
+  it('aceita opções válidas e rejeita comprimento fora da faixa', () => {
+    expect(() => assertGeneratorOptions(valid())).not.toThrow();
+    for (const length of [Number.NaN, -1, 73]) {
+      expect(() => assertGeneratorOptions(valid({ length }))).toThrow();
+    }
+  });
+
+  it('exige booleanos em todas as opções de categoria e inclusão literal', () => {
+    for (const key of [
+      'useLower',
+      'useUpper',
+      'useNumbers',
+      'useSymbols',
+      'includeCustomEntropyWords',
+    ] as const) {
+      const options = valid();
+      Object.assign(options, { [key]: 'true' });
+      expect(() => assertGeneratorOptions(options)).toThrow();
+    }
+  });
+
+  it('rejeita quantidades não inteiras e fora da faixa', () => {
+    for (const count of [Number.NaN, -1, 73]) {
+      expect(() => assertGeneratorOptions(valid({ countLower: count }))).toThrow();
+    }
+  });
+
+  it('não permite reservar caracteres de uma categoria desmarcada', () => {
+    const categories = [
+      ['useLower', 'countLower'],
+      ['useUpper', 'countUpper'],
+      ['useNumbers', 'countNumbers'],
+      ['useSymbols', 'countSymbols'],
+    ] as const;
+    for (const [enabled, count] of categories) {
+      expect(() => assertGeneratorOptions(valid({ [enabled]: false, [count]: 1 }))).toThrow();
+    }
+  });
+
+  it('valida a lista e o conteúdo das palavras pessoais', () => {
+    const notAnArray = valid();
+    Object.assign(notAnArray, { customEntropyWords: 'word' });
+    expect(() => assertGeneratorOptions(notAnArray)).toThrow();
+    expect(() =>
+      assertGeneratorOptions(valid({ customEntropyWords: ['a', 'b', 'c', 'd', 'e', 'f'] })),
+    ).toThrow();
+    const nonStringWord = valid();
+    Object.assign(nonStringWord, { customEntropyWords: ['word', 1] });
+    expect(() => assertGeneratorOptions(nonStringWord)).toThrow();
+  });
+
+  it('exige palavras preenchidas quando a inclusão literal está ligada', () => {
+    expect(() => assertGeneratorOptions(valid({ includeCustomEntropyWords: true }))).toThrow();
+    expect(() =>
+      assertGeneratorOptions(
+        valid({ includeCustomEntropyWords: true, customEntropyWords: ['   '] }),
+      ),
+    ).toThrow();
+    expect(() =>
+      assertGeneratorOptions(
+        valid({ includeCustomEntropyWords: true, customEntropyWords: ['word'] }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('exige ao menos uma categoria e limita as reservas manuais a 40%', () => {
+    expect(() =>
+      assertGeneratorOptions(
+        valid({
+          useLower: false,
+          useUpper: false,
+          useNumbers: false,
+          useSymbols: false,
+        }),
+      ),
+    ).toThrow();
+    expect(() =>
+      assertGeneratorOptions(
+        valid({
+          countLower: 17,
+          useUpper: false,
+          countUpper: 0,
+          useNumbers: false,
+          useSymbols: false,
+        }),
+      ),
+    ).toThrow();
   });
 });
 
@@ -130,10 +294,15 @@ describe('entropia do gerador', () => {
     generateHighEntropyPassword({
       length: 12,
       useLower: true,
+      countLower: 0,
       useUpper: false,
+      countUpper: 0,
       useNumbers: false,
+      countNumbers: 0,
       useSymbols: false,
+      countSymbols: 0,
       customEntropyWords: [],
+      includeCustomEntropyWords: false,
     });
     expect(sorteio).toHaveBeenCalledWith(32);
   });
@@ -150,10 +319,15 @@ describe('entropia do gerador', () => {
     const senha = generateHighEntropyPassword({
       length: 0,
       useLower: false,
+      countLower: 0,
       useUpper: true,
+      countUpper: 0,
       useNumbers: false,
+      countNumbers: 0,
       useSymbols: false,
+      countSymbols: 0,
       customEntropyWords: [],
+      includeCustomEntropyWords: false,
     });
 
     expect(senha).toBe('');
