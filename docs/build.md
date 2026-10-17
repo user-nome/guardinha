@@ -185,15 +185,25 @@ passos:
    `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
    inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
 
-A chave em uso desde 17/10/2026 é a `5C14...0CF7`, gerada **sem frase**: a
-anterior (`A838...D7511D61`) foi perdida junto com a senha, e o passo do repo
-APT assina dentro do runner a partir do secret, então uma frase ali só
-acrescenta um segundo segredo para ser perdido, sem impedir assinatura
-alheia (quem tiver o `GPG_PRIVATE_KEY` assina de qualquer jeito). Sem frase, o
-`GPG_PASSPHRASE` fica vazio ou é apagado, e o passo do `publish.yml` já tem esse
-ramo. Se a chave passar a ter frase, cadastre o secret junto com o
-`GPG_PRIVATE_KEY`, porque trocar a frase depois do export deixa o bloco privado
-com a frase antiga e o job volta a falhar em `InRelease`.
+A chave em uso desde 17/10/2026 é a `6510...7BF3`. **Ela tem frase**, e isso é
+obrigatório no CI, não opcional: sem `--pinentry-mode loopback` o agente do gpg
+tenta pinentry, o runner não tem terminal e a assinatura morre com
+`Inappropriate ioctl for device`. E uma chave **sem frase não resolve**, porque
+não existe argumento de senha vazia que o gpg aceite para desbloquear: o
+`--passphrase ''` é descartado, e sem loopback o resultado depende de
+heurística do agente, ora assinando, ora dando `Operação cancelada`. Foi o que
+aconteceu na primeira tentativa de rotação (a `5C14...0CF7`), e a diferença só
+aparece em parte das execuções. Com frase e loopback o desbloqueio é
+determinístico, e o passo do `publish.yml` entrega a frase pelo
+`--passphrase-file`, num arquivo temporário que é apagado no fim, em vez de
+`--passphrase`, que a deixaria no argv do processo.
+
+A frase entra no secret `GPG_PASSPHRASE` e é gerada em hexadecimal, para não
+ter caractere que uma colagem possa trocar (`+`, `/` e `=` do base64 já
+estragaram uma troca de secret). Guarde-a num gerenciador de senhas: ela só é
+usada pelo CI, mas é a sua chave assinando o repositório. Trocar a frase depois
+de exportar o bloco privado deixa o `GPG_PRIVATE_KEY` protegido pela frase
+antiga, e aí é preciso reexportar a chave e sobrescrever os dois secrets.
 
 Como a assinatura de commit está desligada, trocar a chave do APT não mexe em
 nenhuma configuração de repositório local. A regra é manter a chave antiga no

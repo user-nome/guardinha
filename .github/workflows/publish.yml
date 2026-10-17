@@ -46,11 +46,15 @@ env:
   # escrevê-la à mão nos dois pontos era um convite para a metade ficar na chave
   # antiga. Ver docs/build.md.
   #
-  # Chave gerada em 17/10/2026, sem senha: a anterior (A838...D7511D61) foi
-  # perdida junto com a frase, e uma chave de assinatura que só vive em secret
-  # do CI não ganha nada com frase, só um segundo segredo para ser perdido.
-  # Ver "A chave que assina o repo APT" em docs/build.md.
-  GPG_FINGERPRINT: 5C1451B1A06DED7ECC2A2AD908BC89E300B40CF7
+  # Chave gerada em 17/10/2026. A anterior (A838...D7511D61) foi perdida junto
+  # com a frase, e a tentativa de substituir por uma chave sem frase também não
+  # funcionou: sem `--pinentry-mode loopback` o agente do gpg precisa promptar,
+  # o runner não tem terminal, e com uma senha vazia não existe argumento que o
+  # gpg aceite para desbloquear, então o resultado depende de heurística do
+  # agente e ora assina, ora dá "Operação cancelada". Com frase e loopback o
+  # desbloqueio é determinístico. Ver "A chave que assina o repo APT" em
+  # docs/build.md.
+  GPG_FINGERPRINT: 65105F349005C4A8E7DEB78BEA5778FAB1147BF3
 
 jobs:
   resolver-versao:
@@ -254,25 +258,29 @@ jobs:
             echo "::error::GPG_PRIVATE_KEY não contém a chave $GPG_FINGERPRINT: cole o bloco inteiro do arquivo, COM as linhas -----BEGIN PGP PRIVATE KEY BLOCK----- e -----END PGP PRIVATE KEY BLOCK----- (sem elas o gpg não reconhece o formato). Se a chave foi renovada, troque também GPG_FINGERPRINT no topo deste arquivo."
             exit 1
           fi
-          # Sem GPG_PASSPHRASE o gpg assina direto (é o caso da chave atual,
-          # que não tem frase). Com ele, o loopback é obrigatório: sem
-          # `--pinentry-mode loopback` o agente tentaria pinentry, o runner não
-          # tem terminal e o gpg falha com `Inappropriate ioctl for device`,
-          # que não fala de senha nenhuma.
-          if [ -n "${GPG_PASSPHRASE:-}" ]; then
-            GPG_OPTS=(--batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE")
-          else
-            GPG_OPTS=(--batch --yes)
+          # A frase entra por `--passphrase-file` num arquivo temporário, e
+          # não por `--passphrase`: o outro caminho põe a frase no argv do
+          # processo, legível por qualquer outro usuário da máquina. O
+          # `mktemp` cria com 600 e o arquivo é apagado no fim, inclusive
+          # quando o passo falha.
+          #
+          # `--pinentry-mode loopback` é obrigatório: sem ele o agente do gpg
+          # tenta pinentry, o runner não tem terminal e a assinatura morre com
+          # `Inappropriate ioctl for device`.
+          if [ -z "${GPG_PASSPHRASE:-}" ]; then
+            echo "::error::Secret GPG_PASSPHRASE ausente em Settings → Secrets → Actions (repo guardinha). A chave $GPG_FINGERPRINT tem frase, então o CI não consegue desbloquear sem ela: o agente do gpg cairia em pinentry e o runner não tem terminal."
+            exit 1
           fi
+          umask 077
+          PHRASE_FILE="$(mktemp)"
+          trap 'shred -u "$PHRASE_FILE" 2>/dev/null || true' EXIT
+          printf '%s' "$GPG_PASSPHRASE" > "$PHRASE_FILE"
+          GPG_OPTS=(--batch --yes --pinentry-mode loopback --passphrase-file "$PHRASE_FILE")
           # Teste de assinatura antes de gerar nada, para falhar com uma
           # mensagem que aponta a causa em vez de dizer só que "não assinou".
           echo preflight > apt/.sign-test
           if ! gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
-            if [ -n "${GPG_PASSPHRASE:-}" ]; then
-              echo "::error::O secret GPG_PASSPHRASE não é a frase da chave $GPG_FINGERPRINT. Se a frase foi trocada depois do export, o bloco privado do secret GPG_PRIVATE_KEY está com a frase antiga: reexporte a chave e sobrescreva os dois secrets."
-            else
-              echo "::error::A chave $GPG_FINGERPRINT pede frase e o secret GPG_PASSPHRASE está vazio. Sem ele o gpg tenta pinentry, o runner não tem terminal e o erro sai como Inappropriate ioctl for device. Cadastre GPG_PASSPHRASE em Settings → Secrets → Actions, ou regenere a chave sem frase."
-            fi
+            echo "::error::O secret GPG_PASSPHRASE não é a frase da chave $GPG_FINGERPRINT. Se a frase foi trocada depois do export, o bloco privado do secret GPG_PRIVATE_KEY está protegido pela frase antiga: reexporte a chave e sobrescreva os dois secrets."
             exit 1
           fi
           rm -f apt/.sign-test apt/.sign-test.asc
