@@ -233,6 +233,18 @@ chegada automática de correção de segurança das actions, e isso é revisão 
 ponta, não automação. Já a migração do runner é mudança da **imagem**, invisível
 para o Dependabot: foi por isso que o `ubuntu-latest` precisou ser fixado à mão.
 
+Um caso em que o PR do Dependabot não era merger: a major do TypeScript. O
+`typescript-eslint@8.71.2`, junto com `@typescript-eslint/parser`,
+`typescript-estree` e `ts-api-utils`, declara o peer
+`typescript@">=4.8.4 <6.1.0"`, e o `typescript` 7 está fora dessa faixa. Com o
+`package.json` no 7 o `npm ci` morre em ERESOLVE nos três jobs do ritmo normal
+(um `npm ci` por job), antes do typecheck. Enquanto o `typescript-eslint` não
+publicar suporte à série 7, o jeito é o PR ser fechado e o `typescript` ficar no
+6, com `ignore` de major em `.github/dependabot.yml` para ele não voltar toda
+segunda. Não é para resolver com `--legacy-peer-deps` no `npm ci`: isso esconde a
+incompatibilidade e deixa o lint analisando um compilador que ele não suporta,
+justamente o tipo de gate afrouxado que este repositório não tem.
+
 ## Gate da branch de trabalho
 
 `.github/workflows/quality.yml` confere a `developer` enquanto o código está
