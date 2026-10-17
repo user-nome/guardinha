@@ -185,14 +185,28 @@ passos:
    `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
    inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
 
+A chave em uso desde 17/10/2026 é a `5C14...0CF7`, gerada **sem frase**: a
+anterior (`A838...D7511D61`) foi perdida junto com a senha, e o passo do repo
+APT assina dentro do runner a partir do secret, então uma frase ali só
+acrescenta um segundo segredo para ser perdido, sem impedir assinatura
+alheia (quem tiver o `GPG_PRIVATE_KEY` assina de qualquer jeito). Sem frase, o
+`GPG_PASSPHRASE` fica vazio ou é apagado, e o passo do `publish.yml` já tem esse
+ramo. Se a chave passar a ter frase, cadastre o secret junto com o
+`GPG_PRIVATE_KEY`, porque trocar a frase depois do export deixa o bloco privado
+com a frase antiga e o job volta a falhar em `InRelease`.
+
 Como a assinatura de commit está desligada, trocar a chave do APT não mexe em
-nenhuma configuração de repositório local. A chave antiga **fica** no keyring:
-ela continua verificando as Releases já assinadas.
+nenhuma configuração de repositório local. A regra é manter a chave antiga no
+keyring, para ela continuar verificando as Releases já assinadas; na rotação de
+17/10/2026 ela foi apagada por inteiro (o material secreto não tinha mais uso
+sem a frase), com as duas chaves públicas de backup em
+`~/.local/share/guardinha-backup-gpg/`.
 
 Para quem já instalou pelo APT, a rotação não muda a instrução do `README.md`
 (o `public.key` vem de `releases/latest/download/`), mas o keyring antigo não
 valida a assinatura nova: é preciso repetir a linha do `public.key` e depois
-`sudo apt update`.
+`sudo apt update`. Na rotação de 17/10/2026 isso não afetou ninguém, porque
+nenhuma Release com `InRelease` tinha sido publicada ainda.
 
 ## Versão do runner (`ubuntu-24.04`, não `ubuntu-latest`)
 
