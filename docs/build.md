@@ -185,9 +185,11 @@ passos:
    `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
    inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
 
-A chave em uso desde 17/10/2026 é a `5F96...CAB20`, a terceira rotação do dia
-(a `A838...D7511D61` foi perdida com a frase, e a `5C14...0CF7`, gerada sem
-frase, não roda no CI). **Ela tem frase**, e isso é
+A chave em uso desde 17/10/2026 é a `1FF6...7D87`, a quarta rotação do dia (a
+`A838...D7511D61` foi perdida com a frase, a `5C14...0CF7`, gerada sem frase, não
+roda no CI, e `6510...7BF3` e `5F96...CAB20`, ambas com frase, foram
+descartadas porque o secret `GPG_PASSPHRASE` do repositório não abria a chave que
+o `GPG_PRIVATE_KEY` entregava). **Ela tem frase**, e isso é
 obrigatório no CI, não opcional: sem `--pinentry-mode loopback` o agente do gpg
 tenta pinentry, o runner não tem terminal e a assinatura morre com
 `Inappropriate ioctl for device`. E uma chave **sem frase não resolve**, porque

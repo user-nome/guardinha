@@ -52,11 +52,12 @@ env:
   # promptar, o runner não tem terminal, e com uma senha vazia não existe
   # argumento que o gpg aceite para desbloquear, então o resultado depende de
   # heurística do agente e ora assina, ora dá "Operação cancelada". Com frase e
-  # loopback o desbloqueio é determinístico. Esta é a terceira rotação: as duas
-  # anteriores (5C14...0CF7 sem frase, 6510...7BF3 com frase) foram
-  # descartadas porque o secret `GPG_PASSPHRASE` do repositório não abria a
-  # chave. Ver "A chave que assina o repo APT" em docs/build.md.
-  GPG_FINGERPRINT: 5F96C08F630326227C99F3E7980A65771B1CAB20
+  # loopback o desbloqueio é determinístico. Esta é a quarta rotação do dia: as
+  # anteriores (A838...D7511D61 perdida com a frase, 5C14...0CF7 sem frase,
+  # 6510...7BF3 e 5F96...CAB20 com frase) foram descartadas porque o secret
+  # `GPG_PASSPHRASE` do repositório não abria a chave importada, que vinha
+  # certa. Ver "A chave que assina o repo APT" em docs/build.md.
+  GPG_FINGERPRINT: 1FF6CE1277DF5E95301ECBF3959D67B1CC077D87
 
 jobs:
   resolver-versao:
