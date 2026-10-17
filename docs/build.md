@@ -185,11 +185,18 @@ passos:
    `-----BEGIN PGP PRIVATE KEY BLOCK-----` e `-----END PGP PRIVATE KEY BLOCK-----`
    inclusas) e `GPG_PASSPHRASE` com a frase da chave nova.
 
-A chave em uso desde 17/10/2026 é a `1FF6...7D87`, a quarta rotação do dia (a
+Na prática os dois arquivos ficam em `~/guardinha-apt.asc` e
+`~/guardinha-apt-frase.txt` (perm 600), e a chave em si no keyring do `gpg`
+(`~/.gnupg`). Para conferir o que está gravado no repositório contra o que
+está na máquina, o passo do repo APT imprime o sha256 dos dois secrets
+recebidos quando a assinatura falha; compare com
+`sha256sum ~/guardinha-apt.asc ~/guardinha-apt-frase.txt`.
+
+A chave em uso desde 17/10/2026 é a `AF9F...86F7`, a quinta rotação do dia (a
 `A838...D7511D61` foi perdida com a frase, a `5C14...0CF7`, gerada sem frase, não
-roda no CI, e `6510...7BF3` e `5F96...CAB20`, ambas com frase, foram
+roda no CI, e `6510...7BF3`, `5F96...CAB20` e `1FF6...7D87`, todas com frase, foram
 descartadas porque o secret `GPG_PASSPHRASE` do repositório não abria a chave que
-o `GPG_PRIVATE_KEY` entregava). **Ela tem frase**, e isso é
+o `GPG_PRIVATE_KEY` entregava, e essa chave vinha certa). **Ela tem frase**, e isso é
 obrigatório no CI, não opcional: sem `--pinentry-mode loopback` o agente do gpg
 tenta pinentry, o runner não tem terminal e a assinatura morre com
 `Inappropriate ioctl for device`. E uma chave **sem frase não resolve**, porque
