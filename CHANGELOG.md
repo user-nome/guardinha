@@ -6,6 +6,28 @@ em português do Brasil.
 
 ## [Não lançado]
 
+## [1.7.3] - 2026-10-17
+
+### Alterado
+
+- **Chave nova assinando o repositório APT.** A chave anterior foi perdida junto
+  com a frase, então o `Release`, o `InRelease` e o `public.key` desta versão
+  saem da chave `5C1451B1A06DED7ECC2A2AD908BC89E300B40CF7`. Quem já tem o
+  repositório no APT precisa repetir a linha do `public.key` do `README.md` e
+  depois rodar `sudo apt update`, porque o keyring antigo não valida a assinatura
+  nova. O aplicativo em si não muda nesta versão.
+
+### Corrigido
+
+- **Publicação do `.deb` travada antes de começar.** O `npm ci` dos jobs do
+  `publish.yml` morria com `ERESOLVE` porque o Dependabot tinha subido o
+  TypeScript para a série 7, fora da faixa de peer do `typescript-eslint`, e sem
+  isso nenhum `.deb` era gerado.
+- **Erro do passo de assinatura do APT.** A falha de pré-verificação acusava
+  "GPG_PASSPHRASE incorreto (ou secret ausente)" para qualquer erro de
+  assinatura; agora ela separa frase errada de secret ausente e diz o que fazer
+  em cada caso.
+
 ## [1.7.2] - 2026-10-16
 
 ### Adicionado
