@@ -8,7 +8,7 @@
 sem telemetria e sem usar a internet. Suas senhas ficam cifradas no seu disco e
 só abrem com o seu PIN.
 
-**Versão atual: 1.7.3 · Linux (amd64)**
+**Versão atual: 1.8.1 · Linux (amd64)**
 
 [Baixar .deb](https://github.com/user-nome/guardinha/releases/latest/download/guardinha_amd64.deb)
 &nbsp;·&nbsp; [Site do projeto](https://guardinha-delirante.vercel.app)
@@ -164,6 +164,10 @@ curl -fsSL https://github.com/user-nome/guardinha/releases/latest/download/publi
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/guardinha.gpg] https://github.com/user-nome/guardinha/releases/latest/download ./" | sudo tee /etc/apt/sources.list.d/guardinha.list
 sudo apt update && sudo apt install guardinha
 ```
+
+Se você já configurou o repositório APT antes da troca da chave GPG, repita o
+primeiro comando acima para atualizar o keyring e depois execute `sudo apt update`.
+A linha do repositório não precisa ser alterada.
 
 O repositório é **flat e vive na própria Release**: os índices assinados e o `.deb`
 com nome estável são anexados a cada versão pelo workflow do app, e o endereço

@@ -13,6 +13,7 @@ import {
   deleteCredential,
   disableNukeLimit,
   generatePassword,
+  generatePasswordWithManualOptions,
   generatePasswordWithOptions,
   lockVault,
   roundTripBackup,
@@ -78,6 +79,10 @@ describe('App compilado (out/)', () => {
 
   it('respeita comprimento, categorias e a última categoria ativa no gerador', async () => {
     await generatePasswordWithOptions(current().page);
+  });
+
+  it('respeita quantidades por classe, palavras pessoais e o limite de 40%', async () => {
+    await generatePasswordWithManualOptions(current().page);
   });
 
   it('adiciona um token de 2FA e lê o código', async () => {

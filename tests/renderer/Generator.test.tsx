@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MessagesProvider } from '@zero/renderer/i18n';
@@ -58,6 +58,112 @@ describe('Generator', () => {
       includeCustomEntropyWords: false,
     });
     expect(await screen.findByText('Senha-Forte-123!')).toBeInTheDocument();
+  });
+
+  it('não chama o processo main quando o tamanho é zero', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    const onToast = open();
+
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Tamanho da Senha' }), { key: 'Home' });
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(onToast).toHaveBeenCalledWith('Escolha um tamanho maior que 0.');
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('recusa palavras pessoais maiores que o tamanho escolhido', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    const onToast = open();
+
+    const wordCount = screen.getByRole('textbox', {
+      name: 'Quantidade de palavras pessoais (0 a 5)',
+    });
+    await user.clear(wordCount);
+    await user.type(wordCount, '1');
+    await user.type(screen.getByPlaceholderText('Objeto'), 'x'.repeat(25));
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(onToast).toHaveBeenCalledWith('As palavras pessoais excedem o tamanho total da senha.');
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('limita os caracteres manuais e sinaliza quando palavras excedem a cota', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    const onToast = open();
+
+    const countLower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+    await user.clear(countLower);
+    await user.type(countLower, '9');
+    const wordCount = screen.getByRole('textbox', {
+      name: 'Quantidade de palavras pessoais (0 a 5)',
+    });
+    await user.clear(wordCount);
+    await user.type(wordCount, '1');
+    await user.type(screen.getByPlaceholderText('Objeto'), 'x');
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+
+    expect(
+      screen.getByText('Caracteres definidos: 10 de 9 disponíveis (limite de 40%).'),
+    ).toHaveClass('text-red-300');
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(onToast).toHaveBeenCalledWith(
+      'As opções pessoais excedem o limite de 40% do tamanho da senha.',
+    );
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('transforma uma contagem que excede Number em zero', () => {
+    open();
+    const countLower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+
+    fireEvent.change(countLower, { target: { value: '9'.repeat(400) } });
+
+    expect(countLower).toHaveValue('0');
+  });
+
+  it('transforma uma quantidade de palavras que excede Number em zero', () => {
+    open();
+    const wordCount = screen.getByRole('textbox', {
+      name: 'Quantidade de palavras pessoais (0 a 5)',
+    });
+
+    fireEvent.change(wordCount, { target: { value: '9'.repeat(400) } });
+
+    expect(wordCount).toHaveValue('0');
+    expect(screen.queryByPlaceholderText('Objeto')).not.toBeInTheDocument();
+  });
+
+  it('zera a contagem ao desligar uma categoria e preserva a última ligada', async () => {
+    const user = userEvent.setup();
+    open();
+    const countLower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+    await user.clear(countLower);
+    await user.type(countLower, '2');
+    await user.click(screen.getByRole('checkbox', { name: 'Minúsculas' }));
+    expect(countLower).toHaveValue('0');
+
+    for (const label of ['Maiúsculas', 'Números', 'Símbolos']) {
+      await user.click(screen.getByRole('checkbox', { name: label }));
+    }
+    expect(screen.getByRole('checkbox', { name: 'Símbolos' })).toBeChecked();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Minúsculas' }));
+    expect(screen.getByRole('checkbox', { name: 'Minúsculas' })).toBeChecked();
   });
 
   it('manda as categorias desligadas e os cinco gostos digitados', async () => {

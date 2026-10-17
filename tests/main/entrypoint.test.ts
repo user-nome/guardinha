@@ -171,6 +171,12 @@ describe('canais de gravação do autenticador', () => {
       call('authenticator:delete', appFrame(), 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'),
     ).toThrow(locked);
   });
+
+  it('preserva erro de sessão bloqueada ao pedir códigos 2FA', () => {
+    expect(() => call('authenticator:codes', appFrame())).toThrow(
+      currentMessages().errors.vaultLocked,
+    );
+  });
 });
 
 describe('canal generator:generate', () => {

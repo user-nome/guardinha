@@ -137,7 +137,7 @@ export function restoreBackup(source: string): RestoreResult {
     if (file.path === 'vault.zkv') continue;
     writeSecretFile(targetFor(file.path), file.data);
   }
-  writeSecretFile(containerFile(), container.data);
+  writeSecretFile(targetFor(container.path), container.data);
 
   return { path: source, files: opened.files.length };
 }

@@ -524,6 +524,14 @@ describe('tamanho em disco do container', () => {
 const IDS = ['aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'];
 
 describe('recusa do manifesto pela mensagem', () => {
+  it('recusa payloads que decifram para um valor que não é objeto', () => {
+    const key = randomBytes(32);
+
+    expect(() => openManifest(key, encryptRecord(new Date(0), key))).toThrow(
+      'Manifesto de integridade inválido.',
+    );
+  });
+
   it('nomeia o motivo quando a lista de ids é inválida, a versão é velha ou a de tokens é inválida', () => {
     // Três `throw` com o mesmo texto: sem conferir a mensagem, trocar a string
     // passaria, e o usuário veria um erro sem dizer o que houve.

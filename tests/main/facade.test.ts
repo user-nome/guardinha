@@ -82,6 +82,32 @@ describe('VaultStorageFacade (fachada de persistência)', () => {
     }
   });
 
+  it('responde adulteração quando o registro decifrado não é objeto', () => {
+    const key = requireSessionKey();
+    const id = vaultStorage.newId();
+    writeEntryPayload(id, encryptRecord(new Date(0), key));
+
+    try {
+      expect(() => vaultStorage.readRecord(id, key)).toThrow(TAMPERED);
+    } finally {
+      deleteEntry(id);
+      updateManifest(key);
+    }
+  });
+
+  it('responde adulteração quando o token decifrado não é objeto', () => {
+    const key = requireSessionKey();
+    const id = vaultStorage.newId();
+    writeAuthPayload(id, encryptAuthRecord(new Date(0), key));
+
+    try {
+      expect(() => vaultStorage.readAuthSecret(id, key)).toThrow(TAMPERED);
+    } finally {
+      deleteAuth(id);
+      updateManifest(key);
+    }
+  });
+
   it('converte falha ao decifrar uma credencial em erro de adulteração', () => {
     const key = requireSessionKey();
     const id = vaultStorage.newId();
