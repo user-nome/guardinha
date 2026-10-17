@@ -25,8 +25,10 @@ em português do Brasil.
   isso nenhum `.deb` era gerado.
 - **Erro do passo de assinatura do APT.** A falha de pré-verificação acusava
   "GPG_PASSPHRASE incorreto (ou secret ausente)" para qualquer erro de
-  assinatura; agora ela separa frase errada de secret ausente e diz o que fazer
-  em cada caso.
+  assinatura; agora ela diz o que fazer em cada caso.
+- **Frase da chave fora do `argv`.** O passo do repo APT entregava a frase do
+  secret ao gpg por `--passphrase`, o que a deixava legível no processo. Agora
+  ela vai por `--passphrase-file`, num arquivo temporário apagado no fim.
 
 ## [1.7.2] - 2026-10-16
 
