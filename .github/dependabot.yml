@@ -9,6 +9,17 @@ updates:
     commit-message:
       prefix: 'chore'
       include: 'scope'
+    # Major do TypeScript fica fora, porque o `typescript-eslint` ainda não
+    # suporta a série 7: o peer declarado é `typescript@">=4.8.4 <6.1.0"`, e o
+    # `npm ci` de todos os jobs morre em ERESOLVE antes de rodar qualquer
+    # verificação (ver a nota em `docs/build.md`). O grupo abaixo trata minor e
+    # patch; major sempre abriria PR separado. Quando o `typescript-eslint`
+    # publicar a faixa que cobre o 7, apague este bloco.
+    ignore:
+      # Em `ignore` a forma é a prefixada (`version-update:semver-major`), ao
+      # contrário de `groups`, onde vale `major`.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
     groups:
       dev-dependencias:
         dependency-type: development
