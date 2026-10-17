@@ -46,15 +46,17 @@ env:
   # escrevê-la à mão nos dois pontos era um convite para a metade ficar na chave
   # antiga. Ver docs/build.md.
   #
-  # Chave gerada em 17/10/2026. A anterior (A838...D7511D61) foi perdida junto
-  # com a frase, e a tentativa de substituir por uma chave sem frase também não
-  # funcionou: sem `--pinentry-mode loopback` o agente do gpg precisa promptar,
-  # o runner não tem terminal, e com uma senha vazia não existe argumento que o
-  # gpg aceite para desbloquear, então o resultado depende de heurística do
-  # agente e ora assina, ora dá "Operação cancelada". Com frase e loopback o
-  # desbloqueio é determinístico. Ver "A chave que assina o repo APT" em
-  # docs/build.md.
-  GPG_FINGERPRINT: 65105F349005C4A8E7DEB78BEA5778FAB1147BF3
+  # Chave gerada em 17/10/2026. A primeira (A838...D7511D61) foi perdida junto
+  # com a frase, e a tentativa de substituir por uma chave sem frase não
+  # funciona no CI: sem `--pinentry-mode loopback` o agente do gpg precisa
+  # promptar, o runner não tem terminal, e com uma senha vazia não existe
+  # argumento que o gpg aceite para desbloquear, então o resultado depende de
+  # heurística do agente e ora assina, ora dá "Operação cancelada". Com frase e
+  # loopback o desbloqueio é determinístico. Esta é a terceira rotação: as duas
+  # anteriores (5C14...0CF7 sem frase, 6510...7BF3 com frase) foram
+  # descartadas porque o secret `GPG_PASSPHRASE` do repositório não abria a
+  # chave. Ver "A chave que assina o repo APT" em docs/build.md.
+  GPG_FINGERPRINT: 5F96C08F630326227C99F3E7980A65771B1CAB20
 
 jobs:
   resolver-versao:
