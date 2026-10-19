@@ -25,6 +25,32 @@ em português do Brasil.
   nulo no modal de credencial) ou ficaram com `/* v8 ignore next */` e o motivo
   ao lado, quando a guarda só cobre um estado que a interface impede.
 
+## [1.9.1] - 2026-10-19
+
+### Alterado
+
+- **Constantes centralizadas.** Números mágicos espalhados pelo código (tempos de
+  trava, tetos de gerador, parâmetros do TOTP, passadas de shred, limites da
+  autodestruição) foram extraídos para módulos dedicados em `src/main/`,
+  `src/shared/` e `src/types/`. Cada constante agora tem um nome semântico e
+  comentário explicando a origem, facilitando auditoria e ajustes futuros.
+- **Formatos de disco documentados.** O layout binário do `vault.zkv` e do
+  `.zke` passou a viver em `src/main/container-format.ts`, com offsets e
+  tamanhos nomeados; o formato do backup `.gbk` em `src/main/backup-constants.ts`.
+- **Tipagem enxuta.** Tipos inline complexos, asserções `as unknown` e uniões
+  anônimas foram movidos para `src/types/` onde atravessam o IPC ou são
+  compartilhados entre `main` e `renderer`; o que é local de um módulo ficou no
+  próprio arquivo.
+
+### Adicionado
+
+- **Testes para as novas constantes.** `tests/main/backup-constants.test.ts` e
+  `tests/shared/otp-constants.test.ts` garantem que os valores exportados
+  existem e têm o formato esperado.
+- **Módulos `time.ts`, `crypto-constants.ts`, `container-format.ts`,
+  `generator-constants.ts`, `auth-constants.ts`, `window-constants.ts`,
+  `backup-constants.ts`, `otp-constants.ts`.**
+
 ## [1.8.1] - 2026-10-17
 
 ### Adicionado
