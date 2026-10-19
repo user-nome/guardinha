@@ -12,7 +12,7 @@ têm timeout de 120 s.
 ```bash
 npm test                  # execução única (o que o CI espera)
 npm run test:watch        # modo watch
-npm run test:coverage     # cobertura em coverage/ (limiar de 95%)
+npm run test:coverage     # cobertura em coverage/ (limiar de 100%)
 npm run test:mutation     # teste de mutação (ver docs/mutation.md)
 npm run test:mutation:plan  # só o plano da varredura, sem executar
 ```
@@ -141,16 +141,19 @@ nunca no `npm test` nem no `npm run check`; os comandos e as decisões estão em
 ## Cobertura
 
 `vitest.config.mts` mede `src/**/*.{ts,tsx}` com o provedor v8, relatório em
-texto e HTML, e limiar de **95%** para linhas, comandos, funções e ramos. Abaixo
+texto e HTML, e limiar de **100%** para linhas, comandos, funções e ramos. Abaixo
 disso o `npm run test:coverage` reprova, e o job "Testes e cobertura" do
 workflow `quality.yml` fica vermelho junto.
 
 O limiar subiu de 90% para 95% depois da varredura de mutação (`docs/mutation.md`):
 ela mostrou que os ramos que faltavam eram os de decisão, isto é, cofre
 ausente, arquivo fechado e falha de I/O, que é justamente onde um teste que
-só passa pelo caminho feliz não chega. O que sobrou fora são ramos que não têm
-como ser tomados, como o `?? ''` que vem depois de um `Math.min` que já
-limitou o índice da tabela.
+só passa pelo caminho feliz não chega. O fechamento até 100% veio depois, sem
+teste impossível: cada ramo restante ou sumiu do código (um índice preso a uma
+união de literais, um `charAt` no lugar do índice de string, um clamp que nunca
+cortava nada) ou ficou marcado com `/* v8 ignore next */` e o motivo escrito ao
+lado, quando a guarda só protege um estado que a própria interface impede (o
+botão desabilitado, a invariante que a cadeia de desbloqueio já garantiu).
 
 Ficam de fora do denominador, com justificativa no próprio config:
 

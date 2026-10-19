@@ -11,7 +11,7 @@ name: Qualidade
 #   verde para o merge acontecer;
 # - workflow_dispatch: para rodar na mão quando um passo local ficou duvidoso.
 #
-# A porta de 95% de cobertura mora em `vitest.config.mts` (`thresholds`), não
+# A porta de 100% de cobertura mora em `vitest.config.mts` (`thresholds`), não
 # aqui: assim o número é o mesmo para quem roda localmente e para o CI, e
 # `npm run test:coverage` sozinho já reprova abaixo da meta.
 #
@@ -132,7 +132,7 @@ jobs:
 
       # `json-summary` entra como reporter extra (o `text` e o `html` já são o
       # padrão do `vitest.config.mts`): é dele que sai a tabela do resumo da
-      # execução, com o mesmo número que o gate de 95% aplicou.
+      # execução, com o mesmo número que o gate de 100% aplicou.
       - name: Testes com cobertura
         run: npm run test:coverage -- --coverage.reporter=json-summary
 
@@ -155,7 +155,7 @@ jobs:
               "| " + cell("lines") + " | " + cell("branches") + " | " + cell("functions")
                 + " | " + cell("statements") + " |",
               "",
-              "Meta: 95% nos quatro (definida em `vitest.config.mts`).",
+              "Meta: 100% nos quatro (definida em `vitest.config.mts`).",
             ];
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, rows.join("\n") + "\n");
           '

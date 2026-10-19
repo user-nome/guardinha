@@ -17,6 +17,13 @@ em português do Brasil.
   mora em um lugar só (`src/renderer/src/card-grid.ts`).
 - **Janela mais estreita.** O `minWidth` caiu de 520 px para 400 px, que é a
   largura em que a grade já é uma coluna e a Sidebar já é o trilho de ícones.
+- **Cobertura de 100%.** O piso de linhas, comandos, funções e ramos subiu de
+  95% para 100% em `vitest.config.mts`. Os últimos ramos ou saíram do código
+  (índice preso a uma união de literais em `strength.ts`, `charAt` no lugar do
+  índice de string no gerador, separador do `otpauth://` fatiado pelo `index`,
+  largura da faixa lida do `currentTarget` no slider, exclusão sem `entry`
+  nulo no modal de credencial) ou ficaram com `/* v8 ignore next */` e o motivo
+  ao lado, quando a guarda só cobre um estado que a interface impede.
 
 ## [1.8.1] - 2026-10-17
 
