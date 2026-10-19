@@ -26,6 +26,7 @@ Todo texto vem do contexto de idioma (`useMessages()`), nunca embutido no JSX.
 | `DestroyModal`      | Confirmação em duas etapas da autodestruição (digitar a palavra)        |
 | `Toast`             | Aviso curto de cópia e de sucesso                                       |
 | `i18n.tsx`          | `MessagesProvider`, `useMessages()`, `useLanguage()`, `richText()`      |
+| `card-grid.ts`      | Colunas das grades de cartão, pela largura da janela                    |
 | `clipboard.ts`      | Encerra a cópia no canal `clipboard:copy` (limpeza no main)             |
 | `formatters.ts`     | Contagem de palavras, contagem regressiva e erro legível                |
 
@@ -54,7 +55,7 @@ erro).
 
 ## Responsividade
 
-A janela é redimensionável (de 520 px a tela cheia), então nenhuma tela pode
+A janela é redimensionável (de 400 px a tela cheia), então nenhuma tela pode
 supor uma largura fixa. O desenho tem três partes, cada uma atacando um dos
 dois defeitos que a tela larga e a tela pequena provocam: conteúdo grudado no
 canto e cartão espremido.
@@ -79,11 +80,25 @@ do desenho, nunca da árvore de acessibilidade: cada botão mantém `aria-label`
 `compact` o gatilho mostra o código (`pt-BR`) no trilho e o nome completo na
 barra larga e no menu, e a `Sidebar` rolável evita corte em janela baixa.
 
-**Os cartões contam o espaço que sobrou, não a largura da janela.** As grades
-usam _container query_ (`@2xl`, `@4xl`, `@5xl`) contra o próprio `Page`, que é
-`@container`. Assim a reorganização responde à área de conteúdo real: recolher a
-Sidebar ou encolher a janela quebra as colunas antes de espremer o cartão, e o
-cartão ganha uma coluna larga ao esticar o monitor.
+**Os cartões contam a largura da janela.** As grades de Início e do Verificador
+2FA seguem os pontos de virada do Tailwind (`md` em 768 px, `xl` em 1280 px e
+`2xl` em 1536 px), e a regra está em um lugar só (`src/renderer/src/card-grid.ts`)
+porque os dois cartões não são iguais: o cartão de credencial aceita a terceira
+coluna em 1280 px, e o de token só em 1536 px, já que o código de 6 dígitos, a
+contagem e o botão de cópia dividem a mesma linha.
+
+| Largura da janela | Credencial (Início) | Token (Verificador 2FA) |
+| ----------------- | ------------------- | ----------------------- |
+| até 767 px        | uma coluna          | uma coluna              |
+| 768 a 1279 px     | duas colunas        | duas colunas            |
+| 1280 a 1535 px    | três colunas        | duas colunas            |
+| 1536 px ou mais   | três colunas        | três colunas            |
+
+A janela mais estreita possível é 400 px (`minWidth` em `src/main/index.ts`):
+nessa largura a grade já é uma coluna e a Sidebar já é o trilho de ícones, então
+qualquer estreitamento a mais só corta texto. Acima de 1536 px o número de
+colunas não muda mais, e a coluna de conteúdo (`max-w-6xl`) é quem impede os
+cartões de esticarem sem parar.
 
 Os modais seguem a mesma regra de altura: o cartão é `my-auto` dentro de uma
 caixa que rola, então ele fica centralizado quando cabe e encostado no topo,

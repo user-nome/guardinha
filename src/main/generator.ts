@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { currentMessages } from '@zero/main/i18n';
 import { manualCharacterLimit, PASSWORD_CHARACTER_SETS } from '@zero/shared';
+import { MAX_GENERATOR_LENGTH } from '@zero/shared/generator-constants';
 import type { GeneratorOptions } from '@zero/types';
 
 /**
@@ -13,7 +14,7 @@ import type { GeneratorOptions } from '@zero/types';
  */
 
 /** Teto de tamanho, o mesmo que a tela permite marcar. */
-const MAX_LENGTH = 72;
+export { MAX_GENERATOR_LENGTH };
 /**
  * Conjunto de caracteres da senha: só as categorias marcadas na tela. Só
  * "Maiúsculas" sai só maiúsculas, só "Números" sai só números, e assim por
@@ -36,7 +37,7 @@ export function passwordCharSet(options: GeneratorOptions): string {
 export function assertGeneratorOptions(options: GeneratorOptions): void {
   const m = currentMessages();
   const { length } = options;
-  if (!Number.isInteger(length) || length < 0 || length > MAX_LENGTH) {
+  if (!Number.isInteger(length) || length < 0 || length > MAX_GENERATOR_LENGTH) {
     throw new Error(m.errors.invalidGenerator);
   }
   if (
@@ -54,7 +55,9 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
     options.countNumbers,
     options.countSymbols,
   ];
-  if (counts.some((count) => !Number.isInteger(count) || count < 0 || count > MAX_LENGTH)) {
+  if (
+    counts.some((count) => !Number.isInteger(count) || count < 0 || count > MAX_GENERATOR_LENGTH)
+  ) {
     throw new Error(m.errors.invalidGenerator);
   }
   if (
@@ -112,10 +115,14 @@ export function generateHighEntropyPassword(options: GeneratorOptions): string {
 
   let digestIndex = 0;
   const pickCharacter = (characters: string): string => {
-    const personalByte = personalDigest[digestIndex % personalDigest.length] ?? 0;
+    // `readUInt8` devolve um byte do Buffer (tipado `number`, sem o
+    // `number | undefined` do índice) e o módulo garante o deslocamento dentro
+    // do digest, então o ciclo não precisa de valor de reserva.
+    const personalByte = personalDigest.readUInt8(digestIndex % personalDigest.length);
     digestIndex += 1;
     const roll = (personalByte + crypto.randomInt(characters.length)) % characters.length;
-    return characters[roll] ?? '';
+    // `charAt` já devolve `string` para qualquer índice, ao contrário de `[roll]`.
+    return characters.charAt(roll);
   };
   const literalCharacters = options.includeCustomEntropyWords
     ? Array.from(options.customEntropyWords.join(''))
@@ -139,6 +146,8 @@ export function generateHighEntropyPassword(options: GeneratorOptions): string {
 
   for (let i = passwordCharacters.length - 1; i > 0; i--) {
     const swapIndex = crypto.randomInt(i + 1);
+    /* v8 ignore next 4 -- os dois índices vêm de `randomInt` e nunca saem da
+       faixa; o `??` existe só para o `noUncheckedIndexedAccess`. */
     [passwordCharacters[i], passwordCharacters[swapIndex]] = [
       passwordCharacters[swapIndex] ?? '',
       passwordCharacters[i] ?? '',

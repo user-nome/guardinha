@@ -13,7 +13,6 @@ import { readVaultContainer, writeVaultContainer } from '@zero/main/storage';
 import { vaultSession } from '@zero/main/session';
 import { keyUnwrapperFor } from '@zero/main/unwrapping';
 import {
-  MIN_NUKE_LIMIT,
   clearPanicPin,
   createVault,
   getStatus,
@@ -23,6 +22,7 @@ import {
   setPanicPin,
   unlock,
 } from '@zero/main/vault';
+import { MIN_NUKE_LIMIT } from '@zero/shared/auth-constants';
 import { KDF_PIN } from '@zero/main/crypto';
 
 const MASTER = 'senha-mestra-guardinha24';

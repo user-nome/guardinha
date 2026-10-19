@@ -2,13 +2,15 @@ import crypto from 'node:crypto';
 import { argon2id } from 'hash-wasm';
 import { isRecord } from '@zero/shared/record';
 import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
-
-/**
- * Faixa aceita na *leitura* de um container. Serve só para que um arquivo
- * adulterado não faça o app alocar GiB ou rodar horas (DoS local): o piso não
- * é garantia de segurança, o que protege é o custo que gravamos na escrita
- * (perfis abaixo). Estourou a faixa → arquivo tratado como adulterado.
- */
+import {
+  KEY_BYTES,
+  SALT_BYTES,
+  IV_BYTES,
+  AES_ALGORITHM,
+  HKDF_ALGORITHM,
+  KEY_INFO_ENTRY,
+  KEY_INFO_AUTH,
+} from '@zero/main/crypto-constants';
 export const KDF_LIMITS = {
   memoryKiB: [16_384, 1_048_576] as const,
   iterations: [1, 8] as const,
@@ -57,7 +59,7 @@ export async function deriveKey(
     salt: new Uint8Array(salt),
     parallelism: params.parallelism,
     iterations: params.iterations,
-    hashLength: 32,
+    hashLength: KEY_BYTES,
     memorySize: params.memoryKiB,
     outputType: 'hex',
   });
@@ -69,11 +71,9 @@ export async function deriveKey(
  * e um token de 2FA com o mesmo salt nunca produzem a mesma chave, mesmo
  * acidentalmente. Trocar um rótulo invalida os arquivos já gravados.
  */
-const KEY_INFO_ENTRY = 'guardinha-vault-entry-v1';
-const KEY_INFO_AUTH = 'guardinha-vault-auth-v1';
 
 function deriveRecordKey(vaultKey: Buffer, salt: Buffer, info: string): Buffer {
-  return Buffer.from(crypto.hkdfSync('sha512', vaultKey, salt, info, 32));
+  return Buffer.from(crypto.hkdfSync(HKDF_ALGORITHM, vaultKey, salt, info, KEY_BYTES));
 }
 
 /** Mesma derivação, com o rótulo dos tokens de 2FA. */
@@ -104,11 +104,11 @@ export function randomUuid(): string {
  * tamanho destes dois.
  */
 export function encryptRecord(data: object, key: Buffer, info = KEY_INFO_ENTRY): SaltedPayload {
-  const salt = crypto.randomBytes(16);
+  const salt = crypto.randomBytes(SALT_BYTES);
   const entryKey = deriveRecordKey(key, salt, info);
-  const iv = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(IV_BYTES);
 
-  const cipher = crypto.createCipheriv('aes-256-gcm', entryKey, iv);
+  const cipher = crypto.createCipheriv(AES_ALGORITHM, entryKey, iv);
   const jsonStr = JSON.stringify(data);
   let encrypted = cipher.update(jsonStr, 'utf8', 'hex');
   encrypted += cipher.final('hex');
@@ -130,7 +130,7 @@ export function decryptRecord(
 ): unknown {
   const salt = Buffer.from(payload.salt, 'hex');
   const entryKey = deriveRecordKey(vaultKey, salt, info);
-  const decipher = crypto.createDecipheriv('aes-256-gcm', entryKey, Buffer.from(payload.iv, 'hex'));
+  const decipher = crypto.createDecipheriv(AES_ALGORITHM, entryKey, Buffer.from(payload.iv, 'hex'));
   decipher.setAuthTag(Buffer.from(payload.tag, 'hex'));
 
   let decrypted = decipher.update(payload.encryptedData, 'hex', 'utf8');

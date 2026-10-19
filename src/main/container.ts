@@ -2,6 +2,42 @@ import { decryptRecord, encryptRecord, isValidKdfParams } from '@zero/main/crypt
 import { currentMessages } from '@zero/main/i18n';
 import { isRecord } from '@zero/shared/record';
 import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
+import {
+  VAULT_MAGIC,
+  ENTRY_MAGIC,
+  VAULT_VERSION,
+  MANIFEST_VERSION,
+  MAGIC_BYTES,
+  UINT32_BYTES,
+  METHOD_KDF_BYTES,
+  BLOB_HEADER_BYTES,
+  VAULT_HEADER_BYTES,
+  ENTRY_HEADER_BYTES,
+  BLOB_SALT_OFFSET,
+  BLOB_IV_OFFSET,
+  BLOB_TAG_OFFSET,
+  BLOB_LENGTH_OFFSET,
+  BLOB_TEXT_OFFSET,
+  ENTRY_SALT_OFFSET,
+  ENTRY_IV_OFFSET,
+  ENTRY_TAG_OFFSET,
+  ENTRY_LENGTH_OFFSET,
+  ENTRY_TEXT_OFFSET,
+  FLAG_MASTER,
+  FLAG_PIN,
+  FLAG_RECOVERY,
+  SALT_BYTES,
+  FLAG_MANIFEST,
+  FLAG_PANIC,
+  FLAGS_ALL,
+  VERSION_OFFSET,
+  CREATED_AT_OFFSET,
+  ATTEMPTS_OFFSET,
+  LOCK_UNTIL_OFFSET,
+  FLAGS_OFFSET,
+  ATTEMPTS_MASTER_OFFSET,
+  NUKE_LIMIT_OFFSET,
+} from '@zero/main/container-format';
 
 /**
  * Formato binário do cofre. Nenhum arquivo legível de fora do app:
@@ -15,43 +51,6 @@ import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
  * da faixa ou byte adulterado devolvem `null` (ou lançam), nunca conteúdo em
  * claro.
  */
-const VAULT_MAGIC = Buffer.from('ZKVAULT1', 'ascii');
-const ENTRY_MAGIC = Buffer.from('ZENTRY01', 'ascii');
-
-/**
- * Versão 5: o cabeçalho perdeu o tripo global de KDF, que desde a v3 era só
- * informativo (cada método já carrega o custo do próprio Argon2id) e desde a v4
- * não era lido por nada. Uma versão só, sem caminho de leitura anterior: o app
- * ainda não tem usuários, então formato antigo não tem a quem proteger.
- */
-const VAULT_VERSION = 5;
-
-/**
- * Cabeçalho de 41 bytes, único e sem versão-dependente:
- *
- * `magic(8) + version(4) + createdAt(8) + attempts(4) + lockUntil(8) + flags(1)
- *  + attemptsMaster(4) + nukeLimit(4)`
- */
-const HEADER_BYTES = 41;
-const METHOD_KDF_BYTES = 12;
-/** `salt(16) + iv(16) + tag(16) + ctLen(4)` antes do texto cifrado. */
-const BLOB_HEAD_BYTES = 52;
-const ENTRY_HEADER_BYTES = 8 + BLOB_HEAD_BYTES;
-
-const FLAG_MASTER = 0x01;
-const FLAG_PIN = 0x02;
-const FLAG_RECOVERY = 0x04;
-const FLAG_MANIFEST = 0x08;
-/** Embrulho de uma chave *decoy*, controlado pelo PIN de coação. */
-export const FLAG_PANIC = 0x10;
-const FLAGS_ALL = FLAG_MASTER | FLAG_PIN | FLAG_RECOVERY | FLAG_MANIFEST | FLAG_PANIC;
-
-/**
- * Versão do manifesto. O `v` mora dentro do blob AES-256-GCM, então ele não
- * aparece no cabeçalho do container: mudar o manifesto não muda o formato em
- * disco, e o blob continua opaco para quem não tem a chave do cofre.
- */
-const MANIFEST_VERSION = 2;
 
 export interface VaultKdfParams extends Argon2Params {
   algo: 'argon2id';
@@ -114,11 +113,11 @@ interface MethodRead {
 }
 
 function blobBytes(payload: SaltedPayload): number {
-  return BLOB_HEAD_BYTES + Buffer.from(payload.encryptedData, 'hex').length;
+  return BLOB_HEADER_BYTES + Buffer.from(payload.encryptedData, 'hex').length;
 }
 
 function methodBlobBytes(method: WrappedMethod): number {
-  return METHOD_KDF_BYTES + 16 + blobBytes(method.payload);
+  return METHOD_KDF_BYTES + SALT_BYTES + blobBytes(method.payload);
 }
 
 function assertKdf(value: VaultKdfParams): void {
@@ -126,26 +125,26 @@ function assertKdf(value: VaultKdfParams): void {
 }
 
 function writeBlob(buffer: Buffer, offset: number, payload: SaltedPayload): number {
-  Buffer.from(payload.salt, 'hex').copy(buffer, offset);
-  Buffer.from(payload.iv, 'hex').copy(buffer, offset + 16);
-  Buffer.from(payload.tag, 'hex').copy(buffer, offset + 32);
+  Buffer.from(payload.salt, 'hex').copy(buffer, offset + BLOB_SALT_OFFSET);
+  Buffer.from(payload.iv, 'hex').copy(buffer, offset + BLOB_IV_OFFSET);
+  Buffer.from(payload.tag, 'hex').copy(buffer, offset + BLOB_TAG_OFFSET);
   const text = Buffer.from(payload.encryptedData, 'hex');
-  buffer.writeUInt32BE(text.length, offset + 48);
-  text.copy(buffer, offset + 52);
-  return offset + 52 + text.length;
+  buffer.writeUInt32BE(text.length, offset + BLOB_LENGTH_OFFSET);
+  text.copy(buffer, offset + BLOB_TEXT_OFFSET);
+  return offset + BLOB_HEADER_BYTES + text.length;
 }
 
 function readBlob(buffer: Buffer, offset: number): BlobRead | null {
-  const head = offset + BLOB_HEAD_BYTES;
+  const head = offset + BLOB_HEADER_BYTES;
   if (head > buffer.length) return null;
-  const textLength = buffer.readUInt32BE(offset + 48);
+  const textLength = buffer.readUInt32BE(offset + BLOB_LENGTH_OFFSET);
   const end = head + textLength;
   if (end > buffer.length) return null;
   return {
     payload: {
-      salt: buffer.subarray(offset, offset + 16).toString('hex'),
-      iv: buffer.subarray(offset + 16, offset + 32).toString('hex'),
-      tag: buffer.subarray(offset + 32, offset + 48).toString('hex'),
+      salt: buffer.subarray(offset + BLOB_SALT_OFFSET, offset + BLOB_IV_OFFSET).toString('hex'),
+      iv: buffer.subarray(offset + BLOB_IV_OFFSET, offset + BLOB_TAG_OFFSET).toString('hex'),
+      tag: buffer.subarray(offset + BLOB_TAG_OFFSET, offset + BLOB_LENGTH_OFFSET).toString('hex'),
       encryptedData: buffer.subarray(head, end).toString('hex'),
     },
     next: end,
@@ -154,10 +153,10 @@ function readBlob(buffer: Buffer, offset: number): BlobRead | null {
 
 function writeMethodBlob(buffer: Buffer, offset: number, method: WrappedMethod): number {
   buffer.writeUInt32BE(method.kdf.memoryKiB, offset);
-  buffer.writeUInt32BE(method.kdf.iterations, offset + 4);
-  buffer.writeUInt32BE(method.kdf.parallelism, offset + 8);
+  buffer.writeUInt32BE(method.kdf.iterations, offset + UINT32_BYTES);
+  buffer.writeUInt32BE(method.kdf.parallelism, offset + 2 * UINT32_BYTES);
   Buffer.from(method.kdfSalt, 'hex').copy(buffer, offset + METHOD_KDF_BYTES);
-  return writeBlob(buffer, offset + METHOD_KDF_BYTES + 16, method.payload);
+  return writeBlob(buffer, offset + METHOD_KDF_BYTES + SALT_BYTES, method.payload);
 }
 
 function readKdfAt(buffer: Buffer, offset: number): VaultKdfParams | null {
@@ -165,20 +164,20 @@ function readKdfAt(buffer: Buffer, offset: number): VaultKdfParams | null {
   const kdf: VaultKdfParams = {
     algo: 'argon2id',
     memoryKiB: buffer.readUInt32BE(offset),
-    iterations: buffer.readUInt32BE(offset + 4),
-    parallelism: buffer.readUInt32BE(offset + 8),
+    iterations: buffer.readUInt32BE(offset + UINT32_BYTES),
+    parallelism: buffer.readUInt32BE(offset + 2 * UINT32_BYTES),
   };
   return isValidKdfParams(kdf) ? kdf : null;
 }
 
 function readMethodBlob(buffer: Buffer, offset: number, kdf: VaultKdfParams): MethodRead | null {
-  if (offset + 16 > buffer.length) return null;
-  const read = readBlob(buffer, offset + 16);
+  if (offset + SALT_BYTES > buffer.length) return null;
+  const read = readBlob(buffer, offset + SALT_BYTES);
   if (read === null) return null;
   return {
     method: {
       kdf,
-      kdfSalt: buffer.subarray(offset, offset + 16).toString('hex'),
+      kdfSalt: buffer.subarray(offset, offset + SALT_BYTES).toString('hex'),
       payload: read.payload,
     },
     next: read.next,
@@ -193,7 +192,7 @@ export function packVaultContainer(data: VaultContainerData): Buffer {
     [FLAG_PANIC, data.methods.panic],
   ];
   let flags = 0;
-  let size = HEADER_BYTES;
+  let size = VAULT_HEADER_BYTES;
   for (const [flag, method] of methods) {
     if (method !== undefined) {
       assertKdf(method.kdf);
@@ -208,15 +207,15 @@ export function packVaultContainer(data: VaultContainerData): Buffer {
 
   const buffer = Buffer.alloc(size);
   VAULT_MAGIC.copy(buffer, 0);
-  buffer.writeUInt32BE(VAULT_VERSION, 8);
-  buffer.writeBigUInt64BE(BigInt(data.createdAt), 12);
-  buffer.writeUInt32BE(data.attempts, 20);
-  buffer.writeBigInt64BE(BigInt(data.lockUntil ?? 0), 24);
-  buffer.writeUInt8(flags, 32);
-  buffer.writeUInt32BE(data.attemptsMaster, 33);
-  buffer.writeUInt32BE(data.nukeLimit, 37);
+  buffer.writeUInt32BE(VAULT_VERSION, VERSION_OFFSET);
+  buffer.writeBigUInt64BE(BigInt(data.createdAt), CREATED_AT_OFFSET);
+  buffer.writeUInt32BE(data.attempts, ATTEMPTS_OFFSET);
+  buffer.writeBigInt64BE(BigInt(data.lockUntil ?? 0), LOCK_UNTIL_OFFSET);
+  buffer.writeUInt8(flags, FLAGS_OFFSET);
+  buffer.writeUInt32BE(data.attemptsMaster, ATTEMPTS_MASTER_OFFSET);
+  buffer.writeUInt32BE(data.nukeLimit, NUKE_LIMIT_OFFSET);
 
-  let cursor = HEADER_BYTES;
+  let cursor = VAULT_HEADER_BYTES;
   for (const [flag, method] of methods) {
     if (method !== undefined && (flags & flag) !== 0) {
       cursor = writeMethodBlob(buffer, cursor, method);
@@ -241,17 +240,17 @@ export type VaultUnpackResult =
   | { ok: false; reason: VaultUnpackFailure; version?: number };
 
 export function unpackVaultContainer(buffer: Buffer): VaultUnpackResult {
-  if (buffer.length < HEADER_BYTES) return { ok: false, reason: 'damaged' };
-  if (!buffer.subarray(0, 8).equals(VAULT_MAGIC)) return { ok: false, reason: 'damaged' };
+  if (buffer.length < VAULT_HEADER_BYTES) return { ok: false, reason: 'damaged' };
+  if (!buffer.subarray(0, MAGIC_BYTES).equals(VAULT_MAGIC)) return { ok: false, reason: 'damaged' };
   // versão diferente é arquivo de outra época (ou de futuro): fail-closed, mas
   // com o número à mão para a tela explicar o que aconteceu
-  const version = buffer.readUInt32BE(8);
+  const version = buffer.readUInt32BE(VERSION_OFFSET);
   if (version !== VAULT_VERSION) return { ok: false, reason: 'unsupported-version', version };
-  const flags = buffer.readUInt8(32);
+  const flags = buffer.readUInt8(FLAGS_OFFSET);
   // flag desconhecida = arquivo adulterado (ou de versão futura): fail-closed
   if ((flags & ~FLAGS_ALL) !== 0) return { ok: false, reason: 'damaged' };
 
-  let cursor = HEADER_BYTES;
+  let cursor = VAULT_HEADER_BYTES;
   const methods: VaultContainerData['methods'] = {};
   const entries: [number, WrappedMethodName][] = [
     [FLAG_MASTER, 'master'],
@@ -283,15 +282,15 @@ export function unpackVaultContainer(buffer: Buffer): VaultUnpackResult {
     return { ok: false, reason: 'damaged' };
   }
 
-  const lockUntilRaw = buffer.readBigInt64BE(24);
+  const lockUntilRaw = buffer.readBigInt64BE(LOCK_UNTIL_OFFSET);
   return {
     ok: true,
     data: {
-      createdAt: Number(buffer.readBigUInt64BE(12)),
-      attempts: buffer.readUInt32BE(20),
+      createdAt: Number(buffer.readBigUInt64BE(CREATED_AT_OFFSET)),
+      attempts: buffer.readUInt32BE(ATTEMPTS_OFFSET),
       lockUntil: lockUntilRaw === 0n ? null : Number(lockUntilRaw),
-      attemptsMaster: buffer.readUInt32BE(33),
-      nukeLimit: buffer.readUInt32BE(37),
+      attemptsMaster: buffer.readUInt32BE(ATTEMPTS_MASTER_OFFSET),
+      nukeLimit: buffer.readUInt32BE(NUKE_LIMIT_OFFSET),
       methods,
       manifest,
     },
@@ -302,24 +301,24 @@ export function packEntryPayload(payload: SaltedPayload): Buffer {
   const text = Buffer.from(payload.encryptedData, 'hex');
   const buffer = Buffer.alloc(ENTRY_HEADER_BYTES + text.length);
   ENTRY_MAGIC.copy(buffer, 0);
-  Buffer.from(payload.salt, 'hex').copy(buffer, 8);
-  Buffer.from(payload.iv, 'hex').copy(buffer, 24);
-  Buffer.from(payload.tag, 'hex').copy(buffer, 40);
-  buffer.writeUInt32BE(text.length, 56);
-  text.copy(buffer, 60);
+  Buffer.from(payload.salt, 'hex').copy(buffer, ENTRY_SALT_OFFSET);
+  Buffer.from(payload.iv, 'hex').copy(buffer, ENTRY_IV_OFFSET);
+  Buffer.from(payload.tag, 'hex').copy(buffer, ENTRY_TAG_OFFSET);
+  buffer.writeUInt32BE(text.length, ENTRY_LENGTH_OFFSET);
+  text.copy(buffer, ENTRY_TEXT_OFFSET);
   return buffer;
 }
 
 export function unpackEntryPayload(buffer: Buffer): SaltedPayload | null {
   if (buffer.length < ENTRY_HEADER_BYTES) return null;
-  if (!buffer.subarray(0, 8).equals(ENTRY_MAGIC)) return null;
-  const textLength = buffer.readUInt32BE(56);
+  if (!buffer.subarray(0, MAGIC_BYTES).equals(ENTRY_MAGIC)) return null;
+  const textLength = buffer.readUInt32BE(ENTRY_LENGTH_OFFSET);
   if (buffer.length !== ENTRY_HEADER_BYTES + textLength) return null;
   return {
-    salt: buffer.subarray(8, 24).toString('hex'),
-    iv: buffer.subarray(24, 40).toString('hex'),
-    tag: buffer.subarray(40, 56).toString('hex'),
-    encryptedData: buffer.subarray(60).toString('hex'),
+    salt: buffer.subarray(ENTRY_SALT_OFFSET, ENTRY_IV_OFFSET).toString('hex'),
+    iv: buffer.subarray(ENTRY_IV_OFFSET, ENTRY_TAG_OFFSET).toString('hex'),
+    tag: buffer.subarray(ENTRY_TAG_OFFSET, ENTRY_LENGTH_OFFSET).toString('hex'),
+    encryptedData: buffer.subarray(ENTRY_TEXT_OFFSET).toString('hex'),
   };
 }
 

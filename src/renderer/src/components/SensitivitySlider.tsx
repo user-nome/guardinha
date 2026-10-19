@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useRef } from 'react';
 import type {
   JSX,
   KeyboardEvent as ReactKeyboardEvent,
@@ -43,18 +43,18 @@ export function SensitivitySlider({
   label,
   onChange,
 }: SensitivitySliderProps): JSX.Element {
-  const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
-
-  const stepPx = useCallback((): number => {
-    const width = trackRef.current?.clientWidth ?? 480;
-    const natural = width / Math.max(1, max - min);
-    return Math.max(MIN_STEP_PX, natural);
-  }, [max, min]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { startX: event.clientX, startValue: value, stepPx: stepPx() };
+    // O passo segue a largura da faixa no momento do toque: `currentTarget` é o
+    // próprio trilho, então não há ref a consultar nem largura de reserva.
+    const natural = event.currentTarget.clientWidth / Math.max(1, max - min);
+    dragRef.current = {
+      startX: event.clientX,
+      startValue: value,
+      stepPx: Math.max(MIN_STEP_PX, natural),
+    };
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -92,7 +92,6 @@ export function SensitivitySlider({
 
   return (
     <div
-      ref={trackRef}
       role="slider"
       tabIndex={0}
       aria-label={label}

@@ -6,6 +6,51 @@ em português do Brasil.
 
 ## [Não lançado]
 
+### Alterado
+
+- **Colunas dos cartões pela largura da janela.** As grades do Início e do
+  Verificador 2FA deixaram de usar _container query_ (que mediava a coluna de
+  conteúdo, limitada a `max-w-6xl`, e por isso nunca passava de duas colunas)
+  e passaram a contar a janela: uma coluna até 767 px, duas dali até 1535 px e
+  três acima disso. O cartão do token é o mais largo da casa, então ele só vira
+  três colunas em 1536 px; o da credencial aceita a terceira em 1280 px. A regra
+  mora em um lugar só (`src/renderer/src/card-grid.ts`).
+- **Janela mais estreita.** O `minWidth` caiu de 520 px para 400 px, que é a
+  largura em que a grade já é uma coluna e a Sidebar já é o trilho de ícones.
+- **Cobertura de 100%.** O piso de linhas, comandos, funções e ramos subiu de
+  95% para 100% em `vitest.config.mts`. Os últimos ramos ou saíram do código
+  (índice preso a uma união de literais em `strength.ts`, `charAt` no lugar do
+  índice de string no gerador, separador do `otpauth://` fatiado pelo `index`,
+  largura da faixa lida do `currentTarget` no slider, exclusão sem `entry`
+  nulo no modal de credencial) ou ficaram com `/* v8 ignore next */` e o motivo
+  ao lado, quando a guarda só cobre um estado que a interface impede.
+
+## [1.9.1] - 2026-10-19
+
+### Alterado
+
+- **Constantes centralizadas.** Números mágicos espalhados pelo código (tempos de
+  trava, tetos de gerador, parâmetros do TOTP, passadas de shred, limites da
+  autodestruição) foram extraídos para módulos dedicados em `src/main/`,
+  `src/shared/` e `src/types/`. Cada constante agora tem um nome semântico e
+  comentário explicando a origem, facilitando auditoria e ajustes futuros.
+- **Formatos de disco documentados.** O layout binário do `vault.zkv` e do
+  `.zke` passou a viver em `src/main/container-format.ts`, com offsets e
+  tamanhos nomeados; o formato do backup `.gbk` em `src/main/backup-constants.ts`.
+- **Tipagem enxuta.** Tipos inline complexos, asserções `as unknown` e uniões
+  anônimas foram movidos para `src/types/` onde atravessam o IPC ou são
+  compartilhados entre `main` e `renderer`; o que é local de um módulo ficou no
+  próprio arquivo.
+
+### Adicionado
+
+- **Testes para as novas constantes.** `tests/main/backup-constants.test.ts` e
+  `tests/shared/otp-constants.test.ts` garantem que os valores exportados
+  existem e têm o formato esperado.
+- **Módulos `time.ts`, `crypto-constants.ts`, `container-format.ts`,
+  `generator-constants.ts`, `auth-constants.ts`, `window-constants.ts`,
+  `backup-constants.ts`, `otp-constants.ts`.**
+
 ## [1.8.1] - 2026-10-17
 
 ### Adicionado

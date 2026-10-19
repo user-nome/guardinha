@@ -10,7 +10,7 @@ teste). O **score** é a porcentagem de mutantes mortos.
 
 Cobertura alta com score baixo é o caso comum de uma suíte que passa por cima da
 lógica sem conferir as decisões. Neste repositório os dois números são
-complementares: o limiar de 95% de cobertura é o piso, o score de mutação é o
+complementares: o limiar de 100% de cobertura é o piso, o score de mutação é o
 que diz se esse piso significa alguma coisa.
 
 ## Como rodar

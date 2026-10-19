@@ -21,6 +21,9 @@ export function DestroyModal({ onClose, onDestroyed }: DestroyModalProps): JSX.E
   const matches = typed === m.panic.confirmWord;
 
   const handleDestroy = async (): Promise<void> => {
+    /* v8 ignore next -- o botão só habilita com a palavra certa e sem operação
+       em curso; a guarda é a rede para quem chamar o manipulador por outro
+       caminho, e não pode sair de uma ação irreversível. */
     if (!matches || busy) return;
     setBusy(true);
     try {

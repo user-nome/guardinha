@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
+import { FLAG_PANIC } from '@zero/main/container-format';
 import {
-  FLAG_PANIC,
   openManifest,
   packEntryPayload,
   packVaultContainer,

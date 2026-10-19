@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { PRIVILEGE_TIMEOUT_MS } from '@zero/shared/auth-constants';
 
 function hasVaultOverride(): boolean {
   const dir = process.env.GUARDINHA_VAULT_DIR;
@@ -24,7 +25,7 @@ export function setupVaultDirectory(): boolean {
     const resourcesPath: unknown = 'resourcesPath' in process ? process.resourcesPath : undefined;
     const resources = typeof resourcesPath === 'string' ? resourcesPath : '';
     const helper = path.join(resources, 'guardinha-setup');
-    const result = spawnSync('pkexec', [helper], { timeout: 120_000 });
+    const result = spawnSync('pkexec', [helper], { timeout: PRIVILEGE_TIMEOUT_MS });
     return result.status === 0;
   } catch {
     return false;

@@ -11,9 +11,9 @@ import type { JSX, ReactNode } from 'react';
  * - **limita a largura máxima por tipo de tela**: formulário estreito (Gerador,
  *   Configurações, Backup) lê melhor numa coluna curta do que esticado num
  *   monitor largo; grade de cartões (Início, 2FA) é o contrário;
- * - **é o contêiner das consultas de container**: os cartões reorganizam as
- *   colunas conforme o espaço que sobra na área de conteúdo, não conforme a
- *   largura da janela, então uma barra lateral recolhida também conta.
+ * - **põe o teto das colunas**: numa tela muito larga os cartões param de
+ *   esticar e continuam em três, porque a contagem de colunas mora em
+ *   `card-grid.ts`, que decide pela largura da janela, e não por esta coluna.
  */
 export type PageWidth = 'narrow' | 'medium' | 'wide';
 
@@ -41,7 +41,7 @@ export function Page({
   children,
 }: PageProps): JSX.Element {
   return (
-    <div className={`@container mx-auto w-full space-y-6 ${WIDTH_CLASS[width]}`}>
+    <div className={`mx-auto w-full space-y-6 ${WIDTH_CLASS[width]}`}>
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <h2 className="text-2xl font-bold text-slate-100">{title}</h2>

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { Copy, KeyRound, Plus, Trash2 } from 'lucide-react';
 import { richText, useMessages } from '@zero/renderer/i18n';
+import { CARD_GRID } from '@zero/renderer/card-grid';
 import { copyAndAutoClear } from '@zero/renderer/clipboard';
 import { AuthTokenModal } from '@zero/renderer/components/AuthTokenModal';
 import { Page } from '@zero/renderer/components/Page';
 import { errorMessage } from '@zero/shared';
 import { useLatest } from '@zero/renderer/hooks';
+import { TICK_MS } from '@zero/shared/auth-constants';
 import type { AuthCode, AuthToken } from '@zero/types';
 
 /**
@@ -24,9 +26,6 @@ import type { AuthCode, AuthToken } from '@zero/types';
 interface AuthenticatorProps {
   onToast: (message: string) => void;
 }
-
-/** Passo do relógio da contagem regressiva e da virada de período do TOTP. */
-const TICK_MS = 1000;
 
 /** Código exibido com o instante em que deixa de valer. */
 interface ShownCode {
@@ -152,9 +151,10 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
         </div>
       ) : (
         /*
-         O cartão do token é largo (código, contagem e cópia na mesma linha), então
-         a grade só vira duas colunas e para: três deixariam o código espremido. */
-        <ul className="grid grid-cols-1 gap-3 @4xl:grid-cols-2">
+         O cartão do token é o mais largo da casa (código, contagem e cópia na
+         mesma linha), então ele usa a regra `wide`: uma coluna até 768 px, duas
+         dali até 1536 px e três acima disso. Ver `card-grid.ts`. */
+        <ul className={CARD_GRID.wide}>
           {tokens.map((token) => {
             const shown = codes[token.id];
             const left = shown === undefined ? 0 : Math.max(0, shown.expiresAt - now);
@@ -208,9 +208,7 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (shown !== undefined) handleCopy(shown);
-                      }}
+                      onClick={shown === undefined ? undefined : (): void => handleCopy(shown)}
                       disabled={shown === undefined}
                       title={m.common.copy}
                       className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-100 disabled:opacity-40"

@@ -38,6 +38,15 @@ import {
 } from '@zero/main/protocol';
 import { loadSettings, saveSettings } from '@zero/main/settings';
 import { currentMessages } from '@zero/main/i18n';
+import { STALE_TMP_MS } from '@zero/shared/auth-constants';
+import {
+  WINDOW_WIDTH,
+  WINDOW_HEIGHT,
+  WINDOW_MIN_WIDTH,
+  WINDOW_MIN_HEIGHT,
+  WINDOW_TITLE,
+  WINDOW_BACKGROUND_COLOR,
+} from '@zero/main/window-constants';
 import type {
   AppSettings,
   AuthTokenDraft,
@@ -48,14 +57,6 @@ import type {
   ResetPinInput,
   UnlockInput,
 } from '@zero/types';
-
-/**
- * Temporário órfão só é perigoso enquanto pode ser confundido com uma escrita
- * em curso; depois de um minuto ele é lixo puro (e, no caso do `.tmp` do
- * container, uma cópia dos blobs de chave). A varredura roda uma vez, aqui no
- * boot, antes de o primeiro `vault:status` responder.
- */
-const STALE_TMP_MS = 60_000;
 
 // o Electron exige a declaração do scheme antes do app ficar pronto, então ela
 // roda no topo do módulo, e não dentro do `whenReady`
@@ -93,12 +94,15 @@ function pickOpenPath(options: OpenDialogOptions): string | null {
 function createWindow(): void {
   const iconPath = resolveWindowIcon();
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 520,
-    minHeight: 360,
-    title: 'Guardinha',
-    backgroundColor: '#020617',
+    width: WINDOW_WIDTH,
+    height: WINDOW_HEIGHT,
+    // 400 px é a janela mais estreita em que o app ainda se lê: a grade de
+    // cartões já é uma coluna só e a Sidebar já é o trilho de ícones, então
+    // estreitar mais só corta texto. Ver `src/renderer/src/card-grid.ts`.
+    minWidth: WINDOW_MIN_WIDTH,
+    minHeight: WINDOW_MIN_HEIGHT,
+    title: WINDOW_TITLE,
+    backgroundColor: WINDOW_BACKGROUND_COLOR,
     ...(iconPath === undefined ? {} : { icon: iconPath }),
     show: false,
     webPreferences: {

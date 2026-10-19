@@ -28,9 +28,9 @@ describe('Page: coluna de conteúdo', () => {
 
     expect(root.className).toContain('mx-auto');
     expect(root.className).toContain('max-w-4xl');
-    // o contêiner é o que faz os cartões reagirem ao espaço disponível, e não
-    // à largura da janela
-    expect(root.className).toContain('@container');
+    // a contagem de colunas dos cartões não mora aqui, e sim em `card-grid.ts`,
+    // que decide pela largura da janela; esta coluna só põe o teto de largura
+    expect(root.className).not.toContain('@container');
   });
 
   it('aceita a largura que a tela precisa', () => {
