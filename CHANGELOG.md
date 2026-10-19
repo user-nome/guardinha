@@ -6,6 +6,18 @@ em português do Brasil.
 
 ## [Não lançado]
 
+### Alterado
+
+- **Colunas dos cartões pela largura da janela.** As grades do Início e do
+  Verificador 2FA deixaram de usar _container query_ (que mediava a coluna de
+  conteúdo, limitada a `max-w-6xl`, e por isso nunca passava de duas colunas)
+  e passaram a contar a janela: uma coluna até 767 px, duas dali até 1535 px e
+  três acima disso. O cartão do token é o mais largo da casa, então ele só vira
+  três colunas em 1536 px; o da credencial aceita a terceira em 1280 px. A regra
+  mora em um lugar só (`src/renderer/src/card-grid.ts`).
+- **Janela mais estreita.** O `minWidth` caiu de 520 px para 400 px, que é a
+  largura em que a grade já é uma coluna e a Sidebar já é o trilho de ícones.
+
 ## [1.8.1] - 2026-10-17
 
 ### Adicionado

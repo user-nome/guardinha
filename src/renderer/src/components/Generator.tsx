@@ -166,7 +166,7 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
           {toggles.map((toggle) => (
             <div
               key={toggle.label}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-emerald-500/20"
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-slate-600"
             >
               <label className="flex min-w-0 items-center gap-2 cursor-pointer">
                 <input

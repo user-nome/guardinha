@@ -95,7 +95,10 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 520,
+    // 400 px é a janela mais estreita em que o app ainda se lê: a grade de
+    // cartões já é uma coluna só e a Sidebar já é o trilho de ícones, então
+    // estreitar mais só corta texto. Ver `src/renderer/src/card-grid.ts`.
+    minWidth: 400,
     minHeight: 360,
     title: 'Guardinha',
     backgroundColor: '#020617',

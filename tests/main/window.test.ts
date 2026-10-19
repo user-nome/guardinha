@@ -62,7 +62,9 @@ describe('guardas de navegação e sessão', () => {
     const win = await waitForWindow();
     expect(win.options.width).toBe(1200);
     expect(win.options.height).toBe(800);
-    expect(win.options.minWidth).toBe(520);
+    // 400 px é a grade em uma coluna com a Sidebar já em trilho: estreitar mais
+    // só corta texto (ver `src/renderer/src/card-grid.ts`)
+    expect(win.options.minWidth).toBe(400);
     expect(win.options.minHeight).toBe(360);
     expect(win.options.title).toBe('Guardinha');
     expect(win.options.backgroundColor).toBe('#020617');

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { Copy, Globe, KeyRound, Pencil, Plus, Search, User } from 'lucide-react';
 import { useMessages } from '@zero/renderer/i18n';
+import { CARD_GRID } from '@zero/renderer/card-grid';
 import { copyAndAutoClear } from '@zero/renderer/clipboard';
 import { errorMessage } from '@zero/shared';
 import { useLatest } from '@zero/renderer/hooks';
@@ -132,11 +133,11 @@ export function Home({ onToast }: HomeProps): JSX.Element {
           <p className="text-sm text-slate-400">{m.home.emptyFoundText}</p>
         </div>
       ) : (
-        /* A grade conta o espaço que sobrou na área de conteúdo, e não a largura
-           da janela: uma coluna quando o cartão não cabe com folga, duas e três
-           conforme a coluna cresce. Cartão estreito demais (nome cortado no
-           meio) é pior que cartão em pilha. */
-        <div className="grid grid-cols-1 gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
+        /* A grade conta a largura da janela, e não o espaço que sobrou: uma
+           coluna quando o cartão não cabe com folga, duas e três conforme a
+           janela cresce. Cartão estreito demais (nome cortado no meio) é pior
+           que cartão em pilha. Ver `card-grid.ts`. */
+        <div className={CARD_GRID.compact}>
           {filtered.map((entry) => (
             <div
               key={entry.id}
