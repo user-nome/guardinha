@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { SHRED_PASSES, MAX_SHRED_PASSES, SHRED_BLOCK_BYTES } from '@zero/shared/auth-constants';
 
 /**
  * Sobrescrita de arquivo antes da remoção (File Shredding). É a base física do
@@ -23,13 +24,13 @@ import path from 'node:path';
  */
 
 /** Passadas por padrão: 3 é o padrão do `shred(1)` e o suficiente aqui. */
-export const SHRED_PASSES = 3;
+export { SHRED_PASSES };
 
 /** Teto aceito do chamador; acima disso a sobrescrita só gasta I/O. */
-const MAX_PASSES = 16;
+const MAX_PASSES = MAX_SHRED_PASSES;
 
 /** Bloco de escrita: 64 KiB equilibra cache de página e número de syscalls. */
-const BLOCK_BYTES = 64 * 1024;
+const BLOCK_BYTES = SHRED_BLOCK_BYTES;
 
 /** Tenta abrir o diretório pai em leitura, para sincronizar a remoção. */
 function fsyncDirectory(dir: string): void {

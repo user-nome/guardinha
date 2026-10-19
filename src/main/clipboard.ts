@@ -1,7 +1,5 @@
 import { clipboard } from 'electron';
-
-/** Limpeza automática 30 s depois da cópia. */
-const CLEAR_AFTER_MS = 30_000;
+import { CLEAR_CLIPBOARD_MS } from '@zero/shared/auth-constants';
 
 /**
  * Proxy do clipboard nativo: o processo main é o único a tocar
@@ -22,7 +20,7 @@ export class SecureClipboardProxy {
     this.timer = setTimeout(() => {
       this.timer = null;
       void this.clearIfUnchanged();
-    }, CLEAR_AFTER_MS);
+    }, CLEAR_CLIPBOARD_MS);
   }
 
   /**

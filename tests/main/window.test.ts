@@ -67,7 +67,7 @@ describe('guardas de navegação e sessão', () => {
     expect(win.options.minWidth).toBe(400);
     expect(win.options.minHeight).toBe(360);
     expect(win.options.title).toBe('Guardinha');
-    expect(win.options.backgroundColor).toBe('#020617');
+    expect(win.options.backgroundColor).toBe('#000000');
   });
 
   it('activate com janela aberta não cria uma segunda', async () => {

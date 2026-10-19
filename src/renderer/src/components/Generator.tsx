@@ -7,6 +7,7 @@ import { SensitivitySlider } from '@zero/renderer/components/SensitivitySlider';
 import { StrengthMeter } from '@zero/renderer/components/StrengthMeter';
 import { Page } from '@zero/renderer/components/Page';
 import { errorMessage, manualCharacterLimit, strengthFor } from '@zero/shared';
+import { MAX_GENERATOR_LENGTH, MAX_CUSTOM_WORDS } from '@zero/shared/generator-constants';
 
 interface GeneratorProps {
   onToast: (message: string) => void;
@@ -35,8 +36,10 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
 
   // As palavras são usadas como personalização; só entram literalmente com
   // consentimento explícito do usuário.
-  const [customWords, setCustomWords] = useState<string[]>(['', '', '', '', '']);
-  const [customWordCount, setCustomWordCount] = useState(5);
+  const [customWords, setCustomWords] = useState<string[]>(
+    Array.from({ length: MAX_CUSTOM_WORDS }, () => ''),
+  );
+  const [customWordCount, setCustomWordCount] = useState(MAX_CUSTOM_WORDS);
   const [includeCustomWords, setIncludeCustomWords] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState('');
   const manualLimit = manualCharacterLimit(length);
@@ -156,7 +159,7 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
           <SensitivitySlider
             value={length}
             min={0}
-            max={72}
+            max={MAX_GENERATOR_LENGTH}
             label={m.generator.lengthLabel}
             onChange={setLength}
           />
@@ -229,7 +232,7 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
                 const digits = e.currentTarget.value.replace(/\D/g, '');
                 const parsed = digits === '' ? 0 : Number(digits);
                 const nextCount = Number.isFinite(parsed)
-                  ? Math.min(5, Math.max(0, Math.trunc(parsed)))
+                  ? Math.min(MAX_CUSTOM_WORDS, Math.max(0, Math.trunc(parsed)))
                   : 0;
                 setCustomWordCount(nextCount);
                 if (nextCount === 0) setIncludeCustomWords(false);
@@ -245,7 +248,7 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {customWords.slice(0, customWordCount).map((word, index) => {
-              /* v8 ignore next -- o contador para em 5 e o bundle traz os 5
+              /* v8 ignore next -- o contador para em MAX_CUSTOM_WORDS e o bundle traz os
                  marcadores; o `??` existe só para o `noUncheckedIndexedAccess`. */
               const placeholder = m.generator.entropyPlaceholders[index] ?? '';
               return (

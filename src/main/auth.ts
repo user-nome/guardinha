@@ -1,8 +1,7 @@
 import { vaultStorage } from '@zero/main/facade';
 import { currentMessages } from '@zero/main/i18n';
 import type { FailedAttemptResult, PersistedAuthState, UnlockKind, VaultStatus } from '@zero/types';
-
-const PENALTY_DELAYS_SECONDS = [10, 30, 60, 3600, 86400] as const; // 10s, 30s, 1m, 1h, 24h
+import { PENALTY_DELAYS_SECONDS } from '@zero/shared/auth-constants';
 
 export function loadAuthState(): PersistedAuthState {
   return vaultStorage.readAuthState();

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { currentMessages } from '@zero/main/i18n';
 import { manualCharacterLimit, PASSWORD_CHARACTER_SETS } from '@zero/shared';
+import { MAX_GENERATOR_LENGTH } from '@zero/shared/generator-constants';
 import type { GeneratorOptions } from '@zero/types';
 
 /**
@@ -13,7 +14,7 @@ import type { GeneratorOptions } from '@zero/types';
  */
 
 /** Teto de tamanho, o mesmo que a tela permite marcar. */
-const MAX_LENGTH = 72;
+export { MAX_GENERATOR_LENGTH };
 /**
  * Conjunto de caracteres da senha: só as categorias marcadas na tela. Só
  * "Maiúsculas" sai só maiúsculas, só "Números" sai só números, e assim por
@@ -36,7 +37,7 @@ export function passwordCharSet(options: GeneratorOptions): string {
 export function assertGeneratorOptions(options: GeneratorOptions): void {
   const m = currentMessages();
   const { length } = options;
-  if (!Number.isInteger(length) || length < 0 || length > MAX_LENGTH) {
+  if (!Number.isInteger(length) || length < 0 || length > MAX_GENERATOR_LENGTH) {
     throw new Error(m.errors.invalidGenerator);
   }
   if (
@@ -54,7 +55,9 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
     options.countNumbers,
     options.countSymbols,
   ];
-  if (counts.some((count) => !Number.isInteger(count) || count < 0 || count > MAX_LENGTH)) {
+  if (
+    counts.some((count) => !Number.isInteger(count) || count < 0 || count > MAX_GENERATOR_LENGTH)
+  ) {
     throw new Error(m.errors.invalidGenerator);
   }
   if (

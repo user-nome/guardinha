@@ -1,5 +1,7 @@
+import { IDLE_LOCK_MS } from '@zero/shared/auth-constants';
+
 /** Trava automática após 5 minutos sem operação no cofre. */
-export const IDLE_LOCK_MS = 5 * 60 * 1000;
+export { IDLE_LOCK_MS };
 
 /** O que a atividade do usuário acabou de significar para o app. */
 export type ActivityEvent = 'idle-timeout';

@@ -163,6 +163,10 @@ describe('grafo de módulos', () => {
     // As duas formas são de tipo e não mudam o runtime do teste, mas só a
     // primeira é uma aresta que o grafo acompanha: o barrel deixou de ser
     // órfão. Nenhum score muda, porque ele está em `DEFAULT_EXCLUDES`.
-    expect(graph.orphans).toEqual(['src/node.loader.ts', 'src/types/index.ts']);
+    expect(graph.orphans).toEqual([
+      'src/node.loader.ts',
+      'src/shared/time.ts',
+      'src/types/index.ts',
+    ]);
   });
 });

@@ -32,3 +32,19 @@ export {
 export type { StrengthLevel, StrengthReason, StrengthResult } from '@zero/shared/strength';
 export { strengthFor } from '@zero/shared/strategy';
 export type { StrengthKind, StrengthStrategy } from '@zero/shared/strategy';
+export {
+  CLEAR_CLIPBOARD_MS,
+  IDLE_LOCK_MS,
+  MAX_NUKE_LIMIT_INPUT,
+  MAX_SHRED_PASSES,
+  MIN_NUKE_LIMIT,
+  PENALTY_DELAYS_SECONDS,
+  PRIVILEGE_TIMEOUT_MS,
+  SHRED_BLOCK_BYTES,
+  SHRED_PASSES,
+  STALE_TMP_MS,
+  STATUS_POLL_MS,
+  TICK_MS,
+} from '@zero/shared/auth-constants';
+export { MAX_CUSTOM_WORDS, MAX_GENERATOR_LENGTH } from '@zero/shared/generator-constants';
+export { MS_PER_MINUTE, MS_PER_SECOND } from '@zero/shared/time';

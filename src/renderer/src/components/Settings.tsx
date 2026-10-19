@@ -5,10 +5,8 @@ import { richText, useMessages } from '@zero/renderer/i18n';
 import { errorMessage, PIN_LENGTH, strengthFor } from '@zero/shared';
 import { StrengthMeter } from '@zero/renderer/components/StrengthMeter';
 import { Page } from '@zero/renderer/components/Page';
+import { MAX_NUKE_LIMIT_INPUT } from '@zero/shared/auth-constants';
 import type { PanicStatus } from '@zero/types';
-
-/** Teto aceito no campo: acima de 999 ninguém sobrevive à própria configuração. */
-const MAX_LIMIT_INPUT = 999;
 
 /**
  * Proteções de pânico: PIN de coação e autodestruição por tentativas.
@@ -256,7 +254,7 @@ export function Settings(): JSX.Element {
               id="nuke-limit"
               type="text"
               inputMode="numeric"
-              max={MAX_LIMIT_INPUT}
+              max={MAX_NUKE_LIMIT_INPUT}
               value={limitText}
               onChange={(event) => setLimitText(event.target.value)}
               placeholder={

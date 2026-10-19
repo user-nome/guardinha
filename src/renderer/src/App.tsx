@@ -11,10 +11,8 @@ import { Settings } from '@zero/renderer/components/Settings';
 import { AuthModal } from '@zero/renderer/components/AuthModal';
 import { DestroyModal } from '@zero/renderer/components/DestroyModal';
 import { Toast } from '@zero/renderer/components/Toast';
+import { STATUS_POLL_MS } from '@zero/shared/auth-constants';
 import type { Language, TabType, VaultStatus } from '@zero/types';
-
-/** Rede de segurança do auto-lock: o Observer do main é quem avisa, isto é o plano B. */
-const STATUS_POLL_MS = 15_000;
 
 interface ShellProps {
   status: VaultStatus | null;

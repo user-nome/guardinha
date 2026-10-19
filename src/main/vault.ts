@@ -22,6 +22,7 @@ import {
   RECOVERY_MIN_WORDS,
   strengthFor,
 } from '@zero/shared';
+import { MIN_NUKE_LIMIT } from '@zero/shared/auth-constants';
 import { currentMessages } from '@zero/main/i18n';
 import type { VaultContainerData } from '@zero/main/container';
 import type {
@@ -364,14 +365,6 @@ export function setNukeLimit(limit: number): VaultResult {
   vaultStorage.writeContainer(container);
   return { ok: true, status: getStatus() };
 }
-
-/**
- * Piso do limite: bem acima de erro de digitação. A senha mestra tem 24
- * caracteres, então um erro de digitação é raro, mas um usuário que troca de
- * teclado, cola com caractere trocado ou tenta a senha antiga três vezes não
- * deveria perder o cofre. Por isso 50, não 5.
- */
-export const MIN_NUKE_LIMIT = 50;
 
 /**
  * Redefine o PIN provando posse da frase de recuperação (único uso da frase).

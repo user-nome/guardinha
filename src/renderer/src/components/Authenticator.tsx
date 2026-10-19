@@ -8,6 +8,7 @@ import { AuthTokenModal } from '@zero/renderer/components/AuthTokenModal';
 import { Page } from '@zero/renderer/components/Page';
 import { errorMessage } from '@zero/shared';
 import { useLatest } from '@zero/renderer/hooks';
+import { TICK_MS } from '@zero/shared/auth-constants';
 import type { AuthCode, AuthToken } from '@zero/types';
 
 /**
@@ -25,9 +26,6 @@ import type { AuthCode, AuthToken } from '@zero/types';
 interface AuthenticatorProps {
   onToast: (message: string) => void;
 }
-
-/** Passo do relógio da contagem regressiva e da virada de período do TOTP. */
-const TICK_MS = 1000;
 
 /** Código exibido com o instante em que deixa de valer. */
 interface ShownCode {
