@@ -210,9 +210,7 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (shown !== undefined) handleCopy(shown);
-                      }}
+                      onClick={shown === undefined ? undefined : (): void => handleCopy(shown)}
                       disabled={shown === undefined}
                       title={m.common.copy}
                       className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-100 disabled:opacity-40"

@@ -244,16 +244,21 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
             {m.generator.manualCharacterUsage(manualCharacterCount, manualLimit)}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {customWords.slice(0, customWordCount).map((word, index) => (
-              <input
-                key={String(index)}
-                type="text"
-                placeholder={m.generator.entropyPlaceholders[index] ?? ''}
-                value={word}
-                onChange={(e) => handleWordChange(index, e.target.value)}
-                className="bg-slate-950 border border-transparent rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-400"
-              />
-            ))}
+            {customWords.slice(0, customWordCount).map((word, index) => {
+              /* v8 ignore next -- o contador para em 5 e o bundle traz os 5
+                 marcadores; o `??` existe só para o `noUncheckedIndexedAccess`. */
+              const placeholder = m.generator.entropyPlaceholders[index] ?? '';
+              return (
+                <input
+                  key={String(index)}
+                  type="text"
+                  placeholder={placeholder}
+                  value={word}
+                  onChange={(e) => handleWordChange(index, e.target.value)}
+                  className="bg-slate-950 border border-transparent rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-emerald-400"
+                />
+              );
+            })}
           </div>
           <label className="flex items-center gap-2 text-sm text-slate-300 mt-3">
             <input

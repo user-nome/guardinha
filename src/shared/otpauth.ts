@@ -118,9 +118,13 @@ export function parseOtpAuthUri(uri: string): OtpUri | null {
   // texto antes de decodificar, senão um `%3A` viraria `:` e partiria o rótulo
   // no lugar errado.
   const label = head.slice(slash + 1);
-  const separator = /^(.*?)(?::|%3A)(.*)$/i.exec(label);
-  const rawIssuer = separator === null ? '' : (separator[1] ?? '');
-  const rawAccount = separator === null ? label : (separator[2] ?? '');
+  const separator = /(?::|%3A)/i.exec(label);
+  // `separator[0]` é tipado `string` (só os grupos de captura seriam
+  // `string | undefined`): fatiar o rótulo pelo `index` do separador dá o
+  // mesmo corte, sem o fallback que nunca acontece.
+  const rawIssuer = separator === null ? '' : label.slice(0, separator.index);
+  const rawAccount =
+    separator === null ? label : label.slice(separator.index + separator[0].length);
   const labelIssuer = safeDecode(rawIssuer).trim();
   const account = safeDecode(rawAccount).trim();
   const issuerParam = params.get('issuer');

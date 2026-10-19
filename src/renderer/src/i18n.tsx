@@ -60,7 +60,7 @@ export function richText(text: string): ReactNode[] {
     if (bold !== undefined) {
       nodes.push(<strong key={key}>{bold}</strong>);
     } else {
-      nodes.push(<code key={key}>{match[2] ?? ''}</code>);
+      nodes.push(<code key={key}>{match[0].slice(1, -1)}</code>);
     }
     key += 1;
     cursor = index + match[0].length;

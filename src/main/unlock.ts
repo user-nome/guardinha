@@ -138,6 +138,9 @@ class VaultIntegrityHandler extends UnlockHandler {
     const { kind } = context.input;
     const method = context.container.methods[kind];
     const derived = context.derived;
+    /* v8 ignore next -- o elo anterior (KDF) já recusou a credencial quando o
+       método ou a chave derivada faltavam; esta guarda é a rede de integridade,
+       e um container sem o método do tipo só chega aqui por defeito interno. */
     if (method === undefined || derived === undefined) return credentialFailure(context);
     try {
       context.vaultKey = keyUnwrapperFor(kind).unwrap(method, derived);

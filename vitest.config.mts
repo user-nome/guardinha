@@ -55,18 +55,17 @@ export default defineConfig({
         // o número deitar um teste que existe e passa.
         'src/node.loader.ts',
       ],
-      // Meta de 95% nos quatro. Subiu de 90% depois da varredura de mutação:
-      // ela apontou que os ramos que faltavam eram justamente os de decisão
-      // (cofre ausente, arquivo fechado, falha de I/O), e fechar esses buracos
-      // é o que transforma a cobertura em afirmação. O que sobra são ramos
-      // inalcançáveis por construção, como o `?? ''` depois de um `Math.min`
-      // que já prendeu o índice numa tabela de 5 entradas, e um piso de 100%
-      // só pediria teste impossível.
+      // Meta de 100% nos quatro. Um ramo que o código não alcança de jeito
+      // nenhum (fallback de índice que o `noUncheckedIndexedAccess` exige,
+      // guarda de um botão que só habilita no estado certo, invariante que a
+      // cadeia de desbloqueio já garantiu antes) fica marcado com
+      // `/* v8 ignore next */` e o motivo escrito ao lado, em vez de baixar a
+      // meta: o que sobra no relatório é só o que a suíte exercita de verdade.
       thresholds: {
-        lines: 95,
-        statements: 95,
-        functions: 95,
-        branches: 95,
+        lines: 100,
+        statements: 100,
+        functions: 100,
+        branches: 100,
       },
     },
   },

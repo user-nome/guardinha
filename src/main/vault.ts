@@ -268,6 +268,9 @@ export async function unlock(input: UnlockInput): Promise<VaultResult> {
     return { ok: false, error: m.errors.vaultDestroyed, status: getStatus() };
   }
   const vaultKey = context.vaultKey;
+  /* v8 ignore next -- a cadeia só devolve `null` depois de deixar a chave no
+     contexto; a guarda cobre um encadeamento incompleto e responde como erro
+     interno em vez de seguir com `undefined`. */
   if (vaultKey === undefined) return fail(m.errors.internal);
 
   await upgradeMethod(container, input.kind, input.credential, vaultKey);

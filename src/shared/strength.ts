@@ -59,7 +59,16 @@ const MAX_BLOCK = 12;
 /** Abaixo disso a entrada ainda está incompleta: nada de bloqueio. */
 const MIN_BLOCK_LENGTH = 8;
 
-const LEVELS: readonly StrengthLevel[] = ['veryWeak', 'weak', 'fair', 'strong', 'veryStrong'];
+const LEVELS = [
+  'veryWeak',
+  'weak',
+  'fair',
+  'strong',
+  'veryStrong',
+] as const satisfies readonly StrengthLevel[];
+
+/** Nota 0..4, o mesmo índice de `LEVELS`. */
+type Score = 0 | 1 | 2 | 3 | 4;
 
 /** Palavras comuns (pt + en) que derrubam a nota de frases e senhas. */
 const COMMON_WORDS = new Set([
@@ -190,16 +199,17 @@ function emptyResult(): StrengthResult {
   return { level: 'veryWeak', score: 0, blocked: false, reasons: [] };
 }
 
-function grade(bits: number, cap = 4): Grade {
-  const raw = bits < 28 ? 0 : bits < 36 ? 1 : bits < 60 ? 2 : bits < 80 ? 3 : 4;
-  const score = Math.max(0, Math.min(raw, cap, 4));
-  return { level: LEVELS[score] ?? 'veryWeak', score };
+function grade(bits: number): Grade {
+  // `raw` é uma união de literais 0..4, então `LEVELS[raw]` existe sempre: sem
+  // este tipo, `noUncheckedIndexedAccess` obrigaria um fallback inalcançável.
+  const raw: Score = bits < 28 ? 0 : bits < 36 ? 1 : bits < 60 ? 2 : bits < 80 ? 3 : 4;
+  return { level: LEVELS[raw], score: raw };
 }
 
 /** Nota do PIN: 8 dígitos nunca passam de "razoável" (o formato não é força). */
 function gradePin(bits: number): Grade {
-  const score = bits >= 24 ? 2 : bits >= 16 ? 1 : 0;
-  return { level: LEVELS[score] ?? 'veryWeak', score };
+  const score: Score = bits >= 24 ? 2 : bits >= 16 ? 1 : 0;
+  return { level: LEVELS[score], score };
 }
 
 function isAllSame(text: string): boolean {

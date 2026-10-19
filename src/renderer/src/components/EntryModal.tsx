@@ -55,15 +55,14 @@ export function EntryModal({ entry, onClose, onChanged, onToast }: EntryModalPro
     }
   };
 
-  const handleDelete = async (): Promise<void> => {
-    if (entry === null) return;
+  const handleDelete = async (target: Credential): Promise<void> => {
     if (!confirmDelete) {
       setConfirmDelete(true);
       return;
     }
     setBusy(true);
     try {
-      await window.api.entries.remove(entry.id);
+      await window.api.entries.remove(target.id);
       await onChanged();
       onToast(m.home.toastRemoved);
       onClose();
@@ -169,11 +168,11 @@ export function EntryModal({ entry, onClose, onChanged, onToast }: EntryModalPro
         {error !== null && <p className="text-xs text-rose-400">{error}</p>}
 
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          {isEdit ? (
+          {entry !== null ? (
             <button
               type="button"
               onClick={() => {
-                void handleDelete();
+                void handleDelete(entry);
               }}
               disabled={busy}
               className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
