@@ -317,9 +317,9 @@ describe('entropia do gerador', () => {
     // deslocamento no índice do digest (começar em 1, andar de 2 em 2) ou no
     // laço de embaralhamento muda os caracteres, e o valor esperado é o que
     // separa as versões.
-    vi.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.alloc(32, 0));
+    vi.spyOn(crypto, 'randomBytes').mockImplementation((size: number) => Buffer.alloc(size, 0));
     vi.spyOn(crypto, 'randomInt').mockImplementation((max: number) =>
-      max === 26 ? 0 : Math.floor(max / 2),
+      max === 26 ? 0 : max === 2 ? 0 : Math.floor(max / 2),
     );
 
     const senha = generateHighEntropyPassword({
@@ -336,14 +336,14 @@ describe('entropia do gerador', () => {
       includeCustomEntropyWords: false,
     });
 
-    expect(senha).toBe('nidb');
+    expect(senha).toBe('indb');
   });
 
   it('sorteia a quantidade reservada dentro do conjunto daquela categoria', () => {
     // Um número reservado sai do alfabeto dos números, não do conjunto geral:
     // se o laço da categoria não rodar, o `randomInt(10)` some e a reserva vira
     // só mais um caractere sorteado entre letras e números.
-    vi.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.alloc(32, 0));
+    vi.spyOn(crypto, 'randomBytes').mockImplementation((size: number) => Buffer.alloc(size, 0));
     const limites: number[] = [];
     vi.spyOn(crypto, 'randomInt').mockImplementation((max: number) => {
       limites.push(max);

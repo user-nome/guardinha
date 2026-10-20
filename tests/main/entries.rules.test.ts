@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { deleteEntry } from '@zero/main/entries-store';
 import { listEntries, removeEntry, saveEntry } from '@zero/main/entries';
 import { currentMessages } from '@zero/main/i18n';
 import { vaultStorage } from '@zero/main/facade';
@@ -111,6 +112,14 @@ describe('entries: remoção', () => {
 
     expect(restantes.some((item) => item.id === id)).toBe(false);
     expect(() => listEntries()).not.toThrow();
+  });
+});
+
+describe('entries: remoção idempotente', () => {
+  it('apagar um arquivo que já não existe não lança', () => {
+    // A remoção pode ser repetida por uma tela que atualiza depois de um erro;
+    // sem a guarda de existência, o `shred` estoura com ENOENT.
+    expect(() => deleteEntry('ffffffff-9999-4999-8999-999999999999')).not.toThrow();
   });
 });
 

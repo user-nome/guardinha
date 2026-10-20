@@ -418,6 +418,28 @@ describe('AuthModal: desbloqueio por senha mestra', () => {
     expect(screen.getByText(/PIN incorreto 3 vezes/)).toBeInTheDocument();
   });
 
+  it('troca o ícone do botão conforme o método de desbloqueio', async () => {
+    // O botão de desbloquear mostra a chave no modo senha mestra e o hash do
+    // PIN no outro. O ícone é a única pista visual de qual método está em uso,
+    // então ele é a saída da decisão: sem ele, o botão ficaria igual nos dois
+    // modos e o texto de erro diria o que a tela já estava mostrando.
+    const user = userEvent.setup();
+    open(THREE_FAILURES);
+
+    expect(
+      screen.getByRole('button', { name: 'Desbloquear' }).querySelector('.lucide-hash'),
+    ).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Senha mestra' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Desbloquear' }).querySelector('.lucide-key-round'),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Desbloquear' }).querySelector('.lucide-hash'),
+    ).toBeNull();
+  });
+
   it('manda kind master e troca o placeholder', async () => {
     const user = userEvent.setup();
     const api = installApi();
@@ -464,6 +486,16 @@ describe('AuthModal: redefinição de PIN', () => {
 
     await user.click(screen.getByRole('button', { name: 'Voltar para o PIN' }));
     expect(screen.getByText('Cofre bloqueado')).toBeInTheDocument();
+  });
+
+  it('a caixa da frase de recuperação tem três linhas', async () => {
+    // A frase é longa por definição: três linhas são o mínimo que a caixa
+    // mostra sem que o usuário tenha de rolar o texto que digitou.
+    const user = userEvent.setup();
+    open(LOCKED);
+    await user.click(screen.getByRole('button', { name: 'Esqueci o PIN' }));
+
+    expect(screen.getByLabelText('Sua frase de recuperação')).toHaveAttribute('rows', '3');
   });
 
   it('exige 12 palavras na frase de recuperação', async () => {

@@ -137,6 +137,14 @@ describe('parseOtpAuthUri', () => {
     expect(parseOtpAuthUri('')).toBeNull();
   });
 
+  it('recusa o URI sem a barra que separa o tipo do rótulo', () => {
+    // `otpauth://totpx?...` não tem rótulo nenhum: o que vem depois de `totp`
+    // sem barra não é um tipo, é o começo de um rótulo que não existe. Se o
+    // tipo fosse lido com o corte trocado, o `totpx` passaria por `totp` e o
+    // token inteiro nasceria de uma URI que ninguém emitiu.
+    expect(parseOtpAuthUri(`otpauth://totpx?secret=${STRONG_SECRET}`)).toBeNull();
+  });
+
   it('recusa segredo ausente, curto ou fora do alfabeto base32', () => {
     expect(parseOtpAuthUri('otpauth://totp/Site:eu')).toBeNull();
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=')).toBeNull();

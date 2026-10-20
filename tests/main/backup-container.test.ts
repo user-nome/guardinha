@@ -27,6 +27,7 @@ function rawPack(manifest: unknown, payload: Buffer, version = 1): Buffer {
 }
 
 const FILE = { path: 'vault.zkv', data: Buffer.from('conteúdo cifrado do cofre') };
+const EMPTY_SHA = crypto.createHash('sha256').update(Buffer.alloc(0)).digest('hex');
 const ENTRIES: BackupSegment[] = [
   { path: 'vault.zkv', data: Buffer.from('blobs de chave') },
   { path: '.entries/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.zke', data: Buffer.from('credencial') },
@@ -238,13 +239,35 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
         createdAt: 1,
         files: [{ path: 'vault.zkv', size: 1, sha256: 'curto' }],
       },
+      // Tipos que o `||` de cada guarda não pode deixar passar: o `&&` só
+      // recusaria se todas as condições fossem verdadeiras, e um array com o
+      // texto certo engana o `test` da expressão regular.
+      {
+        app: 'Guardinha',
+        version: '1',
+        createdAt: 1,
+        files: [{ path: ['vault.zkv'], size: 0, sha256: EMPTY_SHA }],
+      },
+      {
+        app: 'Guardinha',
+        version: '1',
+        createdAt: 1,
+        files: [{ path: 'vault.zkv', size: null, sha256: EMPTY_SHA }],
+      },
+      {
+        app: 'Guardinha',
+        version: '1',
+        createdAt: 1,
+        files: [{ path: 'vault.zkv', size: 0, sha256: [EMPTY_SHA] }],
+      },
     ];
     for (const manifest of casos) {
       // Sem payload: com um byte sobrando o pacote morreria na conferência de
       // "bytes a mais" e o manifesto inválido nunca chegaria a ser lido.
-      expect(() => unpackBackup(rawPack(manifest, Buffer.alloc(0))), JSON.stringify(manifest)).toThrow(
-        M.errors.backupCorrupted,
-      );
+      expect(
+        () => unpackBackup(rawPack(manifest, Buffer.alloc(0))),
+        JSON.stringify(manifest),
+      ).toThrow(M.errors.backupCorrupted);
     }
   });
 });

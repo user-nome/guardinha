@@ -228,6 +228,19 @@ describe('SensitivitySlider: arraste', () => {
     expect(fill).toHaveStyle({ width: '100%' });
   });
 
+  it('na faixa de uma unidade, o passo é a largura inteira da faixa', () => {
+    // Com `max - min` igual a 1, o passo natural é a largura toda: arrastar um
+    // quarto da faixa não move nada, e a faixa inteira move 1. O piso do
+    // `Math.max(1, ...)` existe para a faixa degenerada, e um piso maior
+    // mudaria o passo de uma faixa de duas posições.
+    const { onChange } = setup(0, 0, 1);
+    Object.defineProperty(slider(), 'clientWidth', { value: 200, configurable: true });
+    fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
+    fireEvent.pointerMove(slider(), { clientX: 50, pointerId: 1 });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('soltar o ponteiro sem arraste não solta captura nenhuma', () => {
     CAPTURE.releasePointerCapture.mockClear();
     setup(10, 0, 20);

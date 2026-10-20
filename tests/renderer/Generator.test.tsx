@@ -492,6 +492,52 @@ describe('os limites do slider', () => {
     expect(upper).toHaveValue('7');
   });
 
+  it('a cota de uma categoria desconta também as palavras pessoais', async () => {
+    // As palavras entram na senha como caracteres manuais, então elas consomem
+    // a cota junto com as categorias. Sem esse desconto, a tela ofereceria uma
+    // quantidade que o main recusa. A cota da própria categoria também conta:
+    // ela é o que sobra depois das outras, e não o que sobra para as outras.
+    const user = userEvent.setup();
+    open();
+
+    await user.type(screen.getByPlaceholderText('Objeto'), 'abcde');
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+    const lower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+    await user.type(lower, '2');
+
+    expect(lower).toHaveAttribute('aria-valuemax', '4');
+    expect(screen.getByRole('textbox', { name: 'Maiúsculas: Quantidade' })).toHaveAttribute(
+      'aria-valuemax',
+      '2',
+    );
+  });
+
+  it('mudar a quantidade de palavras não tira o consentimento', async () => {
+    // A inclusão das palavras é uma escolha do usuário, e ela só é desligada
+    // quando não há palavra nenhuma para incluir (a quantidade zero). Mudar a
+    // quantidade com palavras escolhidas não pode revogar a escolha: o
+    // usuário marcaria as palavras de novo sem entender por que sumiram.
+    const user = userEvent.setup();
+    open();
+    await user.type(screen.getByPlaceholderText('Objeto'), 'abcde');
+    const incluir = screen.getByRole('checkbox', {
+      name: 'Incluir as palavras literalmente na senha',
+    });
+    await user.click(incluir);
+    expect(incluir).toBeChecked();
+
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Quantidade de palavras pessoais (0 a 5)' }),
+      {
+        target: { value: '3' },
+      },
+    );
+
+    expect(incluir).toBeChecked();
+  });
+
   it('marca em vermelho só quando a cota é ultrapassada, não no empate', async () => {
     const user = userEvent.setup();
     open();
