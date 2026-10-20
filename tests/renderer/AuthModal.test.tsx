@@ -637,6 +637,174 @@ describe('AuthModal: restauração de backup na criação', () => {
   });
 });
 
+describe('AuthModal: estado de ocupado de cada operação', () => {
+  interface Deferred<T> {
+    promise: Promise<T>;
+    resolve: (value: T) => void;
+  }
+
+  function deferred<T>(): Deferred<T> {
+    let resolve: (value: T) => void = () => undefined;
+    const promise = new Promise<T>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  }
+
+  it('desabilita "Criar cofre" enquanto o main cria o cofre', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const pending = deferred<{ ok: true; status: VaultStatus }>();
+    api.vault.create = vi.fn(() => pending.promise);
+    open();
+    await fillCredentials(user);
+    await user.type(screen.getByLabelText('Sua frase de recuperação'), PHRASE);
+    await user.type(screen.getByLabelText('Repita a frase de recuperação'), PHRASE);
+
+    await user.click(screen.getByRole('button', { name: 'Criar cofre' }));
+    expect(screen.getByRole('button', { name: 'Criando cofre…' })).toBeDisabled();
+
+    await act(async () => {
+      pending.resolve({ ok: true, status: UNLOCKED });
+      await pending.promise;
+    });
+    expect(await screen.findByRole('button', { name: 'Criar cofre' })).toBeEnabled();
+  });
+
+  it('desabilita "Desbloquear" enquanto verifica a credencial', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const pending = deferred<{ ok: true; status: VaultStatus }>();
+    api.vault.unlock = vi.fn(() => pending.promise);
+    open(LOCKED);
+
+    await user.type(screen.getByPlaceholderText('Ex.: 49201733'), PIN);
+    await user.click(screen.getByRole('button', { name: 'Desbloquear' }));
+    expect(screen.getByRole('button', { name: 'Verificando…' })).toBeDisabled();
+
+    await act(async () => {
+      pending.resolve({ ok: true, status: UNLOCKED });
+      await pending.promise;
+    });
+    expect(await screen.findByRole('button', { name: 'Desbloquear' })).toBeEnabled();
+  });
+
+  it('desabilita "Redefinir e abrir" enquanto troca o PIN', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const pending = deferred<{ ok: true; status: VaultStatus }>();
+    api.vault.resetPin = vi.fn(() => pending.promise);
+    open(LOCKED);
+    await user.click(screen.getByRole('button', { name: 'Esqueci o PIN' }));
+    await user.type(screen.getByLabelText('Sua frase de recuperação'), PHRASE);
+    await user.type(screen.getByLabelText('Novo PIN (8 dígitos)'), PIN);
+    await user.type(screen.getByLabelText('Repita o novo PIN'), PIN);
+
+    await user.click(screen.getByRole('button', { name: 'Redefinir e abrir' }));
+    expect(screen.getByRole('button', { name: 'Redefinindo…' })).toBeDisabled();
+
+    await act(async () => {
+      pending.resolve({ ok: true, status: UNLOCKED });
+      await pending.promise;
+    });
+    expect(await screen.findByRole('button', { name: 'Desbloquear' })).toBeEnabled();
+  });
+
+  it('desabilita a restauração enquanto o backup é lido', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const pending = deferred<{ canceled: true }>();
+    api.backup.restore = vi.fn(() => pending.promise);
+    open();
+
+    await user.click(screen.getByRole('button', { name: 'Restaurar de um backup' }));
+    expect(screen.getByRole('button', { name: 'Restaurar de um backup' })).toBeDisabled();
+
+    await act(async () => {
+      pending.resolve({ canceled: true });
+      await pending.promise;
+    });
+    expect(await screen.findByRole('button', { name: 'Restaurar de um backup' })).toBeEnabled();
+  });
+});
+
+describe('AuthModal: detalhes dos campos e dos modos', () => {
+  it('só trata a trava de 1 ms como ativa, que é o último instante', () => {
+    vi.useFakeTimers();
+    const onRefresh = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    render(
+      <MessagesProvider language="pt-BR">
+        <AuthModal status={{ ...LOCKED, lockRemainingMs: 1 }} onRefresh={onRefresh} />
+      </MessagesProvider>,
+    );
+
+    expect(screen.getByText(/Muitas tentativas/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Desbloquear' })).toBeDisabled();
+    vi.useRealTimers();
+  });
+
+  it('o campo do PIN usa teclado numérico, e o da senha mestra não', async () => {
+    const user = userEvent.setup();
+    open({ ...LOCKED, attempts: 3 });
+
+    const pin = screen.getByPlaceholderText('Ex.: 49201733');
+    expect(pin).toHaveAttribute('inputmode', 'numeric');
+
+    await user.click(screen.getByRole('button', { name: 'Senha mestra' }));
+    expect(screen.getByPlaceholderText('Ex.: 24 caracteres quaisquer')).not.toHaveAttribute(
+      'inputmode',
+      'numeric',
+    );
+  });
+
+  it('a frase de recuperação só ganha medidor quando tem texto', async () => {
+    const user = userEvent.setup();
+    open();
+    await fillCredentials(user);
+
+    expect(screen.queryByText('Força')).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Sua frase de recuperação'), 'curta');
+    expect(screen.getByText('Força')).toBeInTheDocument();
+  });
+
+  it('as caixas de frase têm três linhas', async () => {
+    const user = userEvent.setup();
+    open();
+    await fillCredentials(user);
+
+    for (const caixa of screen.getAllByRole('textbox')) {
+      expect(caixa).toHaveAttribute('rows', '3');
+    }
+  });
+
+  it('volta da redefinição para o PIN, e não para outro modo', async () => {
+    const user = userEvent.setup();
+    open(LOCKED);
+    await user.click(screen.getByRole('button', { name: 'Esqueci o PIN' }));
+    await user.click(screen.getByRole('button', { name: 'Voltar para o PIN' }));
+
+    expect(screen.getByPlaceholderText('Ex.: 49201733')).toHaveValue('');
+    expect(screen.getByPlaceholderText('Ex.: 49201733')).toHaveAttribute('inputmode', 'numeric');
+  });
+
+  it('depois de redefinir o PIN, o desbloqueio volta ao modo PIN', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    api.vault.resetPin = vi.fn().mockResolvedValue({ ok: true, status: UNLOCKED });
+    open(LOCKED);
+    await user.click(screen.getByRole('button', { name: 'Esqueci o PIN' }));
+    await user.type(screen.getByLabelText('Sua frase de recuperação'), PHRASE);
+    await user.type(screen.getByLabelText('Novo PIN (8 dígitos)'), PIN);
+    await user.type(screen.getByLabelText('Repita o novo PIN'), PIN);
+    await user.click(screen.getByRole('button', { name: 'Redefinir e abrir' }));
+
+    expect(await screen.findByPlaceholderText('Ex.: 49201733')).toHaveAttribute(
+      'inputmode',
+      'numeric',
+    );
+  });
+});
+
 describe('AuthModal: mensagens de estado do cofre', () => {
   it('não oferece senha mestra como caminho novo de criação', () => {
     open({ ...NO_VAULT, attempts: 5 });

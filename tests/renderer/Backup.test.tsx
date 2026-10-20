@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MessagesProvider } from '@zero/renderer/i18n';
@@ -26,6 +26,45 @@ function open(onToast = vi.fn<(message: string) => void>()): {
   );
   return { onToast, api };
 }
+
+describe('Backup: estado inicial e ocupado', () => {
+  function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+    let resolve: (value: T) => void = () => undefined;
+    const promise = new Promise<T>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  }
+
+  it('não abre a confirmação de restauração antes do clique', () => {
+    open();
+    expect(screen.queryByText('Restaurar backup')).not.toBeInTheDocument();
+  });
+
+  it('usa a coluna média, entre formulário e grade', () => {
+    open();
+    expect(document.querySelector('.max-w-4xl')).not.toBeNull();
+  });
+
+  it('desabilita as duas ações enquanto uma operação corre', async () => {
+    const user = userEvent.setup();
+    const { api } = open();
+    const pending = deferred<{ canceled: true }>();
+    api.backup.export = vi.fn(() => pending.promise);
+
+    await user.click(screen.getByRole('button', { name: 'Salvar backup em um pendrive' }));
+    expect(screen.getByRole('button', { name: 'Salvar backup em um pendrive' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Restaurar de um backup' })).toBeDisabled();
+
+    await act(async () => {
+      pending.resolve({ canceled: true });
+      await pending.promise;
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Salvar backup em um pendrive' })).toBeEnabled();
+    });
+  });
+});
 
 describe('Backup: salvar backup', () => {
   it('dispara o canal de exportação e confirma com o caminho', async () => {

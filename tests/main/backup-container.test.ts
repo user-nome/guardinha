@@ -61,6 +61,13 @@ describe('pacote de backup: ida e volta', () => {
     const opened = unpackBackup(packBackup([], '1.0.0'));
     expect(opened.files).toEqual([]);
   });
+
+  it('aceita arquivo de tamanho zero, que é o piso do manifesto', () => {
+    // `size < 0` é o corte: zero é um arquivo vazio legítimo. Com `<= 0` o
+    // manifesto recusaria o próprio pacote que o app acabou de gerar.
+    const opened = unpackBackup(packBackup([{ path: 'vault.zkv', data: Buffer.alloc(0) }], '1'));
+    expect(opened.files).toEqual([{ path: 'vault.zkv', data: Buffer.alloc(0) }]);
+  });
 });
 
 describe('pacote de backup: recusa antes de tocar no disco', () => {
@@ -74,6 +81,17 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
 
   it('recusa blob curto demais para caber cabeçalho e digest', () => {
     expect(() => unpackBackup(Buffer.alloc(8))).toThrow(M.errors.backupInvalid);
+  });
+
+  it('recusa cabeçalho com magic certo mas sem espaço para o digest', () => {
+    // O magic passa, então a guarda de tamanho é a única coisa entre o buffer e
+    // a comparação do digest: sem ela o `timingSafeEqual` vê lados de tamanhos
+    // diferentes e o erro que sobe é do Node, não o do backup.
+    const header = Buffer.alloc(16);
+    Buffer.from('ZKBACKUP', 'ascii').copy(header, 0);
+    header.writeUInt32BE(1, 8);
+
+    expect(() => unpackBackup(header)).toThrow(M.errors.backupInvalid);
   });
 
   it('recusa magic que não é do Guardinha', () => {
@@ -222,10 +240,11 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
       },
     ];
     for (const manifest of casos) {
-      expect(
-        () => unpackBackup(rawPack(manifest, Buffer.from('x'))),
-        JSON.stringify(manifest),
-      ).toThrow(M.errors.backupCorrupted);
+      // Sem payload: com um byte sobrando o pacote morreria na conferência de
+      // "bytes a mais" e o manifesto inválido nunca chegaria a ser lido.
+      expect(() => unpackBackup(rawPack(manifest, Buffer.alloc(0))), JSON.stringify(manifest)).toThrow(
+        M.errors.backupCorrupted,
+      );
     }
   });
 });

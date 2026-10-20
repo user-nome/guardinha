@@ -562,6 +562,21 @@ describe('tela do verificador 2FA', () => {
     expect(barFor('666666')).toHaveClass('bg-emerald-500');
   });
 
+  it('usa a coluna larga, que cabe o cartão do token', async () => {
+    renderScreen([]);
+    await screen.findByRole('heading', { name: 'Verificador 2FA' });
+    expect(document.querySelector('.max-w-6xl')).not.toBeNull();
+  });
+
+  it('desenha a fração também para período de 1 segundo', async () => {
+    // O período 1 é válido e não pode cair no ramo de período inválido: meio
+    // segundo restante é metade da barra.
+    const fast = token({ id: 'abcdefab-1111-4111-8111-111111111111', period: 1 });
+    await renderFrozen([fast], [code(fast.id, '777777', 500)]);
+
+    expect(barFor('777777')).toHaveStyle({ width: '50%' });
+  });
+
   it('pede código novo no exato instante em que o código vence', async () => {
     const codes = vi
       .fn()

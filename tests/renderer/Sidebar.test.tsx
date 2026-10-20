@@ -88,6 +88,18 @@ describe('Sidebar: navegação', () => {
   it('mostra que os dados são locais', () => {
     mount();
     expect(screen.getByText('100% Local / Criptografado')).toBeInTheDocument();
+    // o rótulo e o valor ficam na mesma linha: sem o espaço entre eles a tela
+    // lê "Status:100%", que parece erro de formatação
+    const status = screen.getByText('100% Local / Criptografado').parentElement;
+    expect(status?.textContent).toBe('Status: 100% Local / Criptografado');
+  });
+
+  it('anuncia a aba ativa como página atual', () => {
+    mount('backup');
+    expect(screen.getByRole('button', { name: 'Backup' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Gerador de Senhas' })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 });
 

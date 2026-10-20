@@ -92,6 +92,21 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
     );
   });
 
+  it('recusa chave desembrulhada que não é texto hexadecimal', () => {
+    // O container é dado de fora: um `key` que não é string precisa cair na
+    // guarda, e não chegar ao `Buffer.from` como qualquer outro tipo.
+    const derived = Buffer.alloc(32, 7);
+    const method: WrappedMethod = {
+      kdf: keyUnwrapperFor('master').kdf,
+      kdfSalt: '00'.repeat(16),
+      payload: encryptRecord({ key: Array.from({ length: 64 }, () => 0) }, derived),
+    };
+
+    expect(() => keyUnwrapperFor('master').unwrap(method, derived)).toThrow(
+      'Registro do cofre corrompido.',
+    );
+  });
+
   it('o payload do embrulho só abre com a chave de trabalho certa', async () => {
     const method = await keyUnwrapperFor('pin').wrap(VAULT_KEY, PIN);
     const derived = await keyUnwrapperFor('pin').derive(method, PIN);

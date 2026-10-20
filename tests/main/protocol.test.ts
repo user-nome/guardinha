@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { currentMessages } from '@zero/main/i18n';
 import { protocol } from '../mocks/electron.ts';
 import type { MockInstance } from 'vitest';
 import {
@@ -91,6 +92,23 @@ describe('a guarda de origem do IPC', () => {
     expect(() => assertAppFrame(undefined)).toThrow();
     expect(() => assertAppFrame(null)).toThrow();
     expect(() => assertAppFrame({ senderFrame: { url: 42 } })).toThrow();
+  });
+
+  it('recusa o evento de fora com o erro do app, não com um TypeError', () => {
+    // A guarda de forma roda antes de ler `senderFrame`: sem ela, `undefined`
+    // e `null` estouram no acesso à propriedade e o renderer recebe um erro
+    // cru em vez da mensagem traduzida.
+    const m = currentMessages();
+    for (const event of [undefined, null, 'evento', 42, []]) {
+      expect(() => assertAppFrame(event)).toThrow(m.errors.foreignFrame);
+    }
+  });
+
+  it('recusa frame que não é registro, mesmo com URL do app', () => {
+    // `senderFrame` vem de fora; um array não é frame. Sem a checagem de
+    // registro o array passaria e a URL seria lida de um objeto qualquer.
+    const event = Object.assign([], { senderFrame: { url: `${APP_ORIGIN}/index.html` } });
+    expect(() => assertAppFrame(event)).toThrow(currentMessages().errors.foreignFrame);
   });
 });
 

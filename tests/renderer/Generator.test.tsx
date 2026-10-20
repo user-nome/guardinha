@@ -23,6 +23,11 @@ function open(): ReturnType<typeof vi.fn> {
 }
 
 describe('Generator', () => {
+  it('usa a coluna estreita, própria de formulário', () => {
+    open();
+    expect(document.querySelector('.max-w-2xl')).not.toBeNull();
+  });
+
   it('abre com o tamanho padrão e as quatro categorias ligadas', () => {
     open();
     expect(screen.getByText('24 caracteres')).toBeInTheDocument();
@@ -390,6 +395,132 @@ describe('os limites do slider', () => {
       'aria-valuemax',
       '72',
     );
+  });
+
+  it('soma as quatro categorias para a cota manual', async () => {
+    const user = userEvent.setup();
+    open();
+    const lower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+    const upper = screen.getByRole('textbox', { name: 'Maiúsculas: Quantidade' });
+    await user.clear(lower);
+    await user.type(lower, '2');
+    await user.clear(upper);
+    await user.type(upper, '2');
+
+    expect(
+      screen.getByText('Caracteres definidos: 4 de 9 disponíveis (limite de 40%).'),
+    ).toBeInTheDocument();
+  });
+
+  it('tamanho 1 gera uma senha, em vez de avisar que está vazio', async () => {
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    const onToast = open();
+    const slider = screen.getByRole('slider', { name: 'Tamanho da Senha' });
+    slider.focus();
+    for (let i = 0; i < 23; i++) await user.keyboard('{ArrowLeft}');
+    expect(slider).toHaveAttribute('aria-valuenow', '1');
+
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({ length: 1 }));
+    expect(onToast).not.toHaveBeenCalled();
+  });
+
+  it('palavras do tamanho exato da senha ainda cabem', async () => {
+    // O corte é `> length`: no empate o gerador aceita e quem recusa é o limite
+    // manual, com a mensagem certa. Com `>=`, o empate viraria "palavras maiores
+    // que a senha", que é falso.
+    const user = userEvent.setup();
+    const api = installApi();
+    const generate = vi.fn().mockResolvedValue('x');
+    api.generator.generate = generate;
+    const onToast = open();
+    const wordCount = screen.getByRole('textbox', {
+      name: 'Quantidade de palavras pessoais (0 a 5)',
+    });
+    await user.clear(wordCount);
+    await user.type(wordCount, '1');
+    await user.type(screen.getByPlaceholderText('Objeto'), 'x'.repeat(24));
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+    await user.click(screen.getByRole('button', { name: /Gerar Senha Criptográfica/ }));
+
+    expect(onToast).toHaveBeenCalledWith(
+      'As opções pessoais excedem o limite de 40% do tamanho da senha.',
+    );
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('zerar a quantidade de palavras desliga a inclusão literal', async () => {
+    const user = userEvent.setup();
+    open();
+    const wordCount = screen.getByRole('textbox', {
+      name: 'Quantidade de palavras pessoais (0 a 5)',
+    });
+    await user.clear(wordCount);
+    await user.type(wordCount, '1');
+    const include = screen.getByRole('checkbox', {
+      name: 'Incluir as palavras literalmente na senha',
+    });
+    await user.click(include);
+    expect(include).toBeChecked();
+    expect(screen.getByText(/As palavras entram exatamente/)).toBeInTheDocument();
+
+    await user.clear(wordCount);
+    await user.type(wordCount, '0');
+
+    expect(include).not.toBeChecked();
+    expect(screen.queryByText(/As palavras entram exatamente/)).not.toBeInTheDocument();
+  });
+
+  it('a cota disponível de uma categoria desconta as outras reservas', async () => {
+    const user = userEvent.setup();
+    open();
+    const lower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+    const upper = screen.getByRole('textbox', { name: 'Maiúsculas: Quantidade' });
+
+    await user.clear(lower);
+    await user.type(lower, '2');
+    expect(upper).toHaveAttribute('aria-valuemax', '7');
+
+    await user.clear(upper);
+    await user.type(upper, '20');
+    expect(upper).toHaveValue('7');
+  });
+
+  it('marca em vermelho só quando a cota é ultrapassada, não no empate', async () => {
+    const user = userEvent.setup();
+    open();
+    const lower = screen.getByRole('textbox', { name: 'Minúsculas: Quantidade' });
+    await user.clear(lower);
+    await user.type(lower, '9');
+
+    const usage = screen.getByText('Caracteres definidos: 9 de 9 disponíveis (limite de 40%).');
+    expect(usage).not.toHaveClass('text-red-300');
+    expect(usage).toHaveAttribute('aria-live', 'polite');
+
+    // sem cota sobrando, a outra categoria para em zero: o piso do `Math.max`
+    // existe para não oferecer quantidade negativa
+    const upper = screen.getByRole('textbox', { name: 'Maiúsculas: Quantidade' });
+    expect(upper).toHaveAttribute('aria-valuemax', '0');
+    await user.clear(upper);
+    await user.type(upper, '3');
+    expect(upper).toHaveValue('0');
+  });
+
+  it('só mostra o aviso das palavras quando a inclusão está ligada', async () => {
+    const user = userEvent.setup();
+    open();
+    expect(screen.queryByText(/As palavras entram exatamente/)).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Incluir as palavras literalmente na senha' }),
+    );
+    expect(screen.getByText(/As palavras entram exatamente/)).toBeInTheDocument();
   });
 
   it('tamanho 1 avisa que o tamanho está vazio em vez de gerar', async () => {

@@ -27,6 +27,16 @@ function pending<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   };
 }
 
+describe('Configurações: coluna do formulário', () => {
+  it('usa a coluna estreita, própria de formulário', async () => {
+    installPanic({ hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 });
+    render(<Settings />);
+
+    await screen.findByRole('heading', { name: 'Configurações' });
+    expect(document.querySelector('.max-w-2xl')).not.toBeNull();
+  });
+});
+
 describe('Configurações: PIN de pânico', () => {
   it('não mostra o formulário quando já existe um PIN de coação', async () => {
     installPanic({ hasPanicPin: true, nukeLimit: 0, attemptsMaster: 0 });
