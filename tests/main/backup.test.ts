@@ -135,8 +135,8 @@ describe('backup integral do cofre', () => {
   it('restaura um cofre funcional depois do Cryptographic Erase', () => {
     const destination = exportTo('restaurar.gbk');
     const exported = exportBackup(destination, '1.0.0');
-    const expectedEntries = listEntryIds().length;
-    const expectedAuth = listAuthIds().length;
+    const expectedEntries = [...listEntryIds()].sort();
+    const expectedAuth = [...listAuthIds()].sort();
 
     // simula a máquina formatada: o cofre e a chave em memória somem
     vaultStorage.erase();
@@ -147,10 +147,36 @@ describe('backup integral do cofre', () => {
     expect(restored.files).toBe(exported.files);
     expect(fs.existsSync(containerFile())).toBe(true);
     expect(fs.statSync(containerFile()).mode & 0o777).toBe(0o600);
-    expect(listEntryIds().length).toBe(expectedEntries);
-    expect(listAuthIds().length).toBe(expectedAuth);
-    expect(fs.existsSync(path.join(entriesDir(), `${listEntryIds()[0]}.zke`))).toBe(true);
-    expect(fs.existsSync(path.join(authDir(), `${listAuthIds()[0]}.zka`))).toBe(true);
+    // os mesmos ids, não só a mesma quantidade: um nome de destino montado com
+    // um caractere a menos criaria arquivos novos e a contagem continuaria igual
+    expect([...listEntryIds()].sort()).toEqual(expectedEntries);
+    expect([...listAuthIds()].sort()).toEqual(expectedAuth);
+    expect(fs.existsSync(path.join(entriesDir(), `${expectedEntries[0]}.zke`))).toBe(true);
+    expect(fs.existsSync(path.join(authDir(), `${expectedAuth[0]}.zka`))).toBe(true);
+  });
+
+  it('grava o contêiner por último, uma vez só', () => {
+    // O contêiner é a chave do cofre: se ele for escrito no meio, um crash
+    // deixa credenciais pela metade ao lado de um cofre que abre. As gravações
+    // atômicas passam por `rename`, então a ordem dos renomes é a ordem das
+    // escritas.
+    const destination = exportTo('ordem.gbk');
+    exportBackup(destination, '1.0.0');
+    const written: string[] = [];
+    const original = fsExtra.renameSync;
+    const rename = vi.spyOn(fsExtra, 'renameSync').mockImplementation((from, to) => {
+      written.push(String(to));
+      original(from, to);
+    });
+
+    try {
+      restoreBackup(destination);
+    } finally {
+      rename.mockRestore();
+    }
+
+    expect(written.filter((target) => target === containerFile())).toHaveLength(1);
+    expect(written[written.length - 1]).toBe(containerFile());
   });
 });
 
@@ -191,6 +217,9 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
 
       expect(resultado.files).toBeGreaterThan(0);
       expect(fs.readFileSync(destino).subarray(0, 8).toString('ascii')).toBe('ZKBACKUP');
+      // o `chmod` falhou, então o modo que ficou é o passado na criação do
+      // temporário: o backup não pode nascer legível por outros usuários
+      expect(fs.statSync(destino).mode & 0o777).toBe(0o600);
       expect(chmod).toHaveBeenCalledWith(destino, 0o600);
     } finally {
       chmod.mockRestore();

@@ -124,6 +124,8 @@ describe('tela do verificador 2FA', () => {
 
     expect(await screen.findByText('Nenhum token ainda')).toBeInTheDocument();
     expect(screen.getByText(/otpauth:\/\//)).toBeInTheDocument();
+    // a coluna larga é a que cabe o cartão do token
+    expect(document.querySelector('.max-w-6xl')).not.toBeNull();
   });
 
   it('nomeia o token sem emissor em vez de deixar a linha em branco', async () => {
@@ -540,8 +542,11 @@ describe('tela do verificador 2FA', () => {
     const tiny = token({ id: 'dddddddd-4444-4444-8444-444444444444' });
     const soon = token({ id: 'eeeeeeee-5555-4555-8555-555555555555' });
     const later = token({ id: 'ffffffff-6666-4666-8666-666666666666' });
+    // o período 1 é válido e não pode cair no ramo de período inválido: meio
+    // segundo restante é metade da barra
+    const fast = token({ id: 'abcdefab-1111-4111-8111-111111111111', period: 1 });
     await renderFrozen(
-      [half, full, invalid, tiny, soon, later],
+      [half, full, invalid, tiny, soon, later, fast],
       [
         code(half.id, '111111', 15_000),
         code(full.id, '222222', 60_000),
@@ -549,6 +554,7 @@ describe('tela do verificador 2FA', () => {
         code(tiny.id, '444444', 150),
         code(soon.id, '555555', 5_000),
         code(later.id, '666666', 6_000),
+        code(fast.id, '777777', 500),
       ],
     );
 
@@ -560,6 +566,7 @@ describe('tela do verificador 2FA', () => {
     expect(barFor('555555')).toHaveClass('bg-amber-500');
     expect(screen.getByText('666666')).toHaveClass('text-emerald-400');
     expect(barFor('666666')).toHaveClass('bg-emerald-500');
+    expect(barFor('777777')).toHaveStyle({ width: '50%' });
   });
 
   it('pede código novo no exato instante em que o código vence', async () => {

@@ -148,6 +148,21 @@ describe('as faixas de bits da senha', () => {
     expect(evaluatePassword(GOOD_MASTER).score).toBe(4);
   });
 
+  it('cada corte da régua deixa o valor exato do lado de cima', () => {
+    // A fórmula da frase é `12,9 × distintas − 4 × repetidas`. Com 40 palavras
+    // distintas, os totais 162, 160 e 149 caem exatamente em 28, 36 e 80 bits:
+    // o valor do degrau pertence à faixa de cima, e um `<=` no lugar do `<`
+    // rebaixaria a nota.
+    const frase = (total: number): string =>
+      Array.from({ length: total }, (_, i) => `xyz${String((i % 40) + 1).padStart(3, '0')}`).join(
+        ' ',
+      );
+
+    expect(evaluatePhrase(frase(162)).score).toBe(1);
+    expect(evaluatePhrase(frase(160)).score).toBe(2);
+    expect(evaluatePhrase(frase(149)).score).toBe(4);
+  });
+
   it('a nota 3 vira 4 só no último degrau', () => {
     // 13 caracteres com duas categorias dão 74 bits: forte, e não "muito forte"
     const forte = evaluatePassword('XqZmVjKwErtYuZ');
@@ -251,6 +266,7 @@ describe('a data dentro de um PIN', () => {
     // A faixa é `day <= 31` e `month <= 12`: alargar uma delas transforma
     // qualquer número em data e o app passa a acusar de data um PIN comum.
     expect(evaluatePin('32121999').reasons).not.toContain('dateLike');
+    expect(evaluatePin('01131999').reasons).not.toContain('dateLike');
   });
 
   it('o recorte é DDMMAAAA, e também AAAA MMDD', () => {

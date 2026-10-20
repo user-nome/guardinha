@@ -232,6 +232,11 @@ describe('assertGeneratorOptions', () => {
     expect(() =>
       assertGeneratorOptions(valid({ customEntropyWords: ['a', 'b', 'c', 'd', 'e', 'f'] })),
     ).toThrow();
+    // cinco é o teto, e o teto é inclusivo: recusar aqui tiraria uma palavra
+    // que a tela oferece
+    expect(() =>
+      assertGeneratorOptions(valid({ customEntropyWords: ['a', 'b', 'c', 'd', 'e'] })),
+    ).not.toThrow();
     const nonStringWord = valid();
     Object.assign(nonStringWord, { customEntropyWords: ['word', 1] });
     expect(() => assertGeneratorOptions(nonStringWord)).toThrow();
@@ -305,6 +310,61 @@ describe('entropia do gerador', () => {
       includeCustomEntropyWords: false,
     });
     expect(sorteio).toHaveBeenCalledWith(32);
+  });
+
+  it('a saída é determinística com a mesma entropia e o mesmo embaralhamento', () => {
+    // Fixar o material aleatório transforma o gerador numa função: qualquer
+    // deslocamento no índice do digest (começar em 1, andar de 2 em 2) ou no
+    // laço de embaralhamento muda os caracteres, e o valor esperado é o que
+    // separa as versões.
+    vi.spyOn(crypto, 'randomBytes').mockImplementation((size: number) => Buffer.alloc(size, 0));
+    vi.spyOn(crypto, 'randomInt').mockImplementation((max: number) =>
+      max === 26 ? 0 : max === 2 ? 0 : Math.floor(max / 2),
+    );
+
+    const senha = generateHighEntropyPassword({
+      length: 4,
+      useLower: true,
+      countLower: 0,
+      useUpper: false,
+      countUpper: 0,
+      useNumbers: false,
+      countNumbers: 0,
+      useSymbols: false,
+      countSymbols: 0,
+      customEntropyWords: [],
+      includeCustomEntropyWords: false,
+    });
+
+    expect(senha).toBe('indb');
+  });
+
+  it('sorteia a quantidade reservada dentro do conjunto daquela categoria', () => {
+    // Um número reservado sai do alfabeto dos números, não do conjunto geral:
+    // se o laço da categoria não rodar, o `randomInt(10)` some e a reserva vira
+    // só mais um caractere sorteado entre letras e números.
+    vi.spyOn(crypto, 'randomBytes').mockImplementation((size: number) => Buffer.alloc(size, 0));
+    const limites: number[] = [];
+    vi.spyOn(crypto, 'randomInt').mockImplementation((max: number) => {
+      limites.push(max);
+      return 0;
+    });
+
+    generateHighEntropyPassword({
+      length: 4,
+      useLower: true,
+      countLower: 0,
+      useUpper: false,
+      countUpper: 0,
+      useNumbers: true,
+      countNumbers: 1,
+      useSymbols: false,
+      countSymbols: 0,
+      customEntropyWords: [],
+      includeCustomEntropyWords: false,
+    });
+
+    expect(limites).toContain(10);
   });
 
   it('comprimento 0 corta antes de acionar o gerador aleatório', () => {

@@ -1,6 +1,6 @@
 name: CodeQL
 
-# Análise estática de segurança do código (JS/TS) em push/PR para main e
+# Análise estática de segurança do código (JS/TS) em push/PR para ajustes e
 # semanalmente. Complementa o `npm run security:audit` (OSV, dependências).
 # Ressalva: code scanning é gratuito em repositório público; em privado
 # exige GitHub Advanced Security.
@@ -8,9 +8,12 @@ name: CodeQL
 # (`github-actions`) atualiza os pins.
 on:
   push:
-    branches: [main]
+    branches:
+      - ajustes
   pull_request:
-    branches: [main]
+    branches:
+      - developer
+      - main
   schedule:
     - cron: '17 4 * * 1'
 

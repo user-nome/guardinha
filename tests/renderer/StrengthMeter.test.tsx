@@ -64,6 +64,11 @@ describe('StrengthMeter', () => {
     expect(
       segments(renderMeter(result({ score: -3 }))).filter((c) => c.includes('bg-slate')).length,
     ).toBe(3);
+    // abaixo de zero a nota satura em 0, e o primeiro segmento recebe a cor da
+    // faixa mais fraca, não fica sem cor
+    expect(segments(renderMeter(result({ score: -3 })))[0]).toContain('bg-rose-600');
+    // acima de 4 satura em 4, com a cor da faixa mais forte
+    expect(segments(renderMeter(result({ score: 9 })))[0]).toContain('bg-emerald-500');
   });
 
   it('mantém a barra sem classes de cor quando o score não é finito', () => {

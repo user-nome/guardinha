@@ -175,6 +175,93 @@ describe('SensitivitySlider: arraste', () => {
     expect(onChange).toHaveBeenCalledWith(20);
   });
 
+  it('calcula o passo pela largura real da faixa', () => {
+    // 480 px para 48 unidades dão 10 px por unidade: o arraste de 100 px anda
+    // 10. Com a multiplicação no lugar da divisão o passo seria 23040 px e o
+    // arraste não moveria nada.
+    const { onChange } = setup(0, 0, 48);
+    Object.defineProperty(slider(), 'clientWidth', { value: 480, configurable: true });
+    fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
+    fireEvent.pointerMove(slider(), { clientX: 100, pointerId: 1 });
+
+    expect(onChange).toHaveBeenCalledWith(10);
+  });
+
+  it('o passo usa a distância entre mínimo e máximo, não a soma', () => {
+    // Faixa 10..20 em 300 px: 30 px por unidade. Somar as pontas daria 10 px
+    // por unidade e o mesmo arraste andaria três vezes mais.
+    const { onChange } = setup(10, 10, 20);
+    Object.defineProperty(slider(), 'clientWidth', { value: 300, configurable: true });
+    fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
+    fireEvent.pointerMove(slider(), { clientX: 30, pointerId: 1 });
+
+    expect(onChange).toHaveBeenCalledWith(11);
+  });
+
+  it('mede o arraste a partir do ponto em que o ponteiro desceu', () => {
+    // O arraste é relativo: `clientX - startX`, nunca a soma dos dois.
+    const { onChange } = setup(5, 0, 20);
+    Object.defineProperty(slider(), 'clientWidth', { value: 200, configurable: true });
+    fireEvent.pointerDown(slider(), { clientX: 50, pointerId: 1 });
+    fireEvent.pointerMove(slider(), { clientX: 100, pointerId: 1 });
+
+    expect(onChange).toHaveBeenCalledWith(10);
+  });
+
+  it('põe o preenchimento na fração exata do valor na faixa', () => {
+    setup(15, 10, 20);
+    const fill = slider().firstElementChild;
+    const knob = slider().lastElementChild;
+    if (!(fill instanceof HTMLElement) || !(knob instanceof HTMLElement)) {
+      throw new Error('trilho sem preenchimento ou botão');
+    }
+
+    expect(fill).toHaveStyle({ width: '50%' });
+    expect(knob).toHaveStyle({ left: '50%' });
+  });
+
+  it('na faixa de uma unidade, o máximo cobre a barra inteira', () => {
+    setup(1, 0, 1);
+    const fill = slider().firstElementChild;
+    if (!(fill instanceof HTMLElement)) throw new Error('trilho sem preenchimento');
+
+    expect(fill).toHaveStyle({ width: '100%' });
+  });
+
+  it('na faixa de uma unidade, o passo é a largura inteira da faixa', () => {
+    // Com `max - min` igual a 1, o passo natural é a largura toda: arrastar um
+    // quarto da faixa não move nada, e a faixa inteira move 1. O piso do
+    // `Math.max(1, ...)` existe para a faixa degenerada, e um piso maior
+    // mudaria o passo de uma faixa de duas posições.
+    const { onChange } = setup(0, 0, 1);
+    Object.defineProperty(slider(), 'clientWidth', { value: 200, configurable: true });
+    fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
+    fireEvent.pointerMove(slider(), { clientX: 50, pointerId: 1 });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('soltar o ponteiro sem arraste não solta captura nenhuma', () => {
+    CAPTURE.releasePointerCapture.mockClear();
+    setup(10, 0, 20);
+
+    fireEvent.pointerUp(slider(), { clientX: 10, pointerId: 9 });
+
+    expect(CAPTURE.releasePointerCapture).not.toHaveBeenCalled();
+  });
+
+  it('soltar depois do arraste encerra o estado e solta a captura', () => {
+    CAPTURE.releasePointerCapture.mockClear();
+    const { onChange } = setup(10, 0, 20);
+    fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 9 });
+    fireEvent.pointerUp(slider(), { clientX: 0, pointerId: 9 });
+    expect(CAPTURE.releasePointerCapture).toHaveBeenCalledTimes(1);
+
+    onChange.mockClear();
+    fireEvent.pointerMove(slider(), { clientX: 100, pointerId: 9 });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('termina o arraste sem soltar captura que o elemento não tem', () => {
     // `hasPointerCapture` falso é o caso do ponteiro que já saiu (ou de um
     // ambiente que nega a captura): soltar captura inexistente lança

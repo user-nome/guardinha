@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { deleteEntry } from '@zero/main/entries-store';
 import { listEntries, removeEntry, saveEntry } from '@zero/main/entries';
 import { currentMessages } from '@zero/main/i18n';
 import { vaultStorage } from '@zero/main/facade';
@@ -114,6 +115,14 @@ describe('entries: remoção', () => {
   });
 });
 
+describe('entries: remoção idempotente', () => {
+  it('apagar um arquivo que já não existe não lança', () => {
+    // A remoção pode ser repetida por uma tela que atualiza depois de um erro;
+    // sem a guarda de existência, o `shred` estoura com ENOENT.
+    expect(() => deleteEntry('ffffffff-9999-4999-8999-999999999999')).not.toThrow();
+  });
+});
+
 describe('entries: ordem da lista', () => {
   it('mostra a credencial editada por último, não por primeiro', () => {
     // A lista da tela começa pelo que o usuário mexeu por último. Um `+` no
@@ -130,4 +139,38 @@ describe('entries: ordem da lista', () => {
     removeEntry(idPrimeira);
     removeEntry(idSegunda);
   });
+
+  it('ordena por data mesmo quando a soma das datas daria sempre positivo', () => {
+    // `b - a` ordena de verdade; `b + a` dá positivo para qualquer par e a
+    // ordenação vira a ordem em que o diretório devolveu os arquivos. As duas
+    // credenciais são atualizadas em ordem inversa à do diretório para que a
+    // diferença apareça.
+    const now = vi.spyOn(Date, 'now');
+    const base = Date.now() + 1_000_000;
+    const primeira = saveEntry(entry({ title: 'Ordem-soma-a' }))[0];
+    const segunda = saveEntry(entry({ title: 'Ordem-soma-b' }))[0];
+    const ids = [primeira?.id ?? '', segunda?.id ?? ''];
+    const noDiretorio = vaultStorage.listIds().filter((id) => ids.includes(id));
+
+    try {
+      noDiretorio.forEach((id, index) => {
+        now.mockReturnValue(base + index * 1000);
+        saveEntry(entry({ title: `Ordem-soma-${index}`, id }));
+      });
+    } finally {
+      now.mockRestore();
+    }
+
+    const resultado = listEntries()
+      .filter((item) => ids.includes(item.id))
+      .map((item) => item.id);
+    // o segundo id do diretório recebeu a data mais nova, então a lista começa
+    // por ele; a soma das datas manteria a ordem do diretório
+    expect(resultado).toEqual([...noDiretorio].reverse());
+    for (const id of ids) removeEntry(id);
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
