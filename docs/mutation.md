@@ -91,9 +91,16 @@ O operador `numeric` também pula número em posição de tipo
 (`Parameters<typeof f>[0]`), que some na compilação como o literal de tipo que o
 `string-empty` já pula.
 
+O `if-remove` remove a **condição**, não o corpo: `if (t) { corpo }` vira
+`{ corpo }` e `if (t) return;` vira `return;`. O mutante de guarda não "deixa de
+proteger" o código, ele faz o corpo rodar sempre. A distinção importa na leitura
+de um sobrevivente, porque as duas formas falham de jeitos bem diferentes: sem a
+guarda do `if (data === null) return;`, o `initManifest` não estoura nada, ele
+simplesmente para de selar o manifesto.
+
 ## Como a varredura fica barata
 
-Uma execução da suíte inteira custa 84 s. Multiplicada por 2.557 mutantes, a
+Uma execução da suíte inteira custa 84 s. Multiplicada por 2.403 mutantes, a
 varredura seria de dias. O que reduz isso:
 
 - **Seleção por linha.** Uma matriz arquivo de teste → linhas de `src/`
@@ -170,7 +177,7 @@ do resto do workflow:
 Ela **não** roda em pull request nem em push para a `main`. A varredura leva
 horas e o número que ela mede só muda quando alguém escreve teste novo; a única
 coisa que ela faz por um PR é mudar de verde para vermelho sem dizer nada sobre o
-PR. Reprova abaixo de **65%**, com o número medido hoje em 69,4%.
+PR. Reprova abaixo de **65%**, com o número medido hoje em 95,7%.
 
 | Input           | Efeito                                                      |
 | --------------- | ----------------------------------------------------------- |
@@ -241,43 +248,42 @@ individuais e `report.md` com o resumo e a lista de sobreviventes.
 ## Números da varredura
 
 Medidos em `src/` inteiro depois da correção do `fsModuleCache` (ver a garantia
-em "O mutante precisa entrar na execução"): 2.557 mutantes em 820 testes. No
-denominador ficaram 2.320: 1.609 mortos e 711 sobreviventes. Ficaram fora 143
-`timeout` e 94 `compileError`, que não são veredito da suíte.
+em "O mutante precisa entrar na execução"): 2.403 mutantes em 75 arquivos de
+teste. No denominador ficaram 2.335: 2.235 mortos e 100 sobreviventes. Ficaram
+fora 20 `timeout` e 48 `compileError`, que não são veredito da suíte.
 
 | Área                    | Score | Mortos | Sobreviv. | Observação                                    |
 | ----------------------- | ----- | ------ | --------- | --------------------------------------------- |
 | `src/messages/index.ts` | 100%  | 1      | 0         | o registro de idiomas                         |
-| `src/preload/index.ts`  | 96,3% | 26     | 1         | a ponte da interface; o resto é equivalente   |
-| `src/main/*`            | 89,6% | 941    | 109       | o núcleo de segurança                         |
-| `src/shared/*`          | 69,8% | 217    | 94        | `otpauth` 86%, `strength` 56%                 |
-| `src/renderer/*`        | 45,5% | 424    | 507       | a tela é verificada por fluxo, não por estado |
+| `src/preload/index.ts`  | 100%  | 28     | 0         | a ponte da interface                          |
+| `src/main/*`            | 96,9% | 1.161  | 37        | o núcleo de segurança                         |
+| `src/renderer/*`        | 97,1% | 643    | 19        | a tela é verificada por fluxo, não por estado |
+| `src/shared/*`          | 90,1% | 402    | 44        | `otpauth` 96%, `strength` 86%                 |
 
-**69,4%** no geral depois da primeira leva de testes novos (era 67,8% na leitura
-bruta). O que rendeu: `src/main/shred.ts` foi de 43% para 95%, e `clipboard.ts`,
-`activity.ts` e `format.ts` chegaram a 100%. `src/preload/index.ts` voltou a ser
-medido depois do conserto do grafo, e os 27 mutantes dele entram neste total. O padrão que matou mais foi contar
-coisas em vez de só conferir o resultado: o número de passadas da sobrescrita, o
-tamanho e a posição de cada escrita, e se `clearTimeout` foi chamado com um
-temporizador de verdade. O que sobrou em `shred.ts` são mutantes equivalentes de
-verdade: o `&&` do laço de diretório não muda o resultado porque o `rmdir` falha
-de qualquer jeito quando sobrou arquivo.
+**95,7%** no geral, contra 92,3% da varredura anterior. O que rendeu foi
+sempre a mesma coisa: contar a decisão, não o resultado. O `initManifest` selo
+o manifesto, o `otpauth://` sem a barra do rótulo é recusado, a régua de força
+corta no oito em ponto e no sete distintos, e o gerador desconta as palavras
+pessoais da cota de cada categoria.
+
+O que sobrou (100 sobreviventes) é, na esmagadora maioria, mutante equivalente
+de verdade, e a tabela da seção "A quarta leva" lista cada um com o motivo. O
+grupo maior é o da régua de força: a nota final é uma escala de 0 a 4, e um
+teto ou um alfabeto movido em um bit não atravessa nenhum dos cortes (28, 36,
+60 e 80), então o valor bruto dos bits pode mudar sem que a régua mude.
 
 O quadro é desigual de propósito, e vale ler assim: o `src/main/*` é a parte em
 que a mutação carrega argumento, e o `src/renderer/*` é a parte em que ela
 confirma o que já se sabia, que tela se prova por fluxo e não por estado. O
-`src/shared/strength.ts` fica no meio porque muito sobrevivente dele é constante
-de tabela: a suíte fixa o comportamento e não cada palavra da tabela.
+`src/shared/strength.ts` fica no meio porque muito sobrevivente dele é
+equivalente de verdade: a régua expõe o degrau, não os bits.
 
-Por operador, os melhores são `ternary-swap` (100%, mas com um único mutante),
-`negation` (95%), `equality` (94%) e `if-remove` (89%): os quatro medem decisão,
-que é o que a suíte costuma fixar. Os piores são `string-empty` (44%), que mede
-se a suíte trava cada constante do código, `boundary` (59%), `numeric` (64%) e
-`optional-chaining` (53%). Os três primeiros têm a mesma origem, que é a mesma do
-primeiro: buracos de verdade, mas de baixo risco quando o valor só muda de 3
-para 4; a exceção é quando a constante é de segurança, e aí o teste tem que fixar
-o número (foi o que passou nos perfis de Argon2id, no período ocioso e no número
-de passadas do shred).
+Por operador, os melhores são `ternary-swap` (100%), `if-swap` (100%),
+`boolean` (100%), `equality` (99,2%) e `if-remove` (99,1%): os cinco medem
+decisão, que é o que a suíte costuma fixar. Os piores são `boundary` (87,9%),
+`numeric` (89,7%) e `string-empty` (96%). O `numeric` é o operador que mais
+sobrevive, e a razão é a mesma do `strength.ts`: a maior parte dos números que
+ele mexe é teto de_bits ou de caracteres, e mexer neles não muda a saída.
 
 **Ler esse número antes do anterior importa:** a varredura anterior media o
 mutante errado a partir do segundo mutante de cada arquivo, então os placares
@@ -405,3 +411,135 @@ O limiar de 5 s do `Authenticator` é o único caso em que o teste olha a classe
 não há `aria` nem texto que carregue a decisão `seconds <= 5`, então a classe é o
 que a tela realmente decide. Não é testar a folha de estilo, é observar a única
 saída da decisão.
+
+### A quarta leva: os sobreviventes de 92,3%
+
+A varredura completa de `src/` (2.403 mutantes, 176 sobreviventes, 92,3%) deixou
+uma lista de sobreviventes que valia reler um a um. A leitura mostrou três coisas
+ao mesmo tempo:
+
+- **Buracos de verdade**, com a suíte olhando o resultado e não a decisão: o
+  `initManifest` podia deixar de selar o manifesto e nada reclamava, o `otpauth://`
+  sem a barra do rótulo passava, o bloqueio não voltava para o Início, e o
+  manifesto do backup aceitava um `path` que era lista.
+- **Equivalentes de verdade**, que a tabela mais abaixo lista com o motivo.
+- **Uma leitura errada da ferramenta**, que valeu mais que os dois grupos
+  juntos: o operador `if-remove` não remove o corpo do `if`, remove a
+  **condição**. `if (t) { corpo }` vira `{ corpo }`, e `if (t) return;` vira
+  `return;`. Ou seja, o mutante de guarda não "deixa de proteger", ele deixa o
+  corpo rodar sempre. Isso muda a leitura de dois sobreviventes que pareciam
+  óbvios: o `if (data === null) return;` do `initManifest` não estourava
+  `TypeError` com o cofre ausente, ele só impedia o selo de acontecer, e era
+  isso que a suíte não conferia.
+
+O que os testes novos fecharam, por área:
+
+- `storage.ts`: o `initManifest` sela o manifesto de verdade quando o cofre ainda
+  não tem linha de base. O teste antigo só conferia que selar sem cofre não
+  estourava, o que é a mesma coisa que não selar nada; e o `writeAuthState` sem
+  cofre não recria o `vault.zkv`.
+- `backup-container.ts`: o manifesto lido do disco é campo a campo, e o `path` em
+  lista engana o `test` da expressão regular (o `||` virando `&&` deixaria a
+  lista passar). O `size` nulo e o `sha256` em lista continuam recusados, mas por
+  outra guarda: o tamanho fracionário cai na conferência do fim do pacote, e o
+  `sha256` em lista cai na comparação estrita do digest, que compara string com
+  objeto e nunca dá igual.
+- `otpauth.ts`: um `otpauth://` sem a barra que separa o tipo do rótulo é
+  recusado. Com o corte trocado, o `totpx` passava por `totp` e o token inteiro
+  nascia de uma URI que ninguém emitiu.
+- `strength.ts`: as bordas da régua. Oito em ponto já é sequência (e trava), seis
+  caracteres já são senha de uma categoria só, sete caracteres distintos ainda
+  não são variedade baixa, e o dia e o mês de uma data saem das duplas certas.
+  Com a régua coberta pelos cortes, o resto vira equivalente: a nota é uma
+  escala de 0 a 4, e um teto ou um alfabeto movido em um bit não atravessa
+  nenhum corte.
+- `generator.ts`: o embaralhamento final troca mesmo os últimos dois caracteres,
+  com o `randomInt` fixado para devolver `0` no limite de dois; a cota de uma
+  categoria desconta as palavras pessoais, e a própria categoria também; e
+  mudar a quantidade de palavras não revoga o consentimento de incluí-las.
+- `SensitivitySlider.tsx`: na faixa de uma unidade, o passo é a largura
+  inteira. O piso de `Math.max(1, max - min)` existe para a faixa degenerada, e
+  um piso maior mudaria o passo de uma faixa de duas posições.
+- `AuthModal.tsx`: o ícone do botão de desbloquear troca com o método (a chave
+  na senha mestra, o hash no PIN), e a caixa da frase de recuperação do passo de
+  redefinição tem as mesmas três linhas das outras.
+- `App.tsx`: o bloqueio devolve a tela para o Início, e não para a aba em que o
+  usuário estava.
+
+O teste de remoção idempotente em `entries-store.ts` não mata mutante, e o
+motivo está na tabela: a guarda de existência é equivalente de verdade, porque o
+`shredFile` engole o `ENOENT` e devolve `false`, e o `deleteEntry` não olha o
+retorno. O teste fica porque apagar duas vezes a mesma credencial é contrato da
+tela, não só detalhe de implementação.
+
+Os equivalentes, e por que a suíte não os separa:
+
+| Mutante                                                                              | Por que é equivalente                                                                                                                                       |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backup-constants.ts`, `backup-container.ts`, `container-format.ts` `'ascii'` → `''` | `Buffer.from` sem `encoding` usa `utf8`, e `ZKBACKUP`, `ZKVAULT1` e `ZENTRY01` são ASCII: os mesmos bytes                                                   |
+| `backup-container.ts` `'utf8'` → `''`                                                | `Buffer.from(string)` já é `utf8`                                                                                                                           |
+| `backup-container.ts` `createdAt` `\|\|` → `&&`                                      | o JSON não transporta `NaN` nem `Infinity`: o único valor não finito que chega é `null`, que o `typeof` já recusa                                           |
+| `backup-container.ts` `size` `\|\|` → `&&`                                           | o tamanho fracionário passa pela guarda, mas a conferência do fim do pacote (`offset !== body.length`) recusa                                               |
+| `backup-container.ts` `sha256` `\|\|` → `&&`                                         | o `sha256` em lista cai na comparação estrita do digest, que compara string com objeto e nunca dá igual                                                     |
+| `backup-container.ts` `manifestLength === 0` → `=== 1`                               | com o manifesto vazio o `JSON.parse` falha, e o pacote é recusado com o mesmo erro                                                                          |
+| `backup-container.ts` `\|\|` → `&&` na borda do manifesto                            | quando o comprimento declarado passa do corpo, o `JSON.parse` ou a conferência dos arquivos recusa com o mesmo erro                                         |
+| `container.ts` `'hex'` → `''` no tamanho do blob                                     | o tamanho só dimensiona o buffer; o conteúdo gravado é o mesmo e o buffer é aparado no fim                                                                  |
+| `container.ts` `offset + BLOB_SALT_OFFSET` → `offset - BLOB_SALT_OFFSET`             | `BLOB_SALT_OFFSET` é `0`: somar e subtrair dão o mesmo endereço                                                                                             |
+| `container.ts` `>` → `>=` na borda do KDF                                            | no limite exato a leitura do blob seguinte recusa o container do mesmo jeito                                                                                |
+| `container.ts` guarda do `SALT_BYTES` (`+`→`-` e `>`→`>=`)                           | a guarda é redundante com a checagem do próprio blob, que recusa o container truncado                                                                       |
+| `container.ts` `&&` → `\|\|` na escrita dos métodos                                  | a flag só é ligada quando o método existe, então os dois operandos concordam sempre                                                                         |
+| `container.ts` `<` → `<=` no cabeçalho                                               | com o cabeçalho inteiro e sem magic, o arquivo é recusado pelo magic                                                                                        |
+| `crypto-constants.ts` `KEY_HEX_LENGTH`, `SHA256_BYTES`, `SHA256_HEX_LENGTH`          | constantes sem uso em `src/`: o número não muda nenhuma decisão                                                                                             |
+| `crypto.ts` `'utf8'`/`'hex'`                                                         | `update` sem codificação de entrada e `final` sem codificação de saída caem no mesmo par de sempre                                                          |
+| `entries-store.ts` guarda de existência                                              | o `shredFile` engole o `ENOENT` e devolve `false`, e o `deleteEntry` não olha o retorno                                                                     |
+| `generator.ts` `count > MAX_GENERATOR_LENGTH` → `>=`                                 | uma categoria com 72 caracteres passa do teto de 40% do comprimento, que é recusado adiante                                                                 |
+| `generator.ts` `i > 0` → `i >= 0` no embaralhamento                                  | a volta extra troca o índice `0` com ele mesmo                                                                                                              |
+| `protocol.ts` `frame === undefined`/`=== null` → `!==`                               | `senderFrame` ausente ou nulo leva ao mesmo erro de origem                                                                                                  |
+| `protocol.ts` `\|\|` → `&&` na guarda de frame                                       | o `&&` recusa tudo, inclusive o frame legítimo do app                                                                                                       |
+| `settings.ts` `0o700` → `0o701`                                                      | o `chmodSync` logo depois fixa o modo da pasta                                                                                                              |
+| `settings.ts` `&&` → `\|\|` no leitor de preferências                                | espalhar um primitivo em objeto não produz `language`, então o idioma padrão é o mesmo                                                                      |
+| `totp.ts` `Math.max(0, remainder)` → `Math.max(1, …)`                                | o resto de um período é sempre maior que zero, então o piso não alcança                                                                                     |
+| `unwrapping.ts` `'master'` → `''`                                                    | o `kdfProfileFor` só distingue `'pin'`; qualquer outro nome cai no perfil da senha mestra                                                                   |
+| `vault.ts` `'pin'` → `''` em `registerFailedAttempt`                                 | só o método `'master'` tem contador próprio; o PIN não soma no `attemptsMaster` de qualquer jeito                                                           |
+| `base32.ts` `let buffer = 0` → `1`                                                   | o bit extra entra acima do byte, e o `& 0xff` o descarta                                                                                                    |
+| `base32.ts` `bits >= 5` → `> 5` e `5` → `6`                                          | sobrar 5 bits é exatamente o resto que sai em um caractere                                                                                                  |
+| `otpauth.ts` `split === -1` → `1` e `-1` → `-2`                                      | o `indexOf` devolve `-1` ou um índice não negativo, e o primeiro `?` nunca cai na posição `1`                                                               |
+| `strength.ts` os tetos de bits (10, 30, 40, 45, 25, 16, 60) → `+1`                   | a régua é uma escala de 0 a 4 com cortes em 28, 36, 60 e 80, e o valor bruto dos bits não aparece em lugar nenhum: um teto movido em um não atravessa corte |
+| `strength.ts` `bits = 0` → `1` (senha e PIN)                                         | zero e um bit caem no mesmo degrau                                                                                                                          |
+| `strength.ts` `bits = 4`/`8` do PIN → `5`/`9`                                        | o PIN tem três degraus, com cortes em 16 e 24 bits                                                                                                          |
+| `strength.ts` `Math.max(distinct, 1)` → `Math.max(distinct, 2)`                      | o ramo só roda com três dígitos distintos ou mais, e aí o máximo já é o próprio número                                                                      |
+| `strength.ts` `distinct <= 4` do PIN → `< 4` e `5`                                   | o teto de 16 bits nunca aperta: com quatro dígitos distintos a conta já dá 16                                                                               |
+| `strength.ts` `distinct <= 2` do PIN (nos bits) → `< 2` e `3`                        | 4, 8 e 12 bits caem no mesmo degrau do PIN                                                                                                                  |
+| `strength.ts` `words.length === 0` → `1`                                             | uma frase de uma palavra não tem motivo nenhum, e a nota é a mesma da frase vazia                                                                           |
+| `strength.ts` `Math.max(0, …)` → `Math.max(1, …)`                                    | zero e um bit caem no mesmo degrau                                                                                                                          |
+| `strength.ts` `Math.max(size, 2)` → `3`                                              | o tamanho do alfabeto só é zero quando o texto é vazio, e o texto vazio sai antes                                                                           |
+| `strength.ts` `size += 10` e `size += 33` → `11` e `34`                              | o número de bits muda em uma fração, mas o degrau não: um bit de alfabeto não atravessa corte                                                               |
+| `strength.ts` `text.length / size` → `text.length * size`                            | a repetição é a mesma string depois do corte no tamanho do texto                                                                                            |
+| `strength.ts` `return 0` → `return 1` (bloco repetido)                               | o valor só é usado em comparação com 2, e 1 e 0 dão a mesma resposta                                                                                        |
+| `strength.ts` `digits.slice(6, 9)` → `digits.slice(6, 8)`                            | a data tem oito dígitos: o corte maior pega os mesmos dois                                                                                                  |
+| `strength.ts` `digits.slice(4, 9)` → `digits.slice(4, 8)`                            | idem, no outro formato                                                                                                                                      |
+| `strength.ts` `let size = 2` → `3` no laço do bloco                                  | o tamanho do bloco não aparece em lugar nenhum, só o motivo, e um bloco de dois sempre tem um múltiplo que preenche o texto                                 |
+| `strength.ts` `text.length > 0` → `>= 0` e `0` → `1` (igualdade)                     | o texto vazio sai antes da conta, e um caractere só é igual a si mesmo nos dois                                                                             |
+| `strength.ts` `if (text.length < 2)` → `<= 2` e `2` → `3`                            | com dois caracteres a sequência é o próprio texto, e com três a diferença é de um, abaixo do corte de quatro                                                |
+| `strength.ts` `let best = 1` → `2`                                                   | o melhor trecho só é comparado com 4 e com 8                                                                                                                |
+| `strength.ts` `for (let i = 1; i < text.length; i++)` → `<=`                         | a volta extra lê um caractere fora do texto, e a diferença não chega a ser um passo                                                                         |
+| `App.tsx` `useState<TabType>('home')` → `''`                                         | o `status` começa nulo, e o efeito do primeiro desenho já devolve a tela para o Início                                                                      |
+| `App.tsx` `setActiveTab('home')` → `''` no `handleDestroyed`                         | depois do PIN de pânico não sobra cofre, e a tela é o `AuthModal`: a aba não é desenhada                                                                    |
+| `AuthModal.tsx` `mode === tab.key` → `!==`                                           | a classe da aba ativa é folha de estilo                                                                                                                     |
+| `AuthModal.tsx` `value - 1000` → `value - 1001`                                      | o contador de trava perde um milissegundo por tique, e a tela mostra segundos                                                                               |
+| `AuthModal.tsx` `setStep('recovery')` → `''`                                         | o passo só separa "criar credenciais" do resto, e qualquer valor fora dele mostra a mesma tela de frase                                                     |
+| `Generator.tsx` `if (!checked) setCount(0)`                                          | a quantidade de uma categoria desmarcada já é zero, então zerar também na hora de marcar não muda nada                                                      |
+| `Generator.tsx` `pattern="[0-9]*"` → `''` (2×)                                       | o `pattern` só fala com o validador do navegador, e o campo não está dentro de um formulário                                                                |
+| `Credits.tsx` `'a'`/`'b'` → `''`                                                     | o sufixo só entra na `key` de cada metade, e as duas metades são listas separadas                                                                           |
+| `SelectField.tsx` `useState(0)` → `useState(1)`                                      | o efeito de abertura reescreve o índice antes de qualquer tecla                                                                                             |
+| `SelectField.tsx` `triggerRef.current?.focus()` (2×)                                 | a referência é de um botão sempre montado nas duas chamadas                                                                                                 |
+| `i18n.tsx` o contador das `key` do texto rico (2×)                                   | as chaves só precisam ser únicas entre si, e o contador continua único                                                                                      |
+| `i18n.tsx` `if (index > cursor)` → `>=`                                              | o pedaço vazio que entra no lugar não vira texto na tela                                                                                                    |
+
+Um detalhe do motor que vale registrar, porque ele muda como se lê um
+sobrevivente: o `if-remove` remove a condição, não o corpo. O `if (t) { corpo }`
+vira `{ corpo }`, e o `if (t) return;` vira `return;`. O mutante de guarda
+"deixa de proteger" o código, ele faz o corpo rodar sempre. Por isso o
+`initManifest` sem a guarda não era o `TypeError` que a leitura esperava: era o
+manifesto que nunca era selado, que é uma falha mais silenciosa e por isso
+precisa de teste próprio.

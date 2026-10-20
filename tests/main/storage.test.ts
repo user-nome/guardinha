@@ -20,6 +20,7 @@ import {
   readVaultContainer,
   vaultExists,
   verifyManifest,
+  writeAuthState,
   writeVaultContainer,
 } from '@zero/main/storage';
 import type { VaultContainerData } from '@zero/main/container';
@@ -246,6 +247,24 @@ describe('a varredura ignora o que não é credencial', () => {
   });
 });
 
+describe('manifesto: o selo acontece uma vez, e acontece', () => {
+  it('sela o manifesto quando o cofre ainda não tem linha de base', () => {
+    // O manifesto é a linha de base do cofre: sem o selo, um `.zke` plantado
+    // por fora passaria despercebido. O `initManifest` é quem faz esse selo, e
+    // ele precisa acontecer de verdade quando o cofre ainda não tem um: um
+    // `initManifest` que só devolve calado deixa o cofre sem defesa nenhuma.
+    const chave = Buffer.alloc(32, 11);
+    const data = container();
+    data.manifest = null;
+    writeVaultContainer(data);
+    expect(readVaultContainer()?.manifest).toBeNull();
+
+    initManifest(chave);
+
+    expect(readVaultContainer()?.manifest).not.toBeNull();
+  });
+});
+
 describe('verifyManifest com o arquivo fora do esperado', () => {
   it('sem container, diz que o cofre não existe', () => {
     const arquivo = containerFile();
@@ -270,6 +289,22 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
     fs.rmSync(arquivo, { force: true });
     try {
       expect(() => initManifest(Buffer.alloc(32, 7))).not.toThrow();
+      expect(fs.existsSync(arquivo)).toBe(false);
+    } finally {
+      fs.writeFileSync(arquivo, backup);
+    }
+  });
+
+  it('gravar estado de trava sem cofre não é erro nem cria o container', () => {
+    // A tela de desbloqueio atualiza a trava mesmo quando o cofre acabou de
+    // sumir; sem a guarda, o acesso a `data.attempts` estoura por cima da tela.
+    const arquivo = containerFile();
+    const backup = fs.readFileSync(arquivo);
+    fs.rmSync(arquivo, { force: true });
+    try {
+      expect(() =>
+        writeAuthState({ attempts: 9, lockUntil: null, attemptsMaster: 2, nukeLimit: 0 }),
+      ).not.toThrow();
       expect(fs.existsSync(arquivo)).toBe(false);
     } finally {
       fs.writeFileSync(arquivo, backup);

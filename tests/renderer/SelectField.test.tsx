@@ -89,6 +89,21 @@ describe('SelectField: abrir e fechar', () => {
     expect(gatilho()).toHaveTextContent('Opção C');
   });
 
+  it('fora do modo compacto mostra só o rótulo inteiro, sem o nome curto', () => {
+    render(
+      <SelectField
+        label="Idioma"
+        options={[{ value: 'pt-BR', label: 'Português do Brasil', short: 'pt-BR' }]}
+        value="pt-BR"
+        onChange={() => undefined}
+      />,
+    );
+
+    const gatilho = screen.getByRole('button', { name: 'Idioma' });
+    expect(gatilho).toHaveTextContent(/^Português do Brasil$/);
+    expect(gatilho).not.toHaveTextContent('pt-BR');
+  });
+
   it('o gatilho se anuncia como lista para a tecnologia assistiva', () => {
     setup();
     expect(gatilho()).toHaveAttribute('aria-haspopup', 'listbox');

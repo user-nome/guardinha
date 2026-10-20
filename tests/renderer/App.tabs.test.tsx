@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import App from '@zero/renderer/App';
@@ -77,6 +77,52 @@ describe('App: navegação entre abas', () => {
     await user.click(await screen.findByRole('button', { name: 'Configurações' }));
 
     expect(await screen.findByRole('heading', { name: 'Configurações' })).toBeInTheDocument();
+  });
+});
+
+describe('App: estados do cofre e da tela', () => {
+  it('sem cofre, mostra a criação e nenhuma aba', async () => {
+    installApi({ status: { ...UNLOCKED, exists: false } });
+
+    render(<App />);
+
+    expect(await screen.findByText('Crie o seu cofre')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gerador de Senhas' })).not.toBeInTheDocument();
+  });
+
+  it('o status recarregado não devolve a tela para o Início', async () => {
+    // O efeito só volta ao Início quando o cofre some ou trava. Recarregar o
+    // status enquanto o cofre continua aberto não pode arrancar o usuário da
+    // aba em que ele está.
+    const user = userEvent.setup();
+    const api = installApi({ status: UNLOCKED });
+    api.vault.status = () => Promise.resolve({ ...UNLOCKED });
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Gerador de Senhas' }));
+    expect(await screen.findByRole('heading', { name: 'Gerador de Senhas' })).toBeInTheDocument();
+
+    await act(async () => {
+      autoLockedListeners[0]?.({ ...UNLOCKED });
+      // o `act` assíncrono é o que dá tempo da recarga do status terminar: sem
+      // ele, a asserção roda antes da consulta e passa por qualquer motivo
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Gerador de Senhas' })).toBeInTheDocument();
+  });
+
+  it('registra a falha ao consultar o cofre com o prefixo que identifica a origem', async () => {
+    const erro = new Error('canal IPC fechado');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const api = installApi({ status: UNLOCKED });
+    api.vault.status = vi.fn().mockRejectedValue(erro);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith('Falha ao consultar o cofre:', erro);
+    });
+    consoleError.mockRestore();
   });
 });
 
@@ -182,6 +228,27 @@ describe('App: bloqueio do cofre', () => {
       expect(api.vault.status).toHaveBeenCalled();
     });
     expect(await screen.findByText('Cofre bloqueado')).toBeInTheDocument();
+  });
+
+  it('volta para o Início quando o cofre é bloqueado', async () => {
+    // O bloqueio devolve a tela para o Início, e não para a aba em que o
+    // usuário estava. Aqui o status continua aberto de propósito: é o que
+    // torna a volta para o Início observável, porque com o cofre bloqueado a
+    // tela inteira é substituída pelo `AuthModal`.
+    const user = userEvent.setup();
+    const api = installApi({ status: UNLOCKED });
+    api.vault.lock = vi.fn(() => Promise.resolve(LOCKED));
+    api.vault.status = vi.fn().mockResolvedValue(UNLOCKED);
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Gerador de Senhas' }));
+    expect(await screen.findByRole('heading', { name: 'Gerador de Senhas' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Bloquear cofre' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Senhas' }, { timeout: 15_000 }),
+    ).toBeInTheDocument();
   });
 
   it('volta para a autenticação quando o main avisa o auto-lock', async () => {

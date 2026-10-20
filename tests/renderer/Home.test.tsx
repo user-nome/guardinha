@@ -13,6 +13,20 @@ import type { Credential } from '@zero/types';
  * canais que limpam o clipboard e validam o domínio no main.
  */
 
+describe('Home: coluna da grade', () => {
+  it('usa a coluna larga, que comporta a grade de cartões', async () => {
+    installApi({ entries: [] });
+    render(
+      <MessagesProvider language="pt-BR">
+        <Home onToast={() => undefined} />
+      </MessagesProvider>,
+    );
+
+    await screen.findByRole('heading', { name: 'Senhas' });
+    expect(document.querySelector('.max-w-6xl')).not.toBeNull();
+  });
+});
+
 const ENTRIES: Credential[] = [
   {
     id: 'id-github',
