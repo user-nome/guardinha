@@ -1,25 +1,28 @@
 name: Publicar .deb
 
-# Publica o .deb na GitHub Release correspondente e, junto, o repositório
-# APT flat (índices assinados + alias estável do .deb) como assets da mesma
-# Release, base: .../releases/latest/download/ (suite ./).
-# Gatilhos:
-# - push na main: lê package.json → se ainda não existir Release para
-#   v<versão>, publica automaticamente (é assim que a versão nova sai);
-# - tag v* enviada manualmente (ex.: git push origin v1.0.1), ou
-# - Release criada na UI do GitHub, ou
-# - execução manual na UI (workflow_dispatch, que também serve para reanexar
-#   assets de uma Release que falhou no meio).
-# Sem loop: pushes de tag/Release feitos com o GITHUB_TOKEN desta execução
-# não disparam novos runs, e a tag só é criada antes do upload dos assets.
-# `concurrency` serializa as publicações para duas corridas na main não
-# publicarem a mesma versão duas vezes.
-# Actions fixadas por SHA completo (com a tag na comentário) para não depender
-# da segurança da tag movível; o Dependabot (`github-actions`) atualiza os pins.
-# Gate de qualidade: o job "Verificar qualidade" (npm run check + npm test)
-# roda em paralelo ao "Verificar versão" e o "Gerar e publicar" só começa se
-# os dois passarem; falha de tipo, lint, formato, auditoria OSV, shellcheck ou
-# teste interrompe a publicação.
+# Publica o `.deb` na GitHub Release correspondente e, junto, o repo APT flat
+# (índices assinados + alias estável do `.deb`) como assets da mesma Release,
+# base .../releases/latest/download/ (suite ./).
+#
+# Gatilhos: push na `main` (publica se ainda não houver Release para a versão do
+# package.json), tag `v*` enviada à mão, Release criada na UI e execução manual
+# (que também reanexa assets de uma Release que falhou no meio). Sem loop: tag e
+# Release criadas com o GITHUB_TOKEN desta execução não disparam novos runs, e a
+# tag só é criada antes do upload. O `concurrency` serializa as publicações para
+# duas corridas na `main` não publicarem a mesma versão duas vezes.
+#
+# Gate de qualidade: "Verificar qualidade" (`npm run check` + `npm test`) roda
+# em paralelo a "Verificar versão", e "Gerar e publicar" só começa se os dois
+# passarem.
+#
+# Actions fixadas por SHA completo (com a tag no comentário); o Dependabot
+# (`github-actions`) atualiza os pins. O passo a passo está em `docs/build.md`.
+#
+# Runner fixado em `ubuntu-24.04` (não `ubuntu-latest`) nos três jobs: em
+# 19/10/2026 o `ubuntu-latest` do GitHub passa a apontar para Ubuntu 26.04
+# (actions/runner-images#14748), e o `.deb` deste workflow é o artefato que o
+# usuário instala. Como sair do 24.04 está em `docs/build.md`.
+
 on:
   push:
     branches:
@@ -43,22 +46,18 @@ env:
   # Impressão digital da chave que assina o repo APT. Fonte única: ao trocar a
   # chave, atualize este valor e os secrets `GPG_PRIVATE_KEY` e
   # `GPG_PASSPHRASE`. Ela é conferida em dois lugares (checagem da chave e
-  # mensagem de erro), então escrevê-la à mão nos dois pontos era um convite
-  # para a metade ficar na chave antiga. Ver docs/build.md.
+  # mensagem de erro), então escrevê-la à mão nos dois pontos era um convite para
+  # a metade ficar na chave antiga.
   #
-  # Chave substituída em 17/10/2026. O runner é efêmero e não tem acesso ao
-  # ~/.gnupg local: GPG_PRIVATE_KEY e GPG_PASSPHRASE precisam conter a chave
-  # nova e sua frase nos secrets do repositório. Ver docs/build.md.
+  # A chave atual (substituída em 17/10/2026) tem frase. O runner é efêmero e
+  # não tem acesso ao `~/.gnupg` local: os dois secrets precisam conter a chave
+  # nova e sua frase. Ver `docs/build.md`.
   GPG_FINGERPRINT: 25300DF604649306F87CDF777DC37BA3C21FFA81
 
 jobs:
   resolver-versao:
     name: Verificar versão
-    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
-    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
-    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
-    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
-    # Como sair do 24.04 está em `docs/build.md`.
+    # Runner fixado: ver o comentário no topo do arquivo.
     runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.version.outputs.tag }}
@@ -84,16 +83,13 @@ jobs:
           TAG="v$VERSION"
           PUBLICAR=true
 
-          # Ref explícita (tag manual, Release da UI ou dispatch numa tag)
-          # manda mais que o package.json.
+          # Ref explícita (tag manual, Release da UI ou dispatch numa tag) manda
+          # mais que o package.json.
           if [ "$REF_TYPE" = "tag" ]; then
             TAG="$REF_NAME"
           elif [ "$EVENT_NAME" = "release" ] && [ -n "$RELEASE_TAG" ]; then
             TAG="$RELEASE_TAG"
           fi
-
-          echo "package.json: $VERSION"
-          echo "Tag da Release: $TAG"
 
           if [ "$TAG" != "v$VERSION" ]; then
             echo "::warning::Tag $TAG não confere com v$VERSION do package.json."
@@ -103,8 +99,8 @@ jobs:
           fi
 
           # Push na main: só interessa publicar se ainda não houver Release.
-          # (Se a tag existe mas a Release não, publica mesmo assim: é o
-          # caso de um run anterior que morreu antes do upload.)
+          # (Se a tag existe mas a Release não, publica mesmo assim: é o caso de
+          # um run anterior que morreu antes do upload.)
           if [ "$EVENT_NAME" = "push" ] && [ "$REF_TYPE" = "branch" ]; then
             CODE="$(curl -sS -o /dev/null -w '%{http_code}' \
               -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -120,15 +116,10 @@ jobs:
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "publicar=$PUBLICAR" >> "$GITHUB_OUTPUT"
-          echo "Resultado: tag=$TAG publicar=$PUBLICAR"
 
   qualidade:
     name: Verificar qualidade
-    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
-    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
-    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
-    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
-    # Como sair do 24.04 está em `docs/build.md`.
+    # Runner fixado: ver o comentário no topo do arquivo.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -143,10 +134,9 @@ jobs:
       - name: Ferramentas de auditoria (binários fora do git; versões fixadas)
         run: |
           set -euo pipefail
-          # `bin/osv-scanner` e `bin/shellcheck` são gitignored (ver
-          # `.gitignore`): a pasta não existe no checkout do CI e o curl
-          # falharia com exit 23 (não consegue criar o arquivo). `mkdir -p`
-          # antes. Versões idênticas às de `docs/build.md`.
+          # `bin/osv-scanner` e `bin/shellcheck` são gitignored: a pasta não
+          # existe no checkout do CI e o curl falharia com exit 23. `mkdir -p`
+          # antes. Mesmas versões do `quality.yml` e de `docs/build.md`.
           mkdir -p bin
           curl -fsSL -o bin/osv-scanner \
             https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64
@@ -154,8 +144,8 @@ jobs:
             https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
           chmod +x bin/osv-scanner
           # O tarball tem shellcheck-v0.11.0/shellcheck; `--strip-components=1`
-          # joga o diretório fora e o tarball vai para /tmp (fora da pasta que
-          # o `npm run check` lê, para não sobrar lixo no workspace).
+          # joga o diretório fora e o tarball vai para /tmp (fora da pasta que o
+          # `npm run check` lê, para não sobrar lixo no workspace).
           tar -xJf /tmp/shellcheck.tar.xz --strip-components=1 -C bin shellcheck-v0.11.0/shellcheck
           rm -f /tmp/shellcheck.tar.xz
           bin/osv-scanner --version
@@ -171,11 +161,7 @@ jobs:
     name: Gerar e publicar
     needs: [resolver-versao, qualidade]
     if: needs.resolver-versao.outputs.publicar == 'true'
-    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
-    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
-    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
-    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
-    # Como sair do 24.04 está em `docs/build.md`.
+    # Runner fixado: ver o comentário no topo do arquivo.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -194,8 +180,8 @@ jobs:
       - run: npm ci
 
       - name: Gerar .deb (compila e empacota; o upload é no step seguinte)
-        # --publish never: sem isso, o electron-builder tenta publicar
-        # sozinho por causa da tag ("Implicit publishing") e falha sem token.
+        # --publish never: sem isso, o electron-builder tenta publicar sozinho por
+        # causa da tag ("Implicit publishing") e falha sem token.
         run: npm run build && npx electron-builder --linux deb --publish never
 
       - name: Criar tag da Release (se ainda não existir)
@@ -242,28 +228,24 @@ jobs:
           # Alias estável SEM versão: o APT resolve Filename relativo à base
           # .../releases/latest/download/, que só redireciona nomes exatos.
           cp release/guardinha_*_amd64.deb apt/guardinha_amd64.deb
-          # Falhas aqui viram ::error:: explícito (annotations são legíveis
-          # na UI do Actions sem precisar abrir o log cru).
           printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import || true
-          # A chave tem de ser exatamente a de `GPG_FINGERPRINT` (uid
-          # chronos.biblioteca@proton.me). Conferir pela impressão digital
-          # e não pelo uid pega o caso real de rotação: o secret novo e o valor
-          # antigo no env não podem combinar em silêncio.
+          # A chave tem de ser exatamente a de `GPG_FINGERPRINT`. Conferir pela
+          # impressão digital e não pelo uid pega o caso real de rotação: o
+          # secret novo e o valor antigo no env não podem combinar em silêncio.
           if ! gpg --list-secret-keys "$GPG_FINGERPRINT" >/dev/null 2>&1; then
-            echo "::error::GPG_PRIVATE_KEY não contém a chave $GPG_FINGERPRINT: cole o bloco inteiro do arquivo, COM as linhas -----BEGIN PGP PRIVATE KEY BLOCK----- e -----END PGP PRIVATE KEY BLOCK----- (sem elas o gpg não reconhece o formato). Se a chave foi renovada, troque também GPG_FINGERPRINT no topo deste arquivo."
+            echo "::error::GPG_PRIVATE_KEY não contém a chave $GPG_FINGERPRINT. Cole o bloco inteiro do arquivo, com as linhas BEGIN/END PGP PRIVATE KEY BLOCK, e troque também GPG_FINGERPRINT no topo deste arquivo se a chave foi renovada."
             exit 1
           fi
-          # A frase entra por `--passphrase-file` num arquivo temporário, e
-          # não por `--passphrase`: o outro caminho põe a frase no argv do
-          # processo, legível por qualquer outro usuário da máquina. O
-          # `mktemp` cria com 600 e o arquivo é apagado no fim, inclusive
-          # quando o passo falha.
+          # A frase entra por `--passphrase-file` num arquivo temporário, e não
+          # por `--passphrase`: o outro caminho põe a frase no argv do processo,
+          # legível por qualquer outro usuário da máquina. O `mktemp` cria com
+          # 600 e o arquivo é apagado no fim, inclusive quando o passo falha.
           #
           # `--pinentry-mode loopback` é obrigatório: sem ele o agente do gpg
           # tenta pinentry, o runner não tem terminal e a assinatura morre com
           # `Inappropriate ioctl for device`.
           if [ -z "${GPG_PASSPHRASE:-}" ]; then
-            echo "::error::Secret GPG_PASSPHRASE ausente em Settings → Secrets → Actions (repo guardinha). A chave $GPG_FINGERPRINT tem frase, então o CI não consegue desbloquear sem ela: o agente do gpg cairia em pinentry e o runner não tem terminal."
+            echo "::error::Secret GPG_PASSPHRASE ausente em Settings → Secrets → Actions (repo guardinha). A chave $GPG_FINGERPRINT tem frase, e sem ela o gpg cairia em pinentry (o runner não tem terminal)."
             exit 1
           fi
           umask 077
@@ -276,9 +258,8 @@ jobs:
           echo preflight > apt/.sign-test
           if ! gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o apt/.sign-test.asc apt/.sign-test; then
             # Diagnóstico: "Bad passphrase" é ambíguo (frase trocada, secret
-            # colado pela metade, whitespace...), e a chave importada já foi
-            # conferida acima. Estes hashes permitem comparar os secrets
-            # recebidos no runner com os arquivos locais.
+            # colado pela metade, whitespace...). Estes hashes comparam os
+            # secrets recebidos no runner com os arquivos locais.
             echo "GPG_PASSPHRASE recebido: ${#GPG_PASSPHRASE} caracteres, sha256 $(printf '%s' "$GPG_PASSPHRASE" | sha256sum | cut -c1-16)"
             echo "GPG_PRIVATE_KEY recebido: ${#GPG_PRIVATE_KEY} caracteres, sha256 $(printf '%s' "$GPG_PRIVATE_KEY" | sha256sum | cut -c1-16)"
             echo "::error::Falha ao assinar com a chave $GPG_FINGERPRINT. Confira se GPG_PRIVATE_KEY e GPG_PASSPHRASE correspondem à chave e à frase atuais."
@@ -292,8 +273,8 @@ jobs:
           grep -qx 'Filename: guardinha_amd64.deb' Packages
           gzip -9nc Packages > Packages.gz
           rm Packages.raw
-          # Release é gerado FORA da árvore e só então movido para dentro,
-          # senão ele hash a si mesmo (arquivo meio escrito) e ao .raw.
+          # Release é gerado FORA da árvore e só então movido para dentro, senão
+          # ele hash a si mesmo (arquivo meio escrito) e ao .raw.
           apt-ftparchive release \
             -o APT::FTPArchive::Release::Origin=Guardinha \
             -o APT::FTPArchive::Release::Label=Guardinha \
@@ -304,13 +285,13 @@ jobs:
             -o APT::FTPArchive::Release::Description="Guardinha" \
             . > ../Release.tmp
           mv ../Release.tmp Release
-          # `--local-user` nas três assinaturas e no `export`: o runner é limpo,
-          # mas fixar a chave deixa a assinatura atrelada à impressão digital do
-          # topo do arquivo, e não a "a primeira chave que o gpg achar".
+          # `--local-user` nas três assinaturas e no `export`: fixar a chave deixa
+          # a assinatura atrelada à impressão digital do topo do arquivo, e não a
+          # "a primeira chave que o gpg achar".
           gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" --clearsign -o InRelease Release
           gpg "${GPG_OPTS[@]}" --local-user "$GPG_FINGERPRINT" -abs -o Release.gpg Release
           gpg --armor --export "$GPG_FINGERPRINT" > public.key
-          echo "Repo APT flat gerado (chave $GPG_FINGERPRINT):" && ls -l
+          ls -l
 
       - name: Anexar repo APT à Release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
