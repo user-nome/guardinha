@@ -131,11 +131,12 @@ jobs:
 
       - run: npm ci
 
-      # `json-summary` entra como reporter extra (o `text` e o `html` já são o
-      # padrão do `vitest.config.mts`): é dele que sai a tabela do resumo da
-      # execução, com o mesmo número que o gate de 100% aplicou.
+      # Os três reporters vêm na linha de comando porque o Vitest **substitui**
+      # a lista do `vitest.config.mts` quando a flag aparece na linha de
+      # comando: passar só `json-summary` apagaria a tabela do texto e o
+      # relatório HTML (o artefato `cobertura-relatorio` sairia sem HTML).
       - name: Testes com cobertura
-        run: npm run test:coverage -- --coverage.reporter=json-summary
+        run: npm run test:coverage -- --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary
 
       - name: Resumo da cobertura na página da execução
         if: always()

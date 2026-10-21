@@ -106,6 +106,10 @@ entrada. Mudanças voltadas ao usuário ganham entrada em
   as versões das GitHub Actions.
 - `.github/workflows/codeql.yml` roda o CodeQL em push/PR para `main` e toda
   segunda-feira, complementando o `npm run security:audit`.
+- `.circleci/config.yml` roda o mesmo gate de qualidade no CircleCI (tipos,
+  lint, formato, OSV, cobertura, E2E e mutação). Ele **não** publica: a
+  Release e o repo APT assinado continuam sendo do `publish.yml`, que é quem
+  tem os secrets de GPG. O passo a passo está em `docs/build.md`.
 
 ## 10. Commits e lançamentos
 

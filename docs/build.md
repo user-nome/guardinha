@@ -309,6 +309,51 @@ normal como obrigatórios nas regras de proteção da `main` (Settings > Branche
 Branch protection rules). Sem isso o workflow é informativo: ele roda, mas
 ninguém é obrigado a esperar.
 
+## O mesmo gate no CircleCI
+
+`.circleci/config.yml` é o gate de qualidade acima, rodando no CircleCI: os
+mesmos quatro jobs, com as mesmas ferramentas e as mesmas versões fixadas. Ele
+existe para quem tem conta na CircleCI e quer os status checks de lá.
+
+O que o CircleCI **não** faz: publicar. O `.deb`, o repo APT assinado e a
+Release continuam no `publish.yml` do GitHub Actions, que é quem tem os
+secrets de GPG e o histórico de tags. Publicar nos dois lados ao mesmo tempo
+faria a mesma versão subir duas vezes.
+
+| Job                   | O que roda                                                            | Classe   |
+| --------------------- | --------------------------------------------------------------------- | -------- |
+| "Verificar qualidade" | `npm run check` (tipos, lint, formato, OSV, shellcheck)               | `medium` |
+| "Testes e cobertura"  | `npm run test:coverage`, com o limiar de 100% de `vitest.config.mts`  | `large`  |
+| "Testes E2E"          | `npm run dist:dir`, os dois alvos sob `xvfb` e a instalação do `.deb` | `large`  |
+| "Testes de mutação"   | a varredura de `tools/mutation/`                                      | `large`  |
+
+O que vale saber antes de ligar o projeto:
+
+- **Imagem**: `cimg/node:24` é a imagem oficial da CircleCI sobre Ubuntu 24.04
+  com Node 24, o mesmo par do runner `ubuntu-24.04` do GitHub e a mesma série do
+  Linux Mint 22.X, que é o alvo de distribuição. O executor `machine` seria uma
+  VM mais cara sem mudar o `.deb` gerado.
+- **Gatilhos**: o gate roda em push para `main`, `ajustes` e `developer`, e em
+  qualquer pull request. A detecção de pull request usa o
+  `pipeline.event.name`, que é preenchido tanto pela integração moderna
+  (GitHub App) quanto pela antiga (OAuth).
+- **Mutação**: tem ritmo próprio, como no `quality.yml`. O disparo manual é o
+  parâmetro de pipeline `run-mutation` (`min-mutation-score` ajusta o piso de
+  reprovação). O disparo mensal é um **Schedule Trigger** criado na interface do
+  CircleCI (Project Settings > Triggers > Add Schedule), e não um
+  `triggers: schedule:` no config: workflows agendados não funcionam em
+  projetos ligados pelo GitHub App, que é a integração padrão hoje.
+- **Plano**: a varredura de mutação leva mais de uma hora, e o CircleCI Free
+  corta o job em 1 h. Esse workflow precisa de Performance (3 h) ou Scale (5 h).
+- **Cobertura**: os três reporters (`text`, `html` e `json-summary`) vêm na
+  linha de comando, porque o Vitest substitui a lista do `vitest.config.mts`
+  quando a flag aparece na linha de comando. Sem os três, o relatório HTML não
+  é gerado.
+
+Para ligar o projeto: Settings > Project Setup > Create or Connect a Project,
+apontando para o repositório `user-nome/guardinha`, e o `config.yml` no branch de
+onde a execução parte.
+
 ## Outros workflows
 
 | Arquivo          | Papel                                                             |
