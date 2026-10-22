@@ -4,6 +4,10 @@
 
 | Versão | Suporte             |
 | ------ | ------------------- |
+| 2.0.x  | ✅ Correções ativas |
+| 1.9.x  | ✅ Correções ativas |
+| 1.8.x  | ✅ Correções ativas |
+| 1.7.x  | ✅ Correções ativas |
 | 1.6.x  | ✅ Correções ativas |
 | 1.5.x  | ✅ Correções ativas |
 | 1.4.x  | ✅ Correções ativas |

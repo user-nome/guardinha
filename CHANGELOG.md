@@ -4,7 +4,7 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
-## [Não lançado]
+## [2.0.1] - 2026-10-22
 
 ### Alterado
 
@@ -65,6 +65,15 @@ em português do Brasil.
   nulo no modal de credencial) ou ficaram com `/* v8 ignore next */` e o motivo
   ao lado, quando a guarda só cobre um estado que a interface impede.
 
+### Adicionado
+
+- **Suíte de segurança com oráculo independente.** `tests/security/` tenta
+  quebrar as garantias do cofre sem passar pelas funções do app: Argon2id
+  conferido contra um vetor conhecido, HKDF-SHA512 e AES-256-GCM refeitos com o
+  próprio Node, adulteração de cada campo do registro, ataques ao desbloqueio,
+  ao manifesto e à ordem do erase. O atalho `npm run test:security` roda só essa
+  suíte, e o mapa de `docs/testes.md` foi atualizado.
+
 ### Corrigido
 
 - **O `postrm` desmontava o app na atualização.** O `after-remove.sh` rodava em
@@ -87,6 +96,19 @@ em português do Brasil.
   chave numa string imutável no heap. A derivação é a mesma: o
   `tests/main/crypto.test.ts` fixa o vetor do Argon2id, para que uma troca de
   implementação não passe verde e quebre os cofres já gravados.
+- **Trava exponencial sem saída com estado adulterado.** Um `lockUntil` além do
+  maior degrau legítimo (24 h) só aparece com o campo adulterado ou com o
+  relógio recuado, mas era respeitado como espera e prendia o cofre para
+  sempre. `getLockRemainingMs` agora trata esse valor como trava vencida, sem
+  reescrever o que está gravado.
+
+### Notas
+
+- **A série 2.x começa pela compatibilidade do segredo de 2FA.** O piso de 128
+  bits vale na gravação: tokens já salvos com 16 caracteres Base32 continuam
+  gerando código, mas um token novo ou editado exige um segredo maior, e o
+  serviço que só emite chave curta fica de fora. Foi a mudança que quebrou
+  compatibilidade e justificou o salto de versão.
 
 ## [1.9.1] - 2026-10-19
 
