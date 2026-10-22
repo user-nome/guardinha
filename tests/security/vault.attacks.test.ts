@@ -44,6 +44,17 @@ async function attempt(
   return { result, context };
 }
 
+/**
+ * Adultera um campo em hex trocando o primeiro byte pelo seu complemento.
+ * Prefixar `'00'` não serve: quando o byte já é `0x00` (1 chance em 256 por
+ * campo), a "adulteração" não muda nada e o teste falha por sorteio, não por
+ * regressão. O XOR com `0xFF` sempre produz outro valor.
+ */
+function tamperHex(hex: string): string {
+  const first = (Number.parseInt(hex.slice(0, 2), 16) ^ 0xff).toString(16).padStart(2, '0');
+  return `${first}${hex.slice(2)}`;
+}
+
 function masterOf(container: VaultContainerData): WrappedMethod {
   const method = container.methods.master;
   if (method === undefined) throw new Error('o fixture não gravou o método master');
@@ -148,11 +159,11 @@ describe('rebaixamento do KDF e adulteração do container', () => {
       if (container === null) throw new Error('o cofre semeado sumiu');
       const method = masterOf(container);
       if (field === 'kdfSalt') {
-        method.kdfSalt = `00${method.kdfSalt.slice(2)}`;
+        method.kdfSalt = tamperHex(method.kdfSalt);
       } else if (field === 'kdf') {
         method.kdf = { ...method.kdf, iterations: method.kdf.iterations + 1 };
       } else {
-        method.payload[field] = `00${method.payload[field].slice(2)}`;
+        method.payload[field] = tamperHex(method.payload[field]);
       }
 
       const { result, context } = await attempt(container, MASTER, 'master');
@@ -303,7 +314,7 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
 
     expect(() => verifyManifest(randomBytes(32))).toThrow();
     if (container.manifest === null) throw new Error('o fixture não selou o manifesto');
-    container.manifest.tag = `00${container.manifest.tag.slice(2)}`;
+    container.manifest.tag = tamperHex(container.manifest.tag);
     vaultStorage.writeContainer(container);
     expect(() => verifyManifest(vaultKey)).toThrow();
     vaultKey.fill(0);
