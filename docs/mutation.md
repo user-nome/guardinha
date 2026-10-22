@@ -128,7 +128,7 @@ varredura seria de dias. O que reduz isso:
 - **O doppelgänger não pode ser mais permissivo que a biblioteca.** O `hash-wasm`
   de verdade lança `Insupported output type` para qualquer `outputType` fora de
   `hex`, `binary` e `encoded`, e o stub faz o mesmo. Sem essa fidelidade, o
-  `outputType: 'hex'` de `deriveKey` sobrevivia à varredura inteiro: o mutante
+  `outputType: 'binary'` de `deriveKey` sobrevivia à varredura inteiro: o mutante
   trocado por `''` não mudava nada no doppelgänger, e a suíte via verde com um
   `crypto.ts` que a biblioteca real rejeitaria. É o mesmo princípio do teste
   de baseline, aplicado à fronteira de um módulo: um substituto mais tolerante

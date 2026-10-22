@@ -149,16 +149,27 @@ contrário).
   `/opt/Guardinha/guardinha`, quando AppArmor está ativo e aceita o perfil. Ele
   nega leitura de arquivos do usuário, nega
   escrita fora dos diretórios do app, do cofre e do `$XDG_CONFIG_HOME` do
-  app, nega rede `inet`/`inet6` (só `unix` e `netlink`, já que o app é
-  offline) e nega execução de qualquer binário fora da lista curta do pacote
-  (`chrome-sandbox`, `chrome_crashpad_handler`) e dos dois helpers do sistema
-  (`pkexec`, `xdg-open`). Ele abre o socket do método de entrada do próprio
-  usuário (`~/.cache/ibus/dbus-*`), que `<abstractions/ibus>` não cobre: sob
-  `GTK_IM_MODULE=ibus` (o padrão do Cinnamon no Mint) o campo de texto fica
-  mudo em `enforce` sem essa regra, porque o IME recusa a conexão e a tecla não
-  volta como caractere. O script de instalação testa se o perfil é aceito
-  pela versão de AppArmor instalada antes de o carregar; ambientes sem suporte
-  continuam sem esse confinamento adicional.
+  app, nega rede `inet`/`inet6` e também `raw`, `packet` e `bluetooth` (só
+  `unix` e `netlink`, já que o app é offline; as três negações explícitas
+  existem para o fechamento não depender do padrão da mediação de rede, que
+  muda de versão para versão) e nega execução de qualquer binário fora da lista
+  curta do pacote (`chrome-sandbox`, `chrome_crashpad_handler`) e dos dois
+  helpers do sistema (`pkexec`, `xdg-open`). Ele abre o socket do método de
+  entrada do próprio usuário (`~/.cache/ibus/dbus-*`), que
+  `<abstractions/ibus>` não cobre: sob `GTK_IM_MODULE=ibus` (o padrão do
+  Cinnamon no Mint) o campo de texto fica mudo em `enforce` sem essa regra,
+  porque o IME recusa a conexão e a tecla não volta como caractere.
+
+  A instalação é em dois estágios, porque o AppArmor não tem compilação
+  condicional por versão: o postinst compila o perfil sem carregar
+  (`--skip-kernel-load -K`, com os avisos `rule-not-enforced` e
+  `rule-downgraded` no log) e só copia o que a versão instalada aceita; se o
+  kernel recusar o carregamento, o arquivo recém-instalado é removido, para o
+  `apparmor.service` não falhar no boot seguinte. Ambientes sem suporte (Ubuntu
+  22.04, que não conhece `abi/4.0`) continuam sem esse confinamento adicional,
+  com o app rodando como qualquer Electron. A cópia para `/etc/apparmor.d` é
+  atômica (temporário e `mv`), então um disco cheio no meio da escrita não
+  deixa um perfil truncado para o próximo boot.
 
 ## Riscos aceitos (com justificativa)
 

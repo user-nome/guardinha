@@ -21,7 +21,7 @@ export default defineConfig({
       },
     },
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         input: resolve(root, 'src/main/index.ts'),
       },
     },
@@ -34,7 +34,7 @@ export default defineConfig({
       },
     },
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         input: resolve(root, 'src/preload/index.ts'),
         output: {
           // Preload sandboxed não tem loader ESM no Electron: precisa sair como
@@ -61,7 +61,7 @@ export default defineConfig({
     },
     plugins: [react(), tailwindcss()],
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         input: resolve(root, 'src/renderer/index.html'),
       },
     },

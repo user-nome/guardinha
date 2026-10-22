@@ -38,7 +38,7 @@ const OUTPUT_TYPES = new Set(['hex', 'binary', 'encoded']);
 export function argon2id(options: Argon2Options): Promise<Uint8Array | string> {
   // O doppelgänger não pode ser mais permissivo que a biblioteca real: um
   // `outputType` inválido é erro lá, e aceitar aqui esconderia um mutante que
-  // a suíte tem como matar (o `outputType: 'hex'` de `deriveKey`).
+  // a suíte tem como matar (o `outputType: 'binary'` de `deriveKey`).
   if (options.outputType !== undefined && !OUTPUT_TYPES.has(options.outputType)) {
     throw new Error(`Insupported output type ${options.outputType}`);
   }

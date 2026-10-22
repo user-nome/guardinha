@@ -63,7 +63,7 @@ Bloco `build` do `package.json`:
 | `target`         | `deb` para Linux (categoria Utility)                                          |
 | `asar`           | ligado (o código vive no `app.asar`)                                          |
 | `extraResources` | `build/scripts/guardinha-setup` (helper do PolicyKit)                         |
-| `depends`        | GTK, libnotify, NSS, xdg-utils e afins do Electron                            |
+| `depends`        | GTK, libnotify, NSS, xdg-utils, libsecret e afins do Electron                 |
 | `afterInstall`   | `build/scripts/after-install.sh`                                              |
 | `afterRemove`    | `build/scripts/after-remove.sh`                                               |
 | `electronFuses`  | `runAsNode`, `NODE_OPTIONS` e inspetor desligados (detalhe em `seguranca.md`) |
@@ -73,24 +73,84 @@ Bloco `build` do `package.json`:
 Além do padrão do electron-builder (link do executável, AppArmor, banco de
 MIME), ele:
 
-1. Cria a raiz `/var/lib/.guardinha` com `root:root 0711`; não migra nem
-   renomeia formatos ou layouts de cofre anteriores.
+1. Cria a raiz `/var/lib/.guardinha` com `root:root 0711` e reajusta modo e dono
+   de pasta que já exista: é o `install -d` que normaliza uma instalação antiga
+   na atualização. Não migra nem renomeia formatos ou layouts de cofre
+   anteriores.
 2. Se identifica quem instalou por `SUDO_UID`/`PKEXEC_UID`, cria `.vault` com
    `0700` e atribui o diretório a esse usuário. Sem essa identificação, o app
    pode criar a estrutura via PolicyKit no primeiro uso.
 3. Escreve a ação do PolicyKit em
    `/usr/share/polkit-1/actions/com.guardinha.keypass.policy`, que autoriza o
-   `pkexec` a rodar o helper `guardinha-setup`.
+   `pkexec` a rodar o helper `guardinha-setup`. A escrita é por troca atômica
+   (temporário e `mv`): um XML pela metade faria o polkit recusar todas as ações
+   do arquivo.
+4. Instala e carrega o perfil do AppArmor, quando o sistema aceita (ver abaixo).
+
+O script é idempotente: o dpkg o roda na instalação e de novo em cada
+atualização, então ele não duplica link, perfil, ação do PolicyKit nem
+permissão.
+
+Detalhe do link: o `update-alternatives --install` mantém um arquivo real em
+`/usr/bin/guardinha` (é o que o manual manda fazer sem `--force`, bandeira que
+não se usa em script de mantenedor). Como nesse caso o atalho do sistema abriria
+outro programa em silêncio, o postinst confere para onde `/usr/bin/guardinha`
+resolve e avisa no log do apt quando não é o binário do pacote. O caminho sem
+`update-alternatives` (link direto) nunca sobrescreve um arquivo real.
 
 ### `guardinha-setup`
 
 Executado como root pelo `pkexec`, só cria os diretórios fixos com modos
-fixos: nenhum caminho vem do chamador. O dono vem de `PKEXEC_UID`.
+fixos: nenhum caminho vem do chamador. O dono vem de `PKEXEC_UID`. O
+`install -d` também conserta modo e dono de diretório existente, que é o reparo
+usado quando o pacote foi instalado sem `SUDO_UID`/`PKEXEC_UID` (de um shell de
+root, por exemplo) e a área do cofre ficou com o dono errado. Antes de tocar em
+nada, o script recusa ligação simbólica em `/var/lib/.guardinha` e em
+`.vault`: ele roda como root e o `install -d` segue symlink.
 
 ### `after-remove.sh` (postrm)
 
-Remove link, perfil do AppArmor e a ação do PolicyKit. **Os dados em
+Remove link, perfil do AppArmor e a ação do PolicyKit, mas só nas ações em que
+o pacote está saindo de verdade (`remove`, `purge` e `disappear`, o `$1` que o
+dpkg passa). Na atualização o postrm também roda (com `upgrade`), e desmontar
+ali deixaria o app sem confinamento até o postinst novo carregar o perfil, além
+de apagar a ação do PolicyKit no meio do caminho. **Os dados em
 `/var/lib/.guardinha/` permanecem**; desinstalar não apaga o cofre.
+
+### O perfil do AppArmor
+
+`build/apparmor-profile` viaja no pacote como `resources/apparmor-profile`
+(`build.deb.appArmorProfile`) e o postinst o leva para `/etc/apparmor.d/`. O
+perfil não pode ser instalado às cegas, porque o AppArmor **não tem compilação
+condicional por versão**: um `abi/4.0` que o parser não conhece derruba o
+carregamento, e um perfil inválido em `/etc/apparmor.d` faz o
+`apparmor.service` falhar no boot seguinte.
+
+Por isso o postinst faz dois testes, e é o único lugar do projeto que decide se
+o confinamento entra:
+
+1. **Dry run** com `apparmor_parser --skip-kernel-load -K`, com os avisos
+   `rule-not-enforced` e `rule-downgraded` ligados. O `-Q` compila sem carregar
+   e o `-K` mantém a compilação longe do cache de perfil. Se o parser recusa, o
+   perfil não é copiado e o app roda como qualquer Electron (o caso do Ubuntu
+   22.04, que não conhece `abi/4.0`). Os avisos não são engolidos: o parser
+   ignora em silêncio a regra que o kernel não aplica, e esse texto é a única
+   notícia de que uma regra morreu.
+2. **Carregamento** com `--replace --write-cache --skip-read-cache`, que é o
+   `-r -W -T` do `dh_apparmor`: substitui o perfil, grava o cache e ignora o
+   cache velho, o que evita recompilar a política a cada boot. Se o kernel
+   recusar o perfil já compilado, o arquivo recém-instalado é removido: melhor
+   ficar sem este confinamento do que perder a política do sistema inteiro no
+   próximo boot.
+
+A cópia é atômica (temporário `.new` e `mv`), para que um disco cheio no meio da
+escrita não deixe um perfil truncado em `/etc/apparmor.d`. A remoção do `.new`
+órfão também está no `after-remove.sh`.
+
+Para depurar à mão, o wiki da Debian tem os dois despejos: `apparmor_parser
+--preprocess /etc/apparmor.d/guardinha` achata os `#include` e
+`apparmor_parser --skip-kernel-load --debug /etc/apparmor.d/guardinha` mostra o
+que iria para o kernel.
 
 ## Integridade do build
 
@@ -259,7 +319,7 @@ ponta, não automação. Já a migração do runner é mudança da **imagem**, i
 para o Dependabot: foi por isso que o `ubuntu-latest` precisou ser fixado à mão.
 
 Um caso em que o PR do Dependabot não era merger: a major do TypeScript. O
-`typescript-eslint@8.71.2`, junto com `@typescript-eslint/parser`,
+`typescript-eslint@8.72.0`, junto com `@typescript-eslint/parser`,
 `typescript-estree` e `ts-api-utils`, declara o peer
 `typescript@">=4.8.4 <6.1.0"`, e o `typescript` 7 está fora dessa faixa. Com o
 `package.json` no 7 o `npm ci` morre em ERESOLVE nos três jobs do ritmo normal

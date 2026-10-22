@@ -15,7 +15,7 @@ Atribuições do app (fonte: `src/renderer/src/attributions.ts`).
 Componentes distribuídos
 ------------------------
 
-1. Electron 44.6.0
+1. Electron 45.0.0
    Copyright (c) Electron contributors
    Copyright (c) 2013-2020 GitHub Inc.
    Licença: MIT (texto na seção "MIT License (Electron)")
@@ -25,12 +25,12 @@ Componentes distribuídos
    chrome://credits (dentro do app) e em
    https://github.com/chromium/chromium/blob/main/LICENSE
 
-2. React 19.3.0
+2. React 19.3.1
    Copyright (c) Meta Platforms, Inc. and affiliates.
    Licença: MIT (seção "MIT License (React, React DOM e Scheduler)")
    https://react.dev
 
-3. React DOM 19.3.0
+3. React DOM 19.3.1
    Copyright (c) Meta Platforms, Inc. and affiliates.
    Licença: MIT (seção "MIT License (React, React DOM e Scheduler)")
    https://react.dev
@@ -65,7 +65,7 @@ Componentes distribuídos
    Licença: MIT (seção "MIT License (hash-wasm)")
    https://github.com/Daninet/hash-wasm
 
-10. lucide-react 0.547.0
+10. lucide-react 1.61.0
     Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2023 as
     part of Feather (MIT). All other copyright (c) for Lucide are held by
     Lucide Contributors 2025.

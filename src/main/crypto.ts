@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import v8 from 'node:v8';
+import vm from 'node:vm';
 import { argon2id } from 'hash-wasm';
 import { isRecord } from '@zero/shared/record';
 import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
@@ -48,22 +50,67 @@ export function isValidKdfParams(value: unknown): value is Argon2Params {
   );
 }
 
-/** Derivação de chave primária via Argon2id com os parâmetros do chamador. */
+/**
+ * O `hash-wasm` monta uma instância WebAssembly nova por derivação, e o perfil
+ * do PIN pede 256 MiB só para ela. Essa memória é externa ao heap do V8, então
+ * o coletor não a enxerga como pressão e o processo cresceria cerca de 256 MB a
+ * cada desbloqueio até o OOM da máquina. Coletar ao fim de cada derivação
+ * devolve a instância ao sistema (o RSS fica estável perto de 100 MB) e custa
+ * dezenas de milissegundos, que somem ao lado dos segundos do Argon2id. Se o
+ * runtime não expuser `gc`, a derivação segue sem a coleta: o pior caso é o
+ * vazamento, nunca um desbloqueio que falha.
+ */
+const collectGarbage = createGarbageCollector();
+
+function createGarbageCollector(): (() => void) | null {
+  try {
+    v8.setFlagsFromString('--expose-gc');
+    const collect: unknown = vm.runInNewContext('gc');
+    /* v8 ignore next -- Node e Electron devolvem a função com o flag acima;
+       sem ela a coleta apenas não acontece. */
+    return typeof collect === 'function' ? (collect as () => void) : null;
+  } catch {
+    /* v8 ignore next -- runtime que recusa o flag: a coleta vira no-op. */
+    return null;
+  }
+}
+
+/**
+ * Derivação de chave primária via Argon2id com os parâmetros do chamador.
+ * A saída é binária para que a chave exista só em memória apagável: com
+ * `outputType: 'hex'` ela também ficaria numa string imutável no heap, que o
+ * `fill(0)` dos chamadores não alcança.
+ */
 export async function deriveKey(
   password: string,
   salt: Buffer,
   params: Argon2Params,
 ): Promise<Buffer> {
-  const hashHex = await argon2id({
-    password,
-    salt: new Uint8Array(salt),
-    parallelism: params.parallelism,
-    iterations: params.iterations,
-    hashLength: KEY_BYTES,
-    memorySize: params.memoryKiB,
-    outputType: 'hex',
-  });
-  return Buffer.from(hashHex, 'hex');
+  const raw = await deriveWithWasm(password, salt, params);
+  const key = Buffer.from(raw);
+  raw.fill(0);
+  return key;
+}
+
+/** Argon2id binário; a coleta no `finally` libera o WASM mesmo se falhar. */
+async function deriveWithWasm(
+  password: string,
+  salt: Buffer,
+  params: Argon2Params,
+): Promise<Uint8Array> {
+  try {
+    return await argon2id({
+      password,
+      salt: new Uint8Array(salt),
+      parallelism: params.parallelism,
+      iterations: params.iterations,
+      hashLength: KEY_BYTES,
+      memorySize: params.memoryKiB,
+      outputType: 'binary',
+    });
+  } finally {
+    collectGarbage?.();
+  }
 }
 
 /**
