@@ -42,8 +42,8 @@ describe('otp-constants', () => {
     expect(OTP_DIGIT_CHOICES).toEqual([6, 8]);
   });
 
-  it('OTP_SECRET_MIN_BYTES é 10 (80 bits)', () => {
-    expect(OTP_SECRET_MIN_BYTES).toBe(10);
+  it('OTP_SECRET_MIN_BYTES é 16 (128 bits)', () => {
+    expect(OTP_SECRET_MIN_BYTES).toBe(16);
   });
 
   it('OTP_PERIOD_RANGE é [15, 300]', () => {

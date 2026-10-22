@@ -32,6 +32,7 @@
     "security:audit": "bin/osv-scanner scan source --lockfile package-lock.json --config .osv-scanner.toml --all-vulns --experimental-flag-deprecated-packages --licenses=MIT,MIT-0,ISC,Apache-2.0,BSD-2-Clause,BSD-3-Clause,0BSD,BlueOak-1.0.0,Python-2.0,CC0-1.0,CC-BY-4.0,WTFPL,MPL-2.0 .",
     "lint:shell": "bin/shellcheck build/scripts/after-install.sh build/scripts/after-remove.sh build/scripts/guardinha-setup",
     "test": "vitest run",
+    "test:security": "vitest run tests/security",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.mts",

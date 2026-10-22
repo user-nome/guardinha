@@ -23,7 +23,10 @@ describe('AuthTokenModal', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Digitar a chave' }));
-    await user.type(screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP'), 'GEZDGNBVGY3TQOJQ');
+    await user.type(
+      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP'),
+      'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+    );
     await user.type(screen.getByLabelText('Serviço'), 'GitHub');
     await user.type(screen.getByLabelText('Conta'), 'alice@example.com');
     await user.click(screen.getByRole('button', { name: 'Salvar' }));
@@ -33,7 +36,7 @@ describe('AuthTokenModal', () => {
         expect.objectContaining({
           issuer: 'GitHub',
           account: 'alice@example.com',
-          secret: 'GEZDGNBVGY3TQOJQ',
+          secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
         }),
       );
     });
@@ -54,7 +57,10 @@ describe('AuthTokenModal', () => {
       </MessagesProvider>,
     );
 
-    await user.type(screen.getByRole('textbox'), 'otpauth://totp/alice?secret=GEZDGNBVGY3TQOJQ');
+    await user.type(
+      screen.getByRole('textbox'),
+      'otpauth://totp/alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
+    );
 
     expect(await screen.findByText(/Sem serviço · alice · SHA1 · 6 · 30s/)).toBeInTheDocument();
   });

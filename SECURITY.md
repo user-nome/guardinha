@@ -38,7 +38,7 @@ contrário).
   AES-256-GCM com um rótulo de domínio HKDF próprio, separado do das
   credenciais.
 - **Comprimento mínimo do segredo 2FA**: o cadastro exige pelo menos 128 bits
-  (16 bytes) de segredo Base32, conforme o mínimo da RFC 4226. A validação
+  (16 bytes) de segredo Base32, o mínimo obrigatório da RFC 4226. A validação
   ocorre no parser compartilhado e novamente no processo main, inclusive para
   entradas enviadas diretamente por IPC. O algoritmo HMAC (SHA-1, SHA-256 ou
   SHA-512) continua definido pelo serviço e não substitui esse requisito.
@@ -230,10 +230,14 @@ contrário).
   só funcionasse fora da janela de trava seria inútil na hora em que seria
   preciso. O efeito colateral aceito: o PIN de pânico é um caminho de
   desbloqueio que **não conta tentativa**, então ele nunca gera lockout e nunca
-  denuncia a existência de si mesmo por aumento de contador. Ele só paga o
-  Argon2id de um PIN comum (256 MiB, t=4, p=4), o mesmo custo de um
-  desbloqueio legítimo, para que medir o tempo de um e de outro não revele o
-  atalho.
+  denuncia a existência de si mesmo por aumento de contador. Ele paga a mesma
+  derivação Argon2id do PIN (256 MiB, t=4, p=4) no método panic, mas o tempo
+  total do fluxo não é igual: `unlock` tenta o pânico antes da cadeia normal,
+  então um PIN comum (certo ou errado) paga duas derivações quando o pânico
+  existe, e o PIN de pânico paga uma. Na prática, medir uma tentativa errada
+  revela se o cofre tem PIN de pânico configurado. Igualar o custo exige uma
+  derivação descartável no caminho do pânico (ou outro desenho), decisão ainda
+  não tomada porque acrescenta custo justamente na hora da coação.
 - **A autodestruição por tentativas é desligada por padrão**: `nukeLimit` vale 0
   num cofre novo, e o piso de habilitação é 50 (não 5). É decisão de produto
   registrada, não omissão: apagar o cofre por contagem é uma lâmina sem ponta

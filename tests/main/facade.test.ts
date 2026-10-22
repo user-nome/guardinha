@@ -34,7 +34,7 @@ function authSecret(id: string): AuthSecret {
     id,
     issuer: 'GitHub',
     account: 'alice',
-    secret: 'GEZDGNBVGY3TQOJQ',
+    secret: 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
     algorithm: 'SHA1',
     digits: 6,
     period: 30,

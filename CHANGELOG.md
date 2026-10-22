@@ -8,6 +8,11 @@ em português do Brasil.
 
 ### Alterado
 
+- **Segredo de 2FA passou a exigir 128 bits.** O piso subiu de 80 bits (10
+  bytes, 16 caracteres Base32) para 128 bits (16 bytes, 26 caracteres), o
+  mínimo obrigatório da RFC 4226. Serviços que ainda emitem segredo de 16
+  caracteres deixam de ser aceitos; a mensagem de erro e a documentação foram
+  atualizadas junto.
 - **Instalação do `.deb` endurecida.** O postinst faz o dry run do perfil do
   AppArmor com `--skip-kernel-load -K` e os avisos `rule-not-enforced` e
   `rule-downgraded` (o parser ignora em silêncio a regra que o kernel não

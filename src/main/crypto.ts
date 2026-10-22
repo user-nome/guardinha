@@ -155,19 +155,23 @@ export function encryptRecord(data: object, key: Buffer, info = KEY_INFO_ENTRY):
   const entryKey = deriveRecordKey(key, salt, info);
   const iv = crypto.randomBytes(IV_BYTES);
 
-  const cipher = crypto.createCipheriv(AES_ALGORITHM, entryKey, iv);
-  const jsonStr = JSON.stringify(data);
-  let encrypted = cipher.update(jsonStr, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
+  try {
+    const cipher = crypto.createCipheriv(AES_ALGORITHM, entryKey, iv);
+    const jsonStr = JSON.stringify(data);
+    let encrypted = cipher.update(jsonStr, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
 
-  entryKey.fill(0);
-
-  return {
-    salt: salt.toString('hex'),
-    iv: iv.toString('hex'),
-    tag: cipher.getAuthTag().toString('hex'),
-    encryptedData: encrypted,
-  };
+    return {
+      salt: salt.toString('hex'),
+      iv: iv.toString('hex'),
+      tag: cipher.getAuthTag().toString('hex'),
+      encryptedData: encrypted,
+    };
+  } finally {
+    // o `finally` cobre também a falha no meio da cifragem: sem ele, a chave
+    // derivada do registro ficaria legível na memória até o coletor passar
+    entryKey.fill(0);
+  }
 }
 
 export function decryptRecord(
@@ -177,15 +181,23 @@ export function decryptRecord(
 ): unknown {
   const salt = Buffer.from(payload.salt, 'hex');
   const entryKey = deriveRecordKey(vaultKey, salt, info);
-  const decipher = crypto.createDecipheriv(AES_ALGORITHM, entryKey, Buffer.from(payload.iv, 'hex'));
-  decipher.setAuthTag(Buffer.from(payload.tag, 'hex'));
 
-  let decrypted = decipher.update(payload.encryptedData, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  entryKey.fill(0);
+  try {
+    const decipher = crypto.createDecipheriv(
+      AES_ALGORITHM,
+      entryKey,
+      Buffer.from(payload.iv, 'hex'),
+    );
+    decipher.setAuthTag(Buffer.from(payload.tag, 'hex'));
 
-  const value: unknown = JSON.parse(decrypted);
-  return value;
+    let decrypted = decipher.update(payload.encryptedData, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return JSON.parse(decrypted) as unknown;
+  } finally {
+    // credencial errada, tag adulterada ou payload truncado saem por exceção;
+    // a chave de trabalho tem de sair zerada por qualquer um dos caminhos
+    entryKey.fill(0);
+  }
 }
 
 /** Cifra um registro no domínio dos tokens de 2FA. */

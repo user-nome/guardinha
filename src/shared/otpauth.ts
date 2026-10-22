@@ -27,18 +27,14 @@ export const OTP_DEFAULT_ALGORITHM: OtpAlgorithm = 'SHA1';
 export const OTP_DEFAULT_DIGITS = 6;
 export const OTP_DEFAULT_PERIOD = 30;
 /**
- * Piso do segredo em bytes: 80 bits, o que 16 caracteres Base32 carregam.
+ * Piso do segredo em bytes: 128 bits, o mínimo obrigatório da RFC 4226.
  *
- * A RFC 4226 recomenda 128 bits e o rascunho do `otpauth://` pede 160, mas o
- * que GitHub, Google, Discord, AWS e Coinbase emitem de fato é segredo de 16
- * caracteres, isto é, 10 bytes. Exigir 128 bits aqui não torna o cofre mais
- * seguro: só recusa o formato que todo serviço real entrega, e a pessoa não
- * tem como pedir um segredo maior ao serviço. O custo prático é pequeno: para
- * esbarrar num HMAC-SHA1 de 6 dígitos por força bruta seria preciso adivinhar
- * 10^6 códigos dentro da janela de 30 s, com o segredo trocando a cada
- * período, então 80 bits seguram a conta.
+ * A RFC 4226 exige pelo menos 128 bits e recomenda 160. O app adota o piso
+ * obrigatório: 16 bytes, que 26 caracteres Base32 carregam. O efeito colateral
+ * é recusar serviços que ainda emitem segredo de 16 caracteres (80 bits), uma
+ * escolha explícita de segurança em vez de compatibilidade.
  */
-export const OTP_SECRET_MIN_BYTES = 10;
+export const OTP_SECRET_MIN_BYTES = 16;
 
 /** O draft do IETF só admite 6 ou 8; nada de serviço real usa fora disso. */
 export const OTP_DIGIT_CHOICES: readonly number[] = [6, 8];
