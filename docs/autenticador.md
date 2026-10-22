@@ -28,21 +28,20 @@ serviço recusa.
 
 ### Formatos suportados
 
-| Parâmetro   | Valores                        | Observação                   |
-| ----------- | ------------------------------ | ---------------------------- |
-| `algorithm` | `SHA1`, `SHA256`, `SHA512`     | padrão `SHA1`                |
-| `digits`    | `6`, `8`                       | padrão `6`                   |
-| `period`    | 15 a 300 s                     | padrão `30`                  |
-| `secret`    | Base32 (RFC 4648), sem padding | mínimo de 80 bits (10 bytes) |
+| Parâmetro   | Valores                        | Observação                    |
+| ----------- | ------------------------------ | ----------------------------- |
+| `algorithm` | `SHA1`, `SHA256`, `SHA512`     | padrão `SHA1`                 |
+| `digits`    | `6`, `8`                       | padrão `6`                    |
+| `period`    | 15 a 300 s                     | padrão `30`                   |
+| `secret`    | Base32 (RFC 4648), sem padding | mínimo de 128 bits (16 bytes) |
 
-O cadastro recusa segredos com menos de 80 bits, isto é, menos de 10 bytes
-(16 caracteres Base32). A RFC 4226 recomenda 160 bits e o rascunho do
-`otpauth://` pede 128, mas o que GitHub, Google, Discord, AWS e Coinbase
-emitem de fato é segredo de 16 caracteres; exigir o mínimo da RFC não torna o
-cofre mais seguro, só recusa o formato que todo serviço real entrega. A
-validação ocorre no parser compartilhado e novamente no processo principal;
-usar SHA-1, SHA-256 ou SHA-512 continua sendo uma escolha do serviço, não uma
-forma de compensar uma chave curta.
+O cadastro recusa segredos com menos de 128 bits, isto é, menos de 16 bytes
+(26 caracteres Base32). A RFC 4226 exige pelo menos 128 bits e recomenda 160;
+o app adota o piso obrigatório, uma escolha explícita que recusa serviços que
+ainda emitem segredo de 16 caracteres (80 bits). A validação ocorre no parser
+compartilhado e novamente no processo principal; usar SHA-1, SHA-256 ou SHA-512
+continua sendo uma escolha do serviço, não uma forma de compensar uma chave
+curta.
 
 ### Formato de provisionamento
 
@@ -101,7 +100,7 @@ por token, no mesmo formato dos `.zke` das credenciais:
   `guardinha-vault-auth-v1`, **diferente** do `guardinha-vault-entry-v1` das
   credenciais, para que os dois nunca derivem a mesma chave nem por acidente;
 - escrita atômica (`.tmp` + `rename`), arquivo em `0600`, pasta em `0700`.
-- cadastro exige pelo menos 80 bits de segredo, independente do algoritmo
+- cadastro exige pelo menos 128 bits de segredo, independente do algoritmo
   HMAC selecionado.
 
 A pasta fica **dentro** de `.vault` e não como irmã por um motivo concreto: a

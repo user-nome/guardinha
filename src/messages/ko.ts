@@ -212,7 +212,7 @@ export const ko: Messages = {
     uriInvalid:
       '주소가 올바르지 않거나 비밀 키가 없습니다. `otpauth://totp/`부터 주소 전체를 붙였는지 확인하세요.',
     secretLabel: '설정 키 (Base32)',
-    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP',
+    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP',
     secretHint: '키를 정규화합니다: 대문자로 바꾸고 공백과 하이픈을 뺍니다.',
     issuerLabel: '서비스',
     issuerPlaceholder: '내 서비스',
@@ -356,7 +356,7 @@ export const ko: Messages = {
       '`otpauth://` 주소가 올바르지 않습니다. `otpauth://totp/`부터 주소 전체를 붙였는지, ' +
       '그리고 발급자가 라벨과 일치하는지 확인하세요.',
     invalidAuthSecret:
-      '설정 키는 올바른 Base32(A-Z 및 2-7)여야 하며 80비트(10바이트) 이상이어야 합니다.',
+      '설정 키는 올바른 Base32(A-Z 및 2-7)여야 하며 128비트(16바이트) 이상이어야 합니다.',
     authTokenNotFound: '2FA 토큰을 찾을 수 없습니다.',
     // ---- 금고 전체 백업 ----
     backupInvalid: '백업 파일이 유효하지 않습니다.',

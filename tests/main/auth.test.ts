@@ -107,6 +107,26 @@ describe('trava exponencial', () => {
     expect(getLockRemainingMs(loadAuthState())).toBe(0);
     expect(getLockRemainingMs(EMPTY_STATE)).toBe(0);
   });
+
+  it('getLockRemainingMs aceita a maior espera legítima (24 h)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(BASE);
+    const noTeto = { ...EMPTY_STATE, lockUntil: BASE + 86_400_000 };
+    expect(getLockRemainingMs(noTeto)).toBe(86_400_000);
+    vi.setSystemTime(BASE + 86_400_000);
+    expect(getLockRemainingMs(noTeto)).toBe(0);
+  });
+
+  it('getLockRemainingMs trata lockUntil além do teto como vencido', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(BASE);
+    // estado adulterado (ou relógio recuado): sem o corte, o cofre ficaria
+    // preso para sempre porque a espera nunca começaria a diminuir
+    const adulterado = { ...EMPTY_STATE, lockUntil: Number.MAX_SAFE_INTEGER };
+    expect(getLockRemainingMs(adulterado)).toBe(0);
+    const umMsAcimaDoTeto = { ...EMPTY_STATE, lockUntil: BASE + 86_400_001 };
+    expect(getLockRemainingMs(umMsAcimaDoTeto)).toBe(0);
+  });
 });
 
 describe('contadores separados por método (atemptsMaster)', () => {

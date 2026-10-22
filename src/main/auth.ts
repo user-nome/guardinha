@@ -28,9 +28,21 @@ export function calculateLockout(attemptCount: number): number {
   return Date.now() + delaySec * 1000;
 }
 
+/** Maior espera legítima: o último degrau da trava exponencial (24 h). */
+const MAX_LOCKOUT_MS = Math.max(...PENALTY_DELAYS_SECONDS) * 1000;
+
+/**
+ * Espera restante em milissegundos. Um `lockUntil` além da maior penalidade
+ * (`MAX_LOCKOUT_MS`) só aparece com o estado adulterado ou com o relógio
+ * recuado; não é uma espera legítima e, se fosse respeitado, prenderia o cofre
+ * para sempre. Nesse caso a trava é considerada vencida. O valor gravado não é
+ * reescrito aqui: quem lê só decide se ainda precisa esperar.
+ */
 export function getLockRemainingMs(state: PersistedAuthState): number {
   if (state.lockUntil === null) return 0;
-  return Math.max(0, state.lockUntil - Date.now());
+  const remaining = state.lockUntil - Date.now();
+  if (remaining > MAX_LOCKOUT_MS) return 0;
+  return Math.max(0, remaining);
 }
 
 /**

@@ -17,8 +17,8 @@ export const OTP_DEFAULT_PERIOD = 30;
 
 export const OTP_DIGIT_CHOICES = [6, 8] as const;
 
-/** Piso do segredo em bytes: 80 bits = 10 bytes (16 caracteres Base32). */
-export const OTP_SECRET_MIN_BYTES = 10;
+/** Piso do segredo em bytes: 128 bits = 16 bytes (26 caracteres Base32). */
+export const OTP_SECRET_MIN_BYTES = 16;
 
 /** Período aceito: 15 s a 300 s. */
 export const OTP_PERIOD_RANGE = [15, 300] as const;

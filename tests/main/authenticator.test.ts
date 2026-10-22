@@ -137,16 +137,16 @@ describe('tokens de 2FA', () => {
     expect(code?.remainingMs).toBeLessThanOrEqual(30_000);
   });
 
-  it('recusa segredo fora do alfabeto base32 ou menor que 80 bits', () => {
+  it('recusa segredo fora do alfabeto base32 ou menor que 128 bits', () => {
     // `1` não está no alfabeto Base32, então nem entra no cálculo do tamanho.
-    expect(() => saveToken(draft({ secret: 'JBSWY3DP1EHPK3PXP' }))).toThrow(
+    expect(() => saveToken(draft({ secret: `${'A'.repeat(25)}1` }))).toThrow(
       currentMessages().errors.invalidAuthSecret,
     );
-    // 15 caracteres carregam 9 bytes: um a menos que o piso de 10.
+    // 25 caracteres carregam 15 bytes: um a menos que o piso de 16.
     expect(() => saveToken(draft({ secret: 'JBSWY3DPEHPK3PX' }))).toThrow(
       currentMessages().errors.invalidAuthSecret,
     );
-    expect(() => saveToken(draft({ secret: 'A'.repeat(15) }))).toThrow(
+    expect(() => saveToken(draft({ secret: 'A'.repeat(25) }))).toThrow(
       currentMessages().errors.invalidAuthSecret,
     );
     expect(() => saveToken(draft({ secret: 'AA' }))).toThrow(
@@ -157,10 +157,10 @@ describe('tokens de 2FA', () => {
     );
   });
 
-  it('aceita o segredo de 16 caracteres que o GitHub emite de fato', () => {
-    // Regressão: o app exigia 128 bits, que 16 caracteres não alcançam, e o
-    // cadastro do token do GitHub falhava com "precisa ter pelo menos 128 bits".
-    const [token] = saveToken(draft({ secret: 'JBSWY3DPEHPK3PXP' }));
+  it('aceita o piso de 16 bytes (26 caracteres Base32)', () => {
+    const minimum = base32Encode(randomBytes(OTP_SECRET_MIN_BYTES));
+    expect(minimum).toHaveLength(26);
+    const [token] = saveToken(draft({ secret: minimum }));
     expect(token).toBeDefined();
     if (token !== undefined) removeToken(token.id);
   });
@@ -230,9 +230,9 @@ describe('tokens de 2FA', () => {
     expect(() => saveTokenFromUri('https://exemplo.com')).toThrow(
       currentMessages().errors.invalidAuthTokenUri,
     );
-    expect(() => saveTokenFromUri('otpauth://hotp/Banco:eu?secret=JBSWY3DPEHPK3PXP')).toThrow(
-      currentMessages().errors.invalidAuthTokenUri,
-    );
+    expect(() =>
+      saveTokenFromUri('otpauth://hotp/Banco:eu?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'),
+    ).toThrow(currentMessages().errors.invalidAuthTokenUri);
   });
 
   it('responde adulteração quando o registro decifrado não tem a forma', () => {

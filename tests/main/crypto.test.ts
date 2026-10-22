@@ -30,6 +30,20 @@ describe('deriveKey (Argon2id)', () => {
     expect(first.equals(second)).toBe(true);
   });
 
+  it('mantém o vetor do Argon2id que os cofres já gravados usam', async () => {
+    // A chave do cofre depende só de senha, salt e parâmetros: se este valor
+    // mudar, todo `vault.zkv` existente deixa de abrir. É o teste que impede
+    // uma troca de implementação de KDF de passar verde e quebrar o cofre.
+    const derived = await deriveKey(
+      'senha-de-teste',
+      Buffer.from('00112233445566778899aabbccddeeff', 'hex'),
+      TEST_KDF,
+    );
+    expect(derived.toString('hex')).toBe(
+      '6a6a4602564a88abf89b86737494151372106a7ad1eced5aa40d9504bc0d902e',
+    );
+  });
+
   it('muda com salt diferente', async () => {
     const a = await deriveKey('senha-de-teste', randomBytes(16), TEST_KDF);
     const b = await deriveKey('senha-de-teste', randomBytes(16), TEST_KDF);

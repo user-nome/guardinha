@@ -207,7 +207,7 @@ export const zhCN: Messages = {
       '请粘贴完整的地址，其中包含密钥。密钥会被加密存放在**密码库内部**，之后不会再离开这里。',
     uriInvalid: '地址无效或缺少密钥。请确认已完整粘贴，从 `otpauth://totp/` 开始。',
     secretLabel: '设置密钥（Base32）',
-    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP',
+    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP',
     secretHint: '密钥会被规范化：转为大写，去掉空格和连字符。',
     issuerLabel: '服务',
     issuerPlaceholder: '我的服务',
@@ -338,7 +338,7 @@ export const zhCN: Messages = {
     invalidAuthTokenUri:
       '`otpauth://` 地址无效。请确认已完整粘贴（从 `otpauth://totp/` 开始），' +
       '并且签发方与标签一致。',
-    invalidAuthSecret: '设置密钥必须是有效的 Base32（A-Z 和 2-7），且至少包含 80 位（10 字节）。',
+    invalidAuthSecret: '设置密钥必须是有效的 Base32（A-Z 和 2-7），且至少包含 128 位（16 字节）。',
     authTokenNotFound: '未找到该 2FA 令牌。',
     // ---- 金库整体备份 ----
     backupInvalid: '备份文件无效。',

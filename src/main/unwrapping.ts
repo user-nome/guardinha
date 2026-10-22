@@ -34,14 +34,14 @@ export interface KeyUnwrapper {
  * Custo do Argon2id para um método de desbloqueio: o PIN de 8 dígitos é o
  * segredo fraco (10^8 candidatas offline) e por isso recebe o perfil mais caro;
  * senha mestra e frase de recuperação têm entropia própria, um nível abaixo.
- * O PIN de pânico é o mesmo formato do PIN e recebe o mesmo custo, de propósito:
- * o atacante que mede o tempo de um desbloqueio legítimo não pode perceber que
- * existe um segundo caminho.
+ * O PIN de pânico é o mesmo formato do PIN e recebe o mesmo custo de Argon2id
+ * por derivação. O tempo total do caminho de pânico, porém, não é igual ao de
+ * um PIN comum, porque `unlock` tenta o pânico antes do fluxo normal; o risco
+ * conhecido está registrado em `SECURITY.md`.
  */
 function kdfFor(kind: CredentialKind): VaultKdfParams {
-  // o PIN de pânico é o mesmo segredo fraco do PIN, com o mesmo custo: um
-  // desbloqueio por ele custa exatamente o mesmo que um legítimo, então quem
-  // mede o tempo de um para o outro não descobre o atalho
+  // o PIN de pânico é o mesmo segredo fraco do PIN, com o mesmo custo por
+  // derivação: o tempo total do fluxo é assunto de `unlock`, não do embrulho
   const base = kind === 'pin' || kind === 'panic' ? kdfProfileFor('pin') : kdfProfileFor('master');
   return { algo: 'argon2id', ...base };
 }
@@ -74,9 +74,13 @@ class Argon2KeyUnwrapper implements KeyUnwrapper {
   public async wrap(vaultKey: Buffer, credential: string): Promise<WrappedMethod> {
     const kdfSalt = randomBytes(16);
     const derived = await deriveKey(credential, kdfSalt, this.kdf);
-    const payload = encryptRecord({ key: vaultKey.toString('hex') }, derived);
-    derived.fill(0);
-    return { kdf: this.kdf, kdfSalt: kdfSalt.toString('hex'), payload };
+    try {
+      const payload = encryptRecord({ key: vaultKey.toString('hex') }, derived);
+      return { kdf: this.kdf, kdfSalt: kdfSalt.toString('hex'), payload };
+    } finally {
+      // falha na cifragem não pode deixar a chave derivada legível na memória
+      derived.fill(0);
+    }
   }
 
   public async derive(method: WrappedMethod, credential: string): Promise<Buffer> {

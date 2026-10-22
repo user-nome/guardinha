@@ -22,27 +22,60 @@ const KEEP_LOCALES = new Set(['en-US.pak', 'pt-BR.pak', 'pt-PT.pak']);
 
 const REMOVE_FILES = ['libvk_swiftshader.so', 'libvulkan.so.1', 'vk_swiftshader_icd.json'];
 
+// O que o app não pode perder no enxugamento. A conferência roda depois das
+// remoções justamente para que uma entrada errada em REMOVE_FILES (ou no
+// KEEP_LOCALES) quebre o build aqui, e não o app na máquina de quem instalou.
+const REQUIRED_FILES = ['chrome-sandbox', 'libffmpeg.so', 'resources/app.asar'];
+
 async function afterPack(context) {
   const dir = context.appOutDir;
   const removed = [];
+  let freed = 0;
 
-  const localesDir = path.join(dir, 'locales');
-  for (const entry of fs.readdirSync(localesDir)) {
-    if (!KEEP_LOCALES.has(entry)) {
-      fs.rmSync(path.join(localesDir, entry));
-      removed.push(`locales/${entry}`);
+  const remove = (full, label) => {
+    try {
+      const { size } = fs.statSync(full);
+      fs.rmSync(full, { recursive: true, force: true });
+      freed += size;
+      removed.push(label);
+    } catch (error) {
+      // Falha em apagar não invalida o pacote: só perde o enxugamento. Avisar
+      // em vez de morrer mantém o build possível num filesystem sem suporte.
+      console.warn(`[after-pack] não foi possível remover ${label}: ${error.message}`);
     }
+  };
+
+  // `locales/` existe desde o Electron 45. Se um dia a árvore mudar, o build
+  // continua e só perde este enxugamento, em vez de falhar sem explicação.
+  const localesDir = path.join(dir, 'locales');
+  if (fs.existsSync(localesDir)) {
+    for (const entry of fs.readdirSync(localesDir)) {
+      if (!KEEP_LOCALES.has(entry)) {
+        remove(path.join(localesDir, entry), `locales/${entry}`);
+      }
+    }
+  } else {
+    console.warn('[after-pack] locales/ não encontrado; nada a enxugar aqui');
   }
 
   for (const file of REMOVE_FILES) {
     const full = path.join(dir, file);
     if (fs.existsSync(full)) {
-      fs.rmSync(full);
-      removed.push(file);
+      remove(full, file);
     }
   }
 
-  console.log(`[after-pack] removidos ${removed.length} arquivos não usados do Electron`);
+  const executable = context.packager.executableName;
+  for (const file of [...REQUIRED_FILES, executable]) {
+    if (!fs.existsSync(path.join(dir, file))) {
+      throw new Error(`[after-pack] arquivo obrigatório ausente no pacote: ${file}`);
+    }
+  }
+
+  const megabytes = (freed / (1024 * 1024)).toFixed(1);
+  console.log(
+    `[after-pack] removidos ${removed.length} arquivos não usados do Electron (${megabytes} MiB)`,
+  );
 }
 
 module.exports = afterPack;

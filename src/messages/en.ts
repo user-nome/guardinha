@@ -208,7 +208,7 @@ export const en: Messages = {
       'Invalid address or missing secret. Check that you pasted everything, starting at ' +
       '`otpauth://totp/`.',
     secretLabel: 'Setup key (Base32)',
-    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP',
+    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP',
     secretHint: 'The key is normalized: uppercase, no spaces and no dashes.',
     issuerLabel: 'Service',
     issuerPlaceholder: 'My Service',
@@ -353,7 +353,7 @@ export const en: Messages = {
       'Invalid `otpauth://` address. Check that you pasted the whole address, ' +
       'starting with `otpauth://totp/`, and that the issuer matches the label.',
     invalidAuthSecret:
-      'The setup key must be valid Base32 (A-Z and 2-7) and contain at least 80 bits (10 bytes).',
+      'The setup key must be valid Base32 (A-Z and 2-7) and contain at least 128 bits (16 bytes).',
     authTokenNotFound: '2FA token not found.',
     // ---- full vault backup ----
     backupInvalid: 'Invalid backup file.',

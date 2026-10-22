@@ -118,6 +118,13 @@ faz I/O, mas somente para as preferências não sensíveis em
   (`owner @{HOME}/.cache/ibus/dbus-* rw`) é o custo de esquecer uma regra: sem
   ele o teclado não escreve em campo de texto nenhum sob `GTK_IM_MODULE=ibus`,
   e o defeito não aparece em teste nem em `complain`.
+- **O perfil do AppArmor é instalado em dois estágios, e o segundo pode desfazer
+  o primeiro** (`build/scripts/after-install.sh`): dry run com
+  `--skip-kernel-load -K` para saber se a versão instalada aceita o perfil,
+  cópia atômica para `/etc/apparmor.d` e, se o carregamento no kernel falhar,
+  remoção do arquivo. Instalar e apagar o mesmo arquivo parece desperdício, mas
+  deixar lá um perfil que o kernel recusa faz o `apparmor.service` falhar no
+  boot seguinte, e aí o sistema perde a política inteira, não só a deste app.
 - Nenhum `console` com senha, PIN ou frase; nenhum log de payload IPC.
 
 Qualquer mudança nesses pontos muda também o `SECURITY.md` e costuma pedir

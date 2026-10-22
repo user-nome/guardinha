@@ -4,6 +4,10 @@
 
 | Versão | Suporte             |
 | ------ | ------------------- |
+| 2.0.x  | ✅ Correções ativas |
+| 1.9.x  | ✅ Correções ativas |
+| 1.8.x  | ✅ Correções ativas |
+| 1.7.x  | ✅ Correções ativas |
 | 1.6.x  | ✅ Correções ativas |
 | 1.5.x  | ✅ Correções ativas |
 | 1.4.x  | ✅ Correções ativas |
@@ -38,7 +42,7 @@ contrário).
   AES-256-GCM com um rótulo de domínio HKDF próprio, separado do das
   credenciais.
 - **Comprimento mínimo do segredo 2FA**: o cadastro exige pelo menos 128 bits
-  (16 bytes) de segredo Base32, conforme o mínimo da RFC 4226. A validação
+  (16 bytes) de segredo Base32, o mínimo obrigatório da RFC 4226. A validação
   ocorre no parser compartilhado e novamente no processo main, inclusive para
   entradas enviadas diretamente por IPC. O algoritmo HMAC (SHA-1, SHA-256 ou
   SHA-512) continua definido pelo serviço e não substitui esse requisito.
@@ -149,16 +153,27 @@ contrário).
   `/opt/Guardinha/guardinha`, quando AppArmor está ativo e aceita o perfil. Ele
   nega leitura de arquivos do usuário, nega
   escrita fora dos diretórios do app, do cofre e do `$XDG_CONFIG_HOME` do
-  app, nega rede `inet`/`inet6` (só `unix` e `netlink`, já que o app é
-  offline) e nega execução de qualquer binário fora da lista curta do pacote
-  (`chrome-sandbox`, `chrome_crashpad_handler`) e dos dois helpers do sistema
-  (`pkexec`, `xdg-open`). Ele abre o socket do método de entrada do próprio
-  usuário (`~/.cache/ibus/dbus-*`), que `<abstractions/ibus>` não cobre: sob
-  `GTK_IM_MODULE=ibus` (o padrão do Cinnamon no Mint) o campo de texto fica
-  mudo em `enforce` sem essa regra, porque o IME recusa a conexão e a tecla não
-  volta como caractere. O script de instalação testa se o perfil é aceito
-  pela versão de AppArmor instalada antes de o carregar; ambientes sem suporte
-  continuam sem esse confinamento adicional.
+  app, nega rede `inet`/`inet6` e também `raw`, `packet` e `bluetooth` (só
+  `unix` e `netlink`, já que o app é offline; as três negações explícitas
+  existem para o fechamento não depender do padrão da mediação de rede, que
+  muda de versão para versão) e nega execução de qualquer binário fora da lista
+  curta do pacote (`chrome-sandbox`, `chrome_crashpad_handler`) e dos dois
+  helpers do sistema (`pkexec`, `xdg-open`). Ele abre o socket do método de
+  entrada do próprio usuário (`~/.cache/ibus/dbus-*`), que
+  `<abstractions/ibus>` não cobre: sob `GTK_IM_MODULE=ibus` (o padrão do
+  Cinnamon no Mint) o campo de texto fica mudo em `enforce` sem essa regra,
+  porque o IME recusa a conexão e a tecla não volta como caractere.
+
+  A instalação é em dois estágios, porque o AppArmor não tem compilação
+  condicional por versão: o postinst compila o perfil sem carregar
+  (`--skip-kernel-load -K`, com os avisos `rule-not-enforced` e
+  `rule-downgraded` no log) e só copia o que a versão instalada aceita; se o
+  kernel recusar o carregamento, o arquivo recém-instalado é removido, para o
+  `apparmor.service` não falhar no boot seguinte. Ambientes sem suporte (Ubuntu
+  22.04, que não conhece `abi/4.0`) continuam sem esse confinamento adicional,
+  com o app rodando como qualquer Electron. A cópia para `/etc/apparmor.d` é
+  atômica (temporário e `mv`), então um disco cheio no meio da escrita não
+  deixa um perfil truncado para o próximo boot.
 
 ## Riscos aceitos (com justificativa)
 
@@ -219,10 +234,14 @@ contrário).
   só funcionasse fora da janela de trava seria inútil na hora em que seria
   preciso. O efeito colateral aceito: o PIN de pânico é um caminho de
   desbloqueio que **não conta tentativa**, então ele nunca gera lockout e nunca
-  denuncia a existência de si mesmo por aumento de contador. Ele só paga o
-  Argon2id de um PIN comum (256 MiB, t=4, p=4), o mesmo custo de um
-  desbloqueio legítimo, para que medir o tempo de um e de outro não revele o
-  atalho.
+  denuncia a existência de si mesmo por aumento de contador. Ele paga a mesma
+  derivação Argon2id do PIN (256 MiB, t=4, p=4) no método panic, mas o tempo
+  total do fluxo não é igual: `unlock` tenta o pânico antes da cadeia normal,
+  então um PIN comum (certo ou errado) paga duas derivações quando o pânico
+  existe, e o PIN de pânico paga uma. Na prática, medir uma tentativa errada
+  revela se o cofre tem PIN de pânico configurado. Igualar o custo exige uma
+  derivação descartável no caminho do pânico (ou outro desenho), decisão ainda
+  não tomada porque acrescenta custo justamente na hora da coação.
 - **A autodestruição por tentativas é desligada por padrão**: `nukeLimit` vale 0
   num cofre novo, e o piso de habilitação é 50 (não 5). É decisão de produto
   registrada, não omissão: apagar o cofre por contagem é uma lâmina sem ponta

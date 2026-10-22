@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import v8 from 'node:v8';
+import vm from 'node:vm';
 import { argon2id } from 'hash-wasm';
 import { isRecord } from '@zero/shared/record';
 import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
@@ -48,22 +50,67 @@ export function isValidKdfParams(value: unknown): value is Argon2Params {
   );
 }
 
-/** Derivação de chave primária via Argon2id com os parâmetros do chamador. */
+/**
+ * O `hash-wasm` monta uma instância WebAssembly nova por derivação, e o perfil
+ * do PIN pede 256 MiB só para ela. Essa memória é externa ao heap do V8, então
+ * o coletor não a enxerga como pressão e o processo cresceria cerca de 256 MB a
+ * cada desbloqueio até o OOM da máquina. Coletar ao fim de cada derivação
+ * devolve a instância ao sistema (o RSS fica estável perto de 100 MB) e custa
+ * dezenas de milissegundos, que somem ao lado dos segundos do Argon2id. Se o
+ * runtime não expuser `gc`, a derivação segue sem a coleta: o pior caso é o
+ * vazamento, nunca um desbloqueio que falha.
+ */
+const collectGarbage = createGarbageCollector();
+
+function createGarbageCollector(): (() => void) | null {
+  try {
+    v8.setFlagsFromString('--expose-gc');
+    const collect: unknown = vm.runInNewContext('gc');
+    /* v8 ignore next -- Node e Electron devolvem a função com o flag acima;
+       sem ela a coleta apenas não acontece. */
+    return typeof collect === 'function' ? (collect as () => void) : null;
+  } catch {
+    /* v8 ignore next -- runtime que recusa o flag: a coleta vira no-op. */
+    return null;
+  }
+}
+
+/**
+ * Derivação de chave primária via Argon2id com os parâmetros do chamador.
+ * A saída é binária para que a chave exista só em memória apagável: com
+ * `outputType: 'hex'` ela também ficaria numa string imutável no heap, que o
+ * `fill(0)` dos chamadores não alcança.
+ */
 export async function deriveKey(
   password: string,
   salt: Buffer,
   params: Argon2Params,
 ): Promise<Buffer> {
-  const hashHex = await argon2id({
-    password,
-    salt: new Uint8Array(salt),
-    parallelism: params.parallelism,
-    iterations: params.iterations,
-    hashLength: KEY_BYTES,
-    memorySize: params.memoryKiB,
-    outputType: 'hex',
-  });
-  return Buffer.from(hashHex, 'hex');
+  const raw = await deriveWithWasm(password, salt, params);
+  const key = Buffer.from(raw);
+  raw.fill(0);
+  return key;
+}
+
+/** Argon2id binário; a coleta no `finally` libera o WASM mesmo se falhar. */
+async function deriveWithWasm(
+  password: string,
+  salt: Buffer,
+  params: Argon2Params,
+): Promise<Uint8Array> {
+  try {
+    return await argon2id({
+      password,
+      salt: new Uint8Array(salt),
+      parallelism: params.parallelism,
+      iterations: params.iterations,
+      hashLength: KEY_BYTES,
+      memorySize: params.memoryKiB,
+      outputType: 'binary',
+    });
+  } finally {
+    collectGarbage?.();
+  }
 }
 
 /**
@@ -108,19 +155,23 @@ export function encryptRecord(data: object, key: Buffer, info = KEY_INFO_ENTRY):
   const entryKey = deriveRecordKey(key, salt, info);
   const iv = crypto.randomBytes(IV_BYTES);
 
-  const cipher = crypto.createCipheriv(AES_ALGORITHM, entryKey, iv);
-  const jsonStr = JSON.stringify(data);
-  let encrypted = cipher.update(jsonStr, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
+  try {
+    const cipher = crypto.createCipheriv(AES_ALGORITHM, entryKey, iv);
+    const jsonStr = JSON.stringify(data);
+    let encrypted = cipher.update(jsonStr, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
 
-  entryKey.fill(0);
-
-  return {
-    salt: salt.toString('hex'),
-    iv: iv.toString('hex'),
-    tag: cipher.getAuthTag().toString('hex'),
-    encryptedData: encrypted,
-  };
+    return {
+      salt: salt.toString('hex'),
+      iv: iv.toString('hex'),
+      tag: cipher.getAuthTag().toString('hex'),
+      encryptedData: encrypted,
+    };
+  } finally {
+    // o `finally` cobre também a falha no meio da cifragem: sem ele, a chave
+    // derivada do registro ficaria legível na memória até o coletor passar
+    entryKey.fill(0);
+  }
 }
 
 export function decryptRecord(
@@ -130,15 +181,23 @@ export function decryptRecord(
 ): unknown {
   const salt = Buffer.from(payload.salt, 'hex');
   const entryKey = deriveRecordKey(vaultKey, salt, info);
-  const decipher = crypto.createDecipheriv(AES_ALGORITHM, entryKey, Buffer.from(payload.iv, 'hex'));
-  decipher.setAuthTag(Buffer.from(payload.tag, 'hex'));
 
-  let decrypted = decipher.update(payload.encryptedData, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  entryKey.fill(0);
+  try {
+    const decipher = crypto.createDecipheriv(
+      AES_ALGORITHM,
+      entryKey,
+      Buffer.from(payload.iv, 'hex'),
+    );
+    decipher.setAuthTag(Buffer.from(payload.tag, 'hex'));
 
-  const value: unknown = JSON.parse(decrypted);
-  return value;
+    let decrypted = decipher.update(payload.encryptedData, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return JSON.parse(decrypted) as unknown;
+  } finally {
+    // credencial errada, tag adulterada ou payload truncado saem por exceção;
+    // a chave de trabalho tem de sair zerada por qualquer um dos caminhos
+    entryKey.fill(0);
+  }
 }
 
 /** Cifra um registro no domínio dos tokens de 2FA. */

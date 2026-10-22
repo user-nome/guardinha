@@ -1,6 +1,6 @@
 # Testes
 
-Suíte Vitest com 64 arquivos `*.test.ts` e `*.test.tsx`, agrupados por domínio.
+Suíte Vitest com 78 arquivos `*.test.ts` e `*.test.tsx`, agrupados por domínio.
 O ambiente padrão é jsdom; a maioria dos testes do processo main declara
 `@vitest-environment node`, e os testes do renderer usam jsdom. O teste do
 carregador de módulos também inicia o Node real em um processo filho. Os testes
@@ -11,6 +11,7 @@ têm timeout de 120 s.
 
 ```bash
 npm test                  # execução única (o que o CI espera)
+npm run test:security     # só a suíte de segurança (tests/security)
 npm run test:watch        # modo watch
 npm run test:coverage     # cobertura em coverage/ (limiar de 100%)
 npm run test:mutation     # teste de mutação (ver docs/mutation.md)
@@ -89,6 +90,9 @@ e o score é uma medida de tendência, não um portão.
 | `tests/shared/policy.test.ts`                   | Formato de PIN, senha mestra, frase e UUID.                                 |
 | `tests/shared/strategy.test.ts`                 | Estratégia de avaliação de força por tipo.                                  |
 | `tests/shared/strength.test.ts`                 | Pontuação, motivos e bloqueios da checagem de força.                        |
+| `tests/security/crypto.kat.test.ts`             | Vetor Argon2id, oráculo HKDF/GCM independente, adulteração e zeragem.       |
+| `tests/security/vault.attacks.test.ts`          | Ataques ao desbloqueio, ao KDF, ao manifesto e ao disco.                    |
+| `tests/security/erase.attacks.test.ts`          | Ordem do erase, chave zerada e o que sobra no disco.                        |
 | `tests/messages/functions.test.ts`              | Forma e comportamento das funções de mensagem.                              |
 | `tests/messages/parity.test.ts`                 | Paridade de chaves, tipos e idiomas entre os bundles.                       |
 | `tests/tools/mutation-runner.test.ts`           | Planejamento, seleção de testes e o mutante entrando na execução.           |
@@ -122,6 +126,21 @@ restaura timers e mocks a cada teste).
   (`createVault` custa três derivações Argon2id, uns 45 s). Crie uma vez,
   fotografe o `vault.zkv` e restaure a foto antes de cada cenário; é o que
   `tests/main/panic.test.ts` faz.
+
+## Segurança
+
+A suíte de `tests/security/` não repete os testes de domínio: ela tenta quebrar
+as garantias com oráculo independente e cenário adversário. O Argon2id tem um
+vetor de referência conhecido, a cifra é conferida com HKDF-SHA512 e AES-256-GCM
+do próprio Node (sem passar pela função do app), e cada campo do registro é
+adulterado de propósito. O cofre é semeado com o custo mínimo aceito pelo
+formato (`16 MiB`, `t=1`, `p=1`), porque o alvo é a cadeia de desbloqueio, não o
+tempo de derivação; o perfil de produção tem um canário de tempo separado, com
+piso generoso para não virar teste de máquina.
+
+`tests/security/helpers.ts` concentra o fixture (cofre barato, `resetVaultDir`,
+leitura dos bytes crus). Os testes de erase restauram a guarda de destruição
+antes de cada cenário, como manda a convenção acima.
 
 ## Mutação
 

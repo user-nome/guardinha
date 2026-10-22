@@ -205,8 +205,10 @@ export async function createVault(input: CreateVaultInput): Promise<VaultResult>
  *
  * E também **não** conta tentativa quando erra. Um PIN de pânico que somasse em
  * `attempts` denunciaria a existência de um segundo caminho justamente para quem
- * está testando o app sob coação. Ele só paga o custo do Argon2id (256 MiB),
- * que é o mesmo de um desbloqueio legítimo: para quem mede, não há diferença.
+ * está testando o app sob coação. Ele paga a derivação do método panic, com o
+ * mesmo custo do PIN; o tempo total do fluxo, porém, é maior para um PIN comum,
+ * porque o pânico é tentado antes da cadeia normal. Esse risco conhecido está
+ * registrado em `SECURITY.md`.
  */
 async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData): Promise<boolean> {
   const method = container.methods.panic;
@@ -220,7 +222,8 @@ async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData)
   try {
     derived = await unwrapper.derive(method, input.credential);
     // o desembrulho só confirma que o PIN é o certo; a chave que sai é decoy
-    unwrapper.unwrap(method, derived);
+    const decoy = unwrapper.unwrap(method, derived);
+    decoy.fill(0);
     return true;
   } catch {
     // PIN errado: segue o fluxo normal, como se nada tivesse sido tentado

@@ -342,7 +342,7 @@ describe('tela do verificador 2FA', () => {
     await user.clear(screen.getByLabelText('Validade (segundos)'));
     await user.type(screen.getByLabelText('Validade (segundos)'), '60');
     await user.type(
-      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP'),
+      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP'),
       'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
     );
     await user.click(screen.getByRole('button', { name: 'Salvar' }));
@@ -371,7 +371,7 @@ describe('tela do verificador 2FA', () => {
     );
 
     await user.type(
-      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP'),
+      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP'),
       'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
     );
     await user.click(screen.getByRole('button', { name: 'Salvar' }));
@@ -748,7 +748,7 @@ describe('modal de token', () => {
     // abrir para editar já vem nos campos, com o serviço preenchido
     expect(screen.getByDisplayValue('GitHub')).toBeInTheDocument();
     const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
-    await user.type(screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP'), secret);
+    await user.type(screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP'), secret);
     await user.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
@@ -834,7 +834,7 @@ describe('modal de token', () => {
     renderModal(token());
 
     await user.type(
-      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP'),
+      screen.getByPlaceholderText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP'),
       'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ',
     );
     await user.click(screen.getByRole('button', { name: 'Salvar' }));

@@ -216,7 +216,7 @@ export const ja: Messages = {
     uriInvalid:
       'アドレスが正しくないか、秘密鍵がありません。`otpauth://totp/` から最後まで貼り付けられているか確認してください。',
     secretLabel: '設定キー（Base32）',
-    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP',
+    secretPlaceholder: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP',
     secretHint: 'キーを正規化します：大文字化し、空白とハイフンを除きます。',
     issuerLabel: 'サービス',
     issuerPlaceholder: 'マイサービス',
@@ -362,7 +362,7 @@ export const ja: Messages = {
       '`otpauth://` アドレスが正しくありません。`otpauth://totp/` から最後まで貼り付けられているか、' +
       'および発行者がラベルと一致しているかを確認してください。',
     invalidAuthSecret:
-      '設定キーは有効な Base32（A-Z と 2-7）で、80 ビット（10 バイト）以上である必要があります。',
+      '設定キーは有効な Base32（A-Z と 2-7）で、128 ビット（16 バイト）以上である必要があります。',
     authTokenNotFound: '2FA トークンが見つかりません。',
     // ---- 金庫全体のバックアップ ----
     backupInvalid: 'バックアップファイルが無効です。',

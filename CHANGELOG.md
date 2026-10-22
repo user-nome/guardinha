@@ -4,10 +4,50 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
-## [Não lançado]
+## [2.0.1] - 2026-10-22
 
 ### Alterado
 
+- **Segredo de 2FA passou a exigir 128 bits.** O piso subiu de 80 bits (10
+  bytes, 16 caracteres Base32) para 128 bits (16 bytes, 26 caracteres), o
+  mínimo obrigatório da RFC 4226. Serviços que ainda emitem segredo de 16
+  caracteres deixam de ser aceitos; a mensagem de erro e a documentação foram
+  atualizadas junto.
+- **Instalação do `.deb` endurecida.** O postinst faz o dry run do perfil do
+  AppArmor com `--skip-kernel-load -K` e os avisos `rule-not-enforced` e
+  `rule-downgraded` (o parser ignora em silêncio a regra que o kernel não
+  aplica, e isso não chegava ao log), grava o perfil e a ação do PolicyKit por
+  troca atômica e, se o kernel recusar o perfil já compilado, remove o arquivo
+  em vez de deixar o `apparmor.service` quebrar no próximo boot. O link do
+  executável ganhou diagnóstico: o `update-alternatives` mantém um arquivo real
+  em `/usr/bin/guardinha` (é o que o manual manda fazer sem `--force`) e antes
+  o atalho do sistema abria outro programa sem aviso; o caminho de link direto
+  também deixou de sobrescrever arquivo de outro pacote.
+- **Perfil do AppArmor mais fechado.** `network raw`, `packet` e `bluetooth`
+  passaram a ser negados de forma explícita, ao lado de `inet`/`inet6`: o
+  fechamento deixa de depender do padrão da mediação de rede, que muda de
+  versão para versão. O cabeçalho do perfil documenta o gate de instalação e os
+  despejos do wiki (`--preprocess` e `--skip-kernel-load --debug`).
+- **`after-pack` valida o que não pode faltar.** O hook confere
+  `libffmpeg.so`, `chrome-sandbox` e `resources/app.asar` depois das remoções,
+  então uma entrada errada na lista de arquivos a apagar quebra o build em vez
+  de gerar um `.deb` que não abre. Ele também não morre mais se `locales/`
+  sumir de uma versão futura do Electron.
+- **`libsecret-1-0` entrou nas dependências do `.deb`.** É a lista padrão do
+  electron-builder e é o backend de chaveiro que o fuse `enableCookieEncryption`
+  procura; sem ele o Chromium cai para cookie sem cifra. O app não usa cookie
+  nem rede, então era peça faltando no pacote, não correção de defeito visível.
+- **Dependências atualizadas para as versões estáveis mais recentes.** Electron
+  45.0.0 (Chromium 156, Node 24.22.0), `electron-vite` 6.0.0 (a faixa saiu do
+  beta), `eslint` 10.13.0, `typescript-eslint` 8.72.0, Vite 8.3.5,
+  `electron-builder` 26.18.0, `lucide-react` 1.61.0, Vitest 5.0.5, Tailwind
+  4.3.3, jsdom 30.1.3 e Prettier 3.9.10. O TypeScript ficou no 6.0.3 porque o
+  `typescript-eslint` declara paridade abaixo de 6.1, e o linter é parte do
+  `npm run check`: sem `--legacy-peer-deps`, nenhuma versão da série 7 instala.
+  Nenhuma versão `beta`, `alpha` ou `rc` entrou na árvore.
+- **A configuração do build trocou `rollupOptions` por `rolldownOptions`.** O
+  Vite 8 builda com Rolldown e marca o nome antigo como deprecated; o
+  `electron-vite` 6.0.0 já normaliza o nome novo.
 - **Colunas dos cartões pela largura da janela.** As grades do Início e do
   Verificador 2FA deixaram de usar _container query_ (que mediava a coluna de
   conteúdo, limitada a `max-w-6xl`, e por isso nunca passava de duas colunas)
@@ -24,6 +64,51 @@ em português do Brasil.
   largura da faixa lida do `currentTarget` no slider, exclusão sem `entry`
   nulo no modal de credencial) ou ficaram com `/* v8 ignore next */` e o motivo
   ao lado, quando a guarda só cobre um estado que a interface impede.
+
+### Adicionado
+
+- **Suíte de segurança com oráculo independente.** `tests/security/` tenta
+  quebrar as garantias do cofre sem passar pelas funções do app: Argon2id
+  conferido contra um vetor conhecido, HKDF-SHA512 e AES-256-GCM refeitos com o
+  próprio Node, adulteração de cada campo do registro, ataques ao desbloqueio,
+  ao manifesto e à ordem do erase. O atalho `npm run test:security` roda só essa
+  suíte, e o mapa de `docs/testes.md` foi atualizado.
+
+### Corrigido
+
+- **O `postrm` desmontava o app na atualização.** O `after-remove.sh` rodava em
+  qualquer ação do dpkg, inclusive `upgrade` (o postrm da versão antiga sai
+  antes de o postinst novo entrar), e tirava o perfil do AppArmor e a ação do
+  PolicyKit no meio da atualização: o app ficava sem confinamento até o postinst
+  e, se ele falhasse, sem como criar o cofre. Agora só `remove`, `purge` e
+  `disappear` desmontam, e o symlink do caminho sem `update-alternatives`, que
+  ficava apontando para um `/opt` já apagado, é limpo.
+- **`guardinha-setup` seguia ligação simbólica.** O helper roda como root pelo
+  `pkexec` e o `install -d` segue symlink: um `/var/lib/.guardinha` plantado
+  levava o `chown`/`chmod` para outro lugar. Ele agora recusa symlink nos dois
+  níveis antes de tocar em qualquer coisa.
+- **Vazamento de memória a cada desbloqueio.** O `hash-wasm` monta uma
+  instância WebAssembly nova por derivação (256 MiB no perfil do PIN) e o V8
+  não coleta essa memória sozinho, porque ela é externa ao heap JS: o processo
+  crescia cerca de 256 MB por desbloqueio até o OOM da máquina. O
+  `src/main/crypto.ts` agora coleta ao fim de cada derivação, com o RSS estável
+  perto de 100 MB, e a saída passou a ser binária para não deixar uma cópia da
+  chave numa string imutável no heap. A derivação é a mesma: o
+  `tests/main/crypto.test.ts` fixa o vetor do Argon2id, para que uma troca de
+  implementação não passe verde e quebre os cofres já gravados.
+- **Trava exponencial sem saída com estado adulterado.** Um `lockUntil` além do
+  maior degrau legítimo (24 h) só aparece com o campo adulterado ou com o
+  relógio recuado, mas era respeitado como espera e prendia o cofre para
+  sempre. `getLockRemainingMs` agora trata esse valor como trava vencida, sem
+  reescrever o que está gravado.
+
+### Notas
+
+- **A série 2.x começa pela compatibilidade do segredo de 2FA.** O piso de 128
+  bits vale na gravação: tokens já salvos com 16 caracteres Base32 continuam
+  gerando código, mas um token novo ou editado exige um segredo maior, e o
+  serviço que só emite chave curta fica de fora. Foi a mudança que quebrou
+  compatibilidade e justificou o salto de versão.
 
 ## [1.9.1] - 2026-10-19
 

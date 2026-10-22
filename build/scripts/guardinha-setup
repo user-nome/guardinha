@@ -4,6 +4,11 @@
 # precisa criar/reparar a pasta do cofre em /var/lib. Só cria os diretórios
 # FIXOS abaixo com modos fixos: nenhum caminho vem do chamador, então não há
 # como explorá-lo. O dono vem de PKEXEC_UID (definido pelo pkexec).
+#
+# `install -d` também reajusta modo e dono de diretório que já existe, e é por
+# isso que ele serve de reparo: quem instalou o pacote sem SUDO_UID/PKEXEC_UID
+# (por exemplo, de um shell de root) deixa a área do cofre com dono errado, e
+# o app pede este helper no primeiro uso para consertar.
 set -eu
 
 CALLER_UID="${PKEXEC_UID:-}"
@@ -13,10 +18,23 @@ CALLER_USER="$(getent passwd "$CALLER_UID" | cut -d: -f1)"
 [ -n "$CALLER_USER" ] || exit 1
 CALLER_GROUP="$(id -gn "$CALLER_USER")"
 
+VAULT_ROOT='/var/lib/.guardinha'
+VAULT_DIR="$VAULT_ROOT/.vault"
+
+# Recusa ligação simbólica no caminho: este script roda como root, e o
+# `install -d` segue symlink, então um diretório plantado levaria o chown e o
+# chmod para outro lugar. Nada nesta árvore deveria ser ligação.
+for path in "$VAULT_ROOT" "$VAULT_DIR"; do
+  if [ -L "$path" ]; then
+    echo "guardinha-setup: $path é ligação simbólica; recusando." >&2
+    exit 1
+  fi
+done
+
 # raiz: root sem listagem (exige sudo para navegar/excluir o topo da árvore)
-install -d -m 0711 -o root -g root /var/lib/.guardinha
+install -d -m 0711 -o root -g root "$VAULT_ROOT"
 
 # área de trabalho do app: dono = usuário que autenticou (0700, oculta)
-install -d -m 0700 -o "$CALLER_USER" -g "$CALLER_GROUP" /var/lib/.guardinha/.vault
+install -d -m 0700 -o "$CALLER_USER" -g "$CALLER_GROUP" "$VAULT_DIR"
 
 exit 0

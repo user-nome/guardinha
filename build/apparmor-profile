@@ -7,9 +7,21 @@
 # `${...}` e **derruba o build** se a macro não existir: só `${executable}` e
 # `${sanitizedProductName}` podem aparecer aqui.
 #
+# Quem carrega o perfil não é o dpkg, é o `build/scripts/after-install.sh`: ele
+# compila o arquivo sem tocar no kernel (`apparmor_parser --skip-kernel-load
+# -K`, com os avisos `rule-not-enforced` e `rule-downgraded` ligados) e só
+# instala o que a versão presente do AppArmor aceita; se o kernel recusar o
+# carregamento, o arquivo sai de `/etc/apparmor.d` em vez de derrubar o
+# `apparmor.service` no próximo boot. O AppArmor não tem compilação condicional
+# por versão, então compatibilidade aqui é teste, não sintaxe.
+# https://askubuntu.com/questions/1517272/writing-a-backwards-compatible-apparmor-profile
+#
 # Ciclo de teste: carregar em complain (`apparmor_parser -C -r`), rodar o app,
 # ler as negações no `/var/log/kern.log` e repetir até não sobrar negação de
 # operação legítima; só então promover a enforce (`apparmor_parser -r`).
+# `apparmor_parser --preprocess` achata os `#include` e
+# `apparmor_parser --skip-kernel-load --debug` mostra o que iria para o kernel:
+# https://wiki.debian.org/AppArmor/HowToUse#Dumping_profiles
 #
 # A negação é padrão do AppArmor: só entra aqui o que o app realmente precisa.
 
@@ -31,6 +43,13 @@ profile ${executable} /opt/${sanitizedProductName}/${executable} {
   include <abstractions/dri-common>
   include <abstractions/mesa>
   include <abstractions/vulkan>
+  # `<abstractions/dbus-session>` libera o barramento de sessão inteiro; o
+  # próprio arquivo recomenda o `dbus-session-strict` para mediação fina. Ficar
+  # no amplo é escolha consciente: dconf, o portal de arquivos, o gvfs do
+  # diálogo nativo e o painel do IBus chegam por nomes de barramento diferentes
+  # em cada ambiente, e restringir sem a bancada do Mint quebra o diálogo em
+  # silêncio. Migrar para o strict pede regras explícitas para esses nomes e a
+  # bateria de teste em enforce descrita acima, não só a troca desta linha.
   include <abstractions/dbus-session>
   include <abstractions/freedesktop.org>
   include <abstractions/user-tmp>
@@ -151,9 +170,16 @@ profile ${executable} /opt/${sanitizedProductName}/${executable} {
 
   # ---------- rede ----------
   # Guardinha é 100% offline: nenhuma conexão sai da máquina. Unix (D-Bus,
-  # X11, PulseAudio) e netlink (interfaces) seguem liberados.
+  # X11, PulseAudio) e netlink (interfaces) seguem liberados, porque são
+  # caminhos locais. `raw`, `packet` e `bluetooth` não têm uso nenhum aqui e
+  # ficam negados de forma explícita: assim o fechamento não depende do
+  # comportamento padrão da mediação de rede, que muda de versão para versão
+  # do AppArmor.
   network unix,
   network netlink,
+  deny network raw,
+  deny network packet,
+  deny network bluetooth,
   deny network inet,
   deny network inet6,
 
