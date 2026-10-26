@@ -148,7 +148,6 @@ describe('canal shell:open-domain', () => {
     expect(shell.openExternal).not.toHaveBeenCalled();
   });
 });
-
 describe('canal clipboard:copy', () => {
   it('recusa payload que não seja texto', () => {
     // o renderer nunca deve poder injetar objeto no clipboard nativo
