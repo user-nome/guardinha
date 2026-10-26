@@ -109,15 +109,6 @@ export function writeAuthState(state: PersistedAuthState): void {
 
 // ---------- Manifesto de integridade (cifrado com a chave do cofre) ----------
 
-/** Sella o manifesto com os arquivos atuais (só na primeira vez). */
-export function initManifest(vaultKey: Buffer): void {
-  const data = readVaultContainer();
-  if (data === null) return;
-  if (data.manifest !== null) return;
-  data.manifest = sealManifest(vaultKey, listEntryIds(), listAuthIds());
-  writeVaultContainer(data);
-}
-
 /** Reescreve o manifesto a partir do diretório (após salvar/remover). */
 export function updateManifest(vaultKey: Buffer): void {
   const data = readVaultContainer();
@@ -130,12 +121,16 @@ export function updateManifest(vaultKey: Buffer): void {
  * Confere manifesto × diretório: arquivo removido/injetado de fora do app
  * derruba a lista com o erro único de adulteração (fail-closed).
  *
+ * Um container sem manifesto **não** é um cofre novo: o selo inicial é feito
+ * por `createVault`, antes de o arquivo existir. Se o campo chegou aqui nulo, o
+ * manifesto foi removido de fora ou a gravação falhou, e re-selar o diretório
+ * atual aceitaria exclusões silenciosas como estado legítimo.
+ *
  * Os tokens de 2FA entram na mesma conferência. Sem isso, apagar um `.zka` ou
  * plantar o seu próprio passaria despercebido: o segredo TOTP trocado em
  * silêncio é exatamente o ataque que o manifesto existe para fechar.
  */
 export function verifyManifest(vaultKey: Buffer): void {
-  initManifest(vaultKey);
   const data = readVaultContainer();
   if (data === null) throw new Error(currentMessages().errors.vaultMissing);
   if (data.manifest === null) throw tampered();

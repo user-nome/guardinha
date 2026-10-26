@@ -7,6 +7,7 @@ import { KDF_CREDENTIAL, KDF_PIN, deriveKey, encryptRecord, randomBytes } from '
 import { currentMessages } from '@zero/main/i18n';
 import { listEntries, removeEntry, saveEntry } from '@zero/main/entries';
 import { vaultStorage } from '@zero/main/facade';
+import { secureClipboard } from '@zero/main/clipboard';
 import { keyUnwrapperFor } from '@zero/main/unwrapping';
 import { clearPanicPin, hasPanicPin, setPanicPin } from '@zero/main/vault';
 import { readVaultContainer, writeAuthState, writeVaultContainer } from '@zero/main/storage';
@@ -52,6 +53,18 @@ describe('ciclo de vida do cofre (integração)', () => {
     // o contador de senha mestra e o limite de autodestruição nascem zerados:
     // um cofre novo que já contasse tentativa destruiria o dado do usuário
     expect(panicStatus()).toMatchObject({ nukeLimit: 0, attemptsMaster: 0, hasPanicPin: false });
+  });
+
+  it('1b. o lock manual limpa o clipboard na hora', () => {
+    // H4: `panicDestroy` e o encerramento já chamavam `dispose`; o lock manual
+    // não, então uma senha copiada sobrevivia até 30 s ao gesto de bloquear.
+    const dispose = vi.spyOn(secureClipboard, 'dispose').mockResolvedValue();
+    try {
+      lock();
+      expect(dispose).toHaveBeenCalledOnce();
+    } finally {
+      dispose.mockRestore();
+    }
   });
 
   it('2. recusa recriar um cofre existente', async () => {

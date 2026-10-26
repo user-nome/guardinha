@@ -8,7 +8,7 @@ import type { VaultContainerData, WrappedMethod } from '@zero/main/container';
 import { writeAuthPayload } from '@zero/main/auth-store';
 import { writeEntryPayload } from '@zero/main/entries-store';
 import { vaultStorage } from '@zero/main/facade';
-import { authDir, entriesDir } from '@zero/main/layout';
+import { authDir, containerFile, entriesDir } from '@zero/main/layout';
 import { readVaultContainer, verifyManifest } from '@zero/main/storage';
 import { vaultSession } from '@zero/main/session';
 import { unlock } from '@zero/main/vault';
@@ -124,6 +124,31 @@ describe('desbloqueio: quem entra e quem fica de fora', () => {
     expect(vaultSession().keyOrNull()).toBeNull();
     expect(vaultSession().isDecoy()).toBe(true);
     expect(fs.existsSync(`${entriesDir()}/${ENTRY_ID}.zke`)).toBe(false);
+    vaultKey.fill(0);
+  }, 120_000);
+
+  it('copiar o blob do PIN para o slot de pânico não transforma o PIN em gatilho', async () => {
+    // P9: o container não autentica o papel de cada método. Sem a conferência
+    // de blob idêntico, copiar `methods.pin` para `methods.panic` faria o login
+    // normal destruir o cofre em vez de abri-lo.
+    const vaultKey = randomBytes(32);
+    const container = await seedVault({
+      vaultKey,
+      credentials: { pin: PIN },
+      entryIds: [ENTRY_ID],
+    });
+    const pinMethod = container.methods.pin;
+    if (pinMethod === undefined) throw new Error('o fixture não gravou o método pin');
+    container.methods.panic = pinMethod;
+    vaultStorage.writeContainer(container);
+    vaultSession().wipe();
+
+    const result = await unlock({ credential: PIN, kind: 'pin' });
+
+    expect(result.ok).toBe(true);
+    expect(vaultSession().isUnlocked()).toBe(true);
+    expect(vaultSession().isDecoy()).toBe(false);
+    expect(fs.existsSync(containerFile())).toBe(true);
     vaultKey.fill(0);
   }, 120_000);
 });
@@ -279,6 +304,39 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
     fs.rmSync(`${entriesDir()}/${ENTRY_ID}.zke`);
 
     expect(() => verifyManifest(vaultKey)).toThrow();
+    vaultKey.fill(0);
+  });
+
+  it('copiar o arquivo de A sobre o de B não faz B exibir A', async () => {
+    // P6: o manifesto prende o conjunto de nomes, não o conteúdo. Copiar
+    // `.zke` de A sobre B mantém a lista de ids, então a conferência de
+    // manifesto passa; o id decifrado é que denuncia a troca.
+    const vaultKey = randomBytes(32);
+    const idA = '55555555-5555-4555-8555-555555555555';
+    const idB = '66666666-6666-4666-8666-666666666666';
+    await seedVault({
+      vaultKey,
+      credentials: { master: MASTER },
+      entryIds: [idA, idB],
+    });
+    const credential = (id: string, title: string): Record<string, unknown> => ({
+      id,
+      title,
+      username: 'alice',
+      password: 'segredo',
+      domain: '',
+      notes: '',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    writeEntryPayload(idA, encryptRecord(credential(idA, 'A'), vaultKey));
+    writeEntryPayload(idB, encryptRecord(credential(idB, 'B'), vaultKey));
+
+    fs.copyFileSync(`${entriesDir()}/${idA}.zke`, `${entriesDir()}/${idB}.zke`);
+
+    expect(() => verifyManifest(vaultKey)).not.toThrow();
+    expect(vaultStorage.readRecord(idA, vaultKey).title).toBe('A');
+    expect(() => vaultStorage.readRecord(idB, vaultKey)).toThrow();
     vaultKey.fill(0);
   });
 

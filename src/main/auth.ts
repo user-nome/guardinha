@@ -98,10 +98,13 @@ export function validateDomainFormat(domain: string): boolean {
  * URL a abrir no navegador padrão, já normalizada com o esquema. Lança o erro
  * localizado quando o texto não é um domínio aceitável. É regra de domínio,
  * não transporte: o handler IPC só repassa o resultado para o `shell`.
+ *
+ * Só `https://`: um domínio guardado como `http://` abriria a credencial em
+ * claro e contradiria a promessa de que a janela só entrega https ao sistema.
  */
 export function openableUrl(domain: string): string {
   if (domain === '' || !validateDomainFormat(domain)) {
     throw new Error(currentMessages().errors.invalidDomain);
   }
-  return /^https?:\/\//i.test(domain) ? domain : `https://${domain}`;
+  return /^https:\/\//i.test(domain) ? domain : `https://${domain}`;
 }

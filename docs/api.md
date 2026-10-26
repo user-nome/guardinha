@@ -32,6 +32,12 @@ credencial (`credenciais.md`).
 | `clearPanicPin()`     | `vault:clear-panic-pin` | `→ VaultStatus`                  | Remove o caminho de pânico do container.                                                                                  |
 | `setNukeLimit(limit)` | `vault:set-nuke-limit`  | `number → VaultResult`           | Limite estrito de falhas da senha mestra que dispara o erase. `0` desliga; o piso para ligar é 50.                        |
 | `panicStatus()`       | `vault:panic-status`    | `→ PanicStatus`                  | `hasPanicPin`, `nukeLimit` e `attemptsMaster`, para a tela de Configurações.                                              |
+| `lock()`              | `vault:lock`            | `→ VaultStatus`                  | Zera a chave em memória, limpa o clipboard e bloqueia.                                                                    |
+| `destroy()`           | `vault:destroy`         | `→ VaultStatus`                  | Cryptographic Erase: zera a chave da RAM e sobrescreve e apaga o cofre. A confirmação em duas etapas mora no renderer.    |
+| `setPanicPin(input)`  | `vault:set-panic-pin`   | `PanicPinInput → VaultResult`    | Instala o PIN de coação (exige cofre desbloqueado). Recusa o PIN real e PIN previsível.                                   |
+| `clearPanicPin()`     | `vault:clear-panic-pin` | `→ VaultStatus`                  | Remove o caminho de pânico do container (exige cofre desbloqueado).                                                       |
+| `setNukeLimit(limit)` | `vault:set-nuke-limit`  | `number → VaultResult`           | Limite estrito de falhas da senha mestra que dispara o erase (exige cofre desbloqueado). `0` desliga; piso 50.            |
+| `panicStatus()`       | `vault:panic-status`    | `→ PanicStatus`                  | `hasPanicPin`, `nukeLimit` e `attemptsMaster`, para a tela de Configurações. Neutro enquanto o cofre está bloqueado.      |
 
 Os canais de autodestruição (`vault:destroy`, `vault:set-panic-pin`,
 `vault:clear-panic-pin`, `vault:set-nuke-limit`) são **irreversíveis ou

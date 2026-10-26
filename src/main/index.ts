@@ -126,9 +126,9 @@ function createWindow(): void {
   });
 
   // `window.target=_blank` nunca cria janela: https vai para o navegador do
-  // sistema e o resto (javascript:, file:, data:) é só recusado.
+  // sistema e o resto (http:, javascript:, file:, data:) é só recusado.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) {
+    if (/^https:\/\//i.test(url)) {
       shell.openExternal(url).catch((error: unknown) => {
         console.error('Falha ao abrir URL externa:', error);
       });
@@ -152,6 +152,11 @@ function registerPermissionPolicy(): void {
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false);
   });
+  // o request handler cobre o diálogo, mas a checagem síncrona
+  // (`navigator.permissions.query` e afins) devolve "granted" quando não há
+  // um check handler. Sem este, a promessa de "toda permissão negada" não vale.
+  session.defaultSession.setPermissionCheckHandler(() => false);
+  session.defaultSession.setDevicePermissionHandler(() => false);
 }
 
 /**

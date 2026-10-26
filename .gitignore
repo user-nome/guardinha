@@ -15,4 +15,6 @@ implementar/
 .dev-vault/
 bin/osv-scanner
 bin/shellcheck
+ANALISE.md
+
 

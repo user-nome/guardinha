@@ -16,8 +16,8 @@ import {
 } from '@zero/main/entries-store';
 import { ensureVaultStructure } from '@zero/main/structure';
 import {
-  initManifest,
   readVaultContainer,
+  updateManifest,
   vaultExists,
   verifyManifest,
   writeAuthState,
@@ -247,21 +247,20 @@ describe('a varredura ignora o que não é credencial', () => {
   });
 });
 
-describe('manifesto: o selo acontece uma vez, e acontece', () => {
-  it('sela o manifesto quando o cofre ainda não tem linha de base', () => {
-    // O manifesto é a linha de base do cofre: sem o selo, um `.zke` plantado
-    // por fora passaria despercebido. O `initManifest` é quem faz esse selo, e
-    // ele precisa acontecer de verdade quando o cofre ainda não tem um: um
-    // `initManifest` que só devolve calado deixa o cofre sem defesa nenhuma.
+describe('manifesto: sem selo não há linha de base', () => {
+  it('não sela um manifesto ausente: re-selar aceitaria exclusões silenciosas', () => {
+    // O manifesto é a linha de base do cofre. Se `verifyManifest` selasse um
+    // campo nulo, apagar um `.zke` por fora e chamar a listagem adotaria o
+    // diretório já mutilado como estado legítimo. A ausência do selo é
+    // adulteração, e o arquivo não pode ser reescrito no caminho de leitura.
     const chave = Buffer.alloc(32, 11);
     const data = container();
     data.manifest = null;
     writeVaultContainer(data);
-    expect(readVaultContainer()?.manifest).toBeNull();
+    const noDisco = fs.readFileSync(containerFile());
 
-    initManifest(chave);
-
-    expect(readVaultContainer()?.manifest).not.toBeNull();
+    expect(() => verifyManifest(chave)).toThrow(currentMessages().errors.vaultTampered);
+    expect(fs.readFileSync(containerFile()).equals(noDisco)).toBe(true);
   });
 });
 
@@ -279,16 +278,15 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
     }
   });
 
-  it('selar o manifesto sem cofre não é erro, é não ter o que selar', () => {
-    // O `initManifest` roda a cada desbloqueio e logo depois de criar o cofre. Um
-    // cofre que não existe não é um erro de aplicação: o código devolve calado,
-    // e sem a guarda o `data.manifest` derrubaria a exceção por cima da tela de
-    // autenticação.
+  it('atualizar o manifesto sem cofre não é erro, é não ter o que selar', () => {
+    // `updateManifest` roda depois de salvar ou remover. Um cofre que não
+    // existe não é erro de aplicação: o código devolve calado, e sem a guarda
+    // o `data.manifest` derrubaria a exceção por cima da tela de autenticação.
     const arquivo = containerFile();
     const backup = fs.readFileSync(arquivo);
     fs.rmSync(arquivo, { force: true });
     try {
-      expect(() => initManifest(Buffer.alloc(32, 7))).not.toThrow();
+      expect(() => updateManifest(Buffer.alloc(32, 7))).not.toThrow();
       expect(fs.existsSync(arquivo)).toBe(false);
     } finally {
       fs.writeFileSync(arquivo, backup);
@@ -311,45 +309,22 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
     }
   });
 
-  it('recusa container sem manifesto quando o selo não chega a ser gravado', () => {
-    // `verifyManifest` começa selando o manifesto, e o selo só é defesa se ficar
-    // no disco. Aqui a gravação está barrada (cofre marcado como destruído) e
-    // o arquivo segue sem manifesto: seguir adiante trataria um cofre sem
-    // linha de base como se estivesse íntegro, que é a falha aberta que o
-    // manifesto existe para fechar.
-    const data = container();
-    data.manifest = null;
-    writeVaultContainer(data);
-    const noDisco = fs.readFileSync(containerFile());
-
-    markVaultDestroyed();
-    try {
-      expect(() => verifyManifest(Buffer.alloc(32, 5))).toThrow(
-        currentMessages().errors.vaultTampered,
-      );
-      expect(fs.readFileSync(containerFile()).equals(noDisco)).toBe(true);
-    } finally {
-      clearDestroyedFlag();
-      fs.writeFileSync(containerFile(), noDisco);
-    }
-  });
-
-  it('só sela o manifesto uma vez: re-selar apagaria a defesa', () => {
-    // O manifesto é a linha de base do cofre. Se `initManifest` re-selasse a cada
-    // chamada, o desbloqueio seguinte adotaria como normale um `.zke` plantado
-    // por fora, e o arquivo adulterado passaria despercebido.
+  it('updateManifest é o único caminho explícito de re-selar', () => {
+    // A escrita de credencial chama `updateManifest` depois de gravar; é ele
+    // que move a linha de base, nunca o caminho de leitura.
     const chave = Buffer.alloc(32, 3);
     const data = container();
     data.manifest = sealManifest(chave, [], []);
     writeVaultContainer(data);
     const antes = readVaultContainer()?.manifest;
 
-    writeEntryPayload('cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee', ENTRY_PAYLOAD);
-    initManifest(chave);
+    const id = 'cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    writeEntryPayload(id, ENTRY_PAYLOAD);
+    updateManifest(chave);
 
-    expect(readVaultContainer()?.manifest).toEqual(antes);
-    expect(() => verifyManifest(chave)).toThrow(currentMessages().errors.vaultTampered);
-    fs.rmSync(path.join(targetVaultDir(), '.entries', 'cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee.zke'), {
+    expect(readVaultContainer()?.manifest).not.toEqual(antes);
+    expect(() => verifyManifest(chave)).not.toThrow();
+    fs.rmSync(path.join(targetVaultDir(), '.entries', `${id}.zke`), {
       force: true,
     });
   });

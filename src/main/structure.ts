@@ -1,5 +1,6 @@
 import fs from 'fs-extra';
 import path from 'node:path';
+import { randomBytes } from '@zero/main/crypto';
 import { currentMessages } from '@zero/main/i18n';
 import { authDir, entriesDir, vaultDir } from '@zero/main/layout';
 import { isRecord } from '@zero/shared/record';
@@ -19,6 +20,16 @@ const SECRET_FILE_MODE = 0o600;
 export const TEMP_SUFFIX = '.tmp';
 
 /**
+ * Nome do temporário da escrita atômica. O sufixo aleatório não é enfeite: o
+ * nome fixo `${arquivo}.tmp` era previsível, e um symlink plantado nele levava
+ * a escrita para outro arquivo (por exemplo o `vault.zkv`). O `wx` da abertura
+ * recusa o que já existe, então nem symlink nem arquivo comum entram no lugar.
+ */
+export function tempPathFor(file: string): string {
+  return `${file}.${randomBytes(8).toString('hex')}${TEMP_SUFFIX}`;
+}
+
+/**
  * Grava arquivo de segredo de forma atômica: temporário no mesmo diretório,
  * `rename` e `chmod` no destino.
  *
@@ -28,10 +39,13 @@ export const TEMP_SUFFIX = '.tmp';
  * implícito demais para um arquivo que guarda segredo cifrado: o `chmod`
  * explícito é o que fecha a porta quando o destino já existia com permissão
  * frouxa, e é o que mantém as cópias iguais.
+ *
+ * O temporário usa nome aleatório e `flag: 'wx'` (`O_CREAT | O_EXCL`): um
+ * symlink ou arquivo pré-existente no caminho falha em vez de ser seguido.
  */
 export function writeSecretFile(file: string, data: Buffer | string): void {
-  const tmp = `${file}${TEMP_SUFFIX}`;
-  fs.writeFileSync(tmp, data, { mode: SECRET_FILE_MODE });
+  const tmp = tempPathFor(file);
+  fs.writeFileSync(tmp, data, { mode: SECRET_FILE_MODE, flag: 'wx' });
   fs.renameSync(tmp, file);
   fs.chmodSync(file, SECRET_FILE_MODE);
 }

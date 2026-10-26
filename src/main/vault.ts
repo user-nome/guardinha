@@ -24,7 +24,8 @@ import {
 } from '@zero/shared';
 import { MIN_NUKE_LIMIT } from '@zero/shared/auth-constants';
 import { currentMessages } from '@zero/main/i18n';
-import type { VaultContainerData } from '@zero/main/container';
+import { sealManifest } from '@zero/main/container';
+import type { VaultContainerData, WrappedMethod } from '@zero/main/container';
 import type {
   CreateVaultInput,
   PanicPinInput,
@@ -56,6 +57,9 @@ export function touch(): void {
 /** Bloqueia o cofre: a chave sai da memória e o auto-lock é cancelado. */
 export function lock(): VaultStatus {
   vaultSession().wipe();
+  // o lock existe para reduzir exposição: deixar a senha copiada no clipboard
+  // por até 30 s anularia parte do gesto. `dispose` é seguro sem cópia ativa.
+  void secureClipboard.dispose();
   return getStatus();
 }
 
@@ -65,11 +69,20 @@ export function lock(): VaultStatus {
  * falhar, a memória já está limpa, que é o lado que o atacante com o mesmo
  * usuário alcança mais fácil.
  *
- * Usado pelo botão de pânico e pelo PIN de coação.
+ * Usado pelo botão de pânico e pelo PIN de coação. O `EraseResult` é conferido:
+ * o `eraseVault` só marca o cofre como destruído quando o `vault.zkv` sumiu,
+ * e uma falha de I/O precisa aparecer no log em vez de virar "destruído" na
+ * tela com a chave ainda no disco.
  */
 export async function panicDestroy(): Promise<VaultStatus> {
   vaultSession().wipe();
-  vaultStorage.erase();
+  const erased = vaultStorage.erase();
+  if (erased.failed > 0) {
+    console.warn(
+      `Autodestruição incompleta: ${erased.failed} arquivo(s) não foram apagados; ` +
+        'o cofre continua no disco e pode abrir de novo.',
+    );
+  }
   await secureClipboard.dispose();
   return getStatus();
 }
@@ -183,14 +196,59 @@ export async function createVault(input: CreateVaultInput): Promise<VaultResult>
     attemptsMaster: 0,
     nukeLimit: 0,
     methods,
-    manifest: null,
+    // o selo inicial acontece antes de o arquivo existir: um container sem
+    // manifesto nunca é um cofre novo, é um cofre adulterado
+    manifest: sealManifest(vaultKey, [], []),
   };
   vaultStorage.writeContainer(container);
-  // sella o manifesto vazio e entrega a chave à sessão (Singleton)
-  vaultStorage.initManifest(vaultKey);
+  // a chave assume a sessão (Singleton)
   vaultSession().adopt(vaultKey);
 
   return { ok: true, status: getStatus() };
+}
+
+/**
+ * Dois embrulhos são o mesmo blob? O container não autentica o papel de cada
+ * método, então copiar o blob do PIN para o slot de pânico faria o PIN normal
+ * destruir o cofre. A cópia literal mantém salt, IV, tag e texto cifrado
+ * idênticos; um embrulho legítimo de pânico usa salt e IV aleatórios e nunca
+ * colide. Um atacante que queira disfarçar a cópia precisaria reembrulhar a
+ * chave real, o que exige a chave ou o PIN, já fora do modelo de ameaça.
+ */
+function sameWrappedMethod(a: WrappedMethod, b: WrappedMethod): boolean {
+  return (
+    a.kdfSalt === b.kdfSalt &&
+    a.payload.salt === b.payload.salt &&
+    a.payload.iv === b.payload.iv &&
+    a.payload.tag === b.payload.tag &&
+    a.payload.encryptedData === b.payload.encryptedData
+  );
+}
+
+/**
+ * A credencial abre este método? É a invariante "o PIN de pânico não pode ser
+ * o PIN que abre o cofre", usada nas duas direções: `setPanicPin` recusa o PIN
+ * real e `resetPin` recusa instalar o PIN de pânico como novo PIN. O custo é o
+ * Argon2id do método, e o buffer derivado é zerado mesmo quando o desembrulho
+ * falha.
+ */
+async function methodMatchesCredential(
+  kind: 'pin' | 'panic',
+  method: WrappedMethod | undefined,
+  credential: string,
+): Promise<boolean> {
+  if (method === undefined) return false;
+  const unwrapper = keyUnwrapperFor(kind);
+  let derived: Buffer | null = null;
+  try {
+    derived = await unwrapper.derive(method, credential);
+    unwrapper.unwrap(method, derived);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    derived?.fill(0);
+  }
 }
 
 /**
@@ -215,6 +273,12 @@ async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData)
   // só faz sentido para algo no formato de PIN: uma senha mestra de 24
   // caracteres nunca é o PIN de pânico, e o custo é o mesmo
   if (method === undefined || input.kind !== 'pin' || !isPinFormat(input.credential)) {
+    return false;
+  }
+  const pinMethod = container.methods.pin;
+  if (pinMethod !== undefined && sameWrappedMethod(method, pinMethod)) {
+    // não é um PIN de pânico: é o método do PIN copiado para o slot de pânico.
+    // Segue o fluxo normal para o PIN abrir o cofre em vez de destruí-lo.
     return false;
   }
   const unwrapper = keyUnwrapperFor('panic');
@@ -253,9 +317,7 @@ export async function unlock(input: UnlockInput): Promise<VaultResult> {
 
   // antes de tudo, e sem respectar a trava: o PIN de pânico destrói o cofre
   if (await tryPanicUnlock(input, container)) {
-    vaultSession().wipe();
-    vaultStorage.erase();
-    await secureClipboard.dispose();
+    await panicDestroy();
     // A pessoa sob coação precisa de um cofre aberto e vazio para mostrar, não
     // de um erro que denuncie o mecanismo. A sessão decoy não guarda chave
     // alguma (a real já saiu da RAM), então nada aqui decifra um `.zke`.
@@ -279,9 +341,9 @@ export async function unlock(input: UnlockInput): Promise<VaultResult> {
 
   await upgradeMethod(container, input.kind, input.credential, vaultKey);
 
-  // a chave nova assume a sessão (zerando a anterior) no Singleton
+  // a chave nova assume a sessão (zerando a anterior) no Singleton. O manifesto
+  // já foi selado na criação; re-selar aqui aceitaria exclusões feitas por fora.
   vaultSession().adopt(vaultKey);
-  vaultStorage.initManifest(vaultKey);
   resetAttempts();
   return { ok: true, status: getStatus() };
 }
@@ -301,20 +363,8 @@ export async function setPanicPin(input: PanicPinInput): Promise<VaultResult> {
 
   // o PIN de pânico não pode ser o PIN de verdade: um PIN que abre o cofre
   // E o destrói não serve nem como cofre nem como proteção
-  const realPin = container.methods.pin;
-  if (realPin !== undefined) {
-    const unwrapper = keyUnwrapperFor('pin');
-    let derived: Buffer | null = null;
-    try {
-      derived = await unwrapper.derive(realPin, input.pin);
-      unwrapper.unwrap(realPin, derived);
-      // chegou a desembrulhar com o PIN real: o PIN de pânico é o mesmo
-      return fail(m.errors.panicPinSame);
-    } catch {
-      // esperado: o PIN não abre o cofre, que é a condição para ser de pânico
-    } finally {
-      derived?.fill(0);
-    }
+  if (await methodMatchesCredential('pin', container.methods.pin, input.pin)) {
+    return fail(m.errors.panicPinSame);
   }
 
   container.methods.panic = await keyUnwrapperFor('panic').wrap(decoyKey(), input.pin);
@@ -324,6 +374,11 @@ export async function setPanicPin(input: PanicPinInput): Promise<VaultResult> {
 
 /** Remove o PIN de coação; o cofre volta a não ter caminho de pânico. */
 export function clearPanicPin(): VaultStatus {
+  // sem sessão aberta não há como distinguir o dono do cofre de um chamador
+  // qualquer do IPC; a remoção é permanente e exige a mesma prova que instalar
+  if (vaultStorage.exists() && !vaultSession().isUnlocked()) {
+    throw new Error(currentMessages().errors.vaultLocked);
+  }
   const container = vaultStorage.readContainer();
   if (container !== null) {
     delete container.methods.panic;
@@ -338,8 +393,17 @@ export function hasPanicPin(): boolean {
   return container?.methods.panic !== undefined;
 }
 
-/** Estado das proteções de pânico, para a interface montar o formulário. */
+/**
+ * Estado das proteções de pânico, para a interface montar o formulário.
+ *
+ * Bloqueado, a resposta é neutra: revelar que existe um segundo caminho de
+ * desbloqueio para quem ainda não provou a credencial entregaria justamente a
+ * informação que o PIN de coação esconde.
+ */
 export function panicStatus(): PanicStatus {
+  if (!vaultSession().isUnlocked()) {
+    return { hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 };
+  }
   const container = vaultStorage.readContainer();
   return {
     hasPanicPin: container?.methods.panic !== undefined,
@@ -357,11 +421,19 @@ export function panicStatus(): PanicStatus {
  */
 export function setNukeLimit(limit: number): VaultResult {
   const m = currentMessages();
-  if (!Number.isInteger(limit) || limit < 0) return fail(m.errors.invalidNukeLimit);
+  // o campo é UInt32 no container: acima disso o `writeUInt32BE` lançaria
+  // `RangeError` no meio da gravação, em vez de devolver erro de domínio
+  if (!Number.isInteger(limit) || limit < 0 || limit > 0xffff_ffff) {
+    return fail(m.errors.invalidNukeLimit);
+  }
   if (limit > 0 && limit < MIN_NUKE_LIMIT) return fail(m.errors.nukeLimitTooLow);
 
   const container = vaultStorage.readContainer();
   if (container === null) return fail(m.errors.vaultMissing);
+  // o limite é permanente e decide se o cofre se apaga: exige a mesma sessão
+  // aberta que instalar o PIN de pânico, senão o IPC bloqueado vira um caminho
+  // para desarmar a proteção sem credencial
+  if (!vaultSession().isUnlocked()) return fail(m.errors.vaultLocked);
   container.nukeLimit = limit;
   // um limite novo recomeça a contagem: a anterior foi medida contra outro teto
   container.attemptsMaster = 0;
@@ -399,6 +471,14 @@ export async function resetPin(input: ResetPinInput): Promise<VaultResult> {
     // zero fica no `finally` e não no corpo feliz
     try {
       const vaultKey = recovery.unwrap(method, derived);
+      // o novo PIN não pode ser o PIN de coação: `tryPanicUnlock` roda antes da
+      // cadeia normal, então o próximo login destruiria o cofre em vez de
+      // abri-lo. A checagem fica **depois** da frase, para que uma frase errada
+      // continue devolvendo `wrongRecovery` em vez de denunciar o PIN de pânico
+      // a quem ainda não provou posse da recuperação.
+      if (await methodMatchesCredential('panic', container.methods.panic, input.newPin)) {
+        return fail(m.errors.panicPinSame);
+      }
       container.methods.pin = await keyUnwrapperFor('pin').wrap(vaultKey, input.newPin);
       // a frase está na mão: aproveita para subir o custo do método de recuperação
       if (!isKdfUpToDate('recovery', method)) {
@@ -406,9 +486,9 @@ export async function resetPin(input: ResetPinInput): Promise<VaultResult> {
       }
       vaultStorage.writeContainer(container);
 
-      // a chave nova assume a sessão (zerando a anterior) no Singleton
+      // a chave nova assume a sessão (zerando a anterior) no Singleton; o
+      // manifesto já estava selado e não é re-selado por um desbloqueio
       vaultSession().adopt(vaultKey);
-      vaultStorage.initManifest(vaultKey);
       resetAttempts();
       return { ok: true, status: getStatus() };
     } finally {

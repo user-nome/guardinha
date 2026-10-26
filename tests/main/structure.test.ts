@@ -5,7 +5,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { authDir, entriesDir, vaultDir } from '@zero/main/layout';
+<<<<<<< HEAD
 import { TEMP_SUFFIX, ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
+=======
+import {
+  TEMP_SUFFIX,
+  ensureVaultStructure,
+  tempPathFor,
+  writeSecretFile,
+} from '@zero/main/structure';
+>>>>>>> 16e8b01 (não vai mais para o github)
 
 /**
  * A escrita atômica do cofre mora em um lugar só. Ela foi copiada quatro vezes
@@ -114,6 +123,39 @@ describe('writeSecretFile', () => {
     const file = path.join(dir, 'sem-pasta', 'sub.zkv');
     expect(() => writeSecretFile(file, 'falha')).toThrow();
   });
+<<<<<<< HEAD
+=======
+
+  it('o temporário tem nome imprevisível e o sufixo que a varredura procura', () => {
+    // O nome fixo `${arquivo}.tmp` deixava um pendrive ou um diretório hostil
+    // plantar o symlink antes da escrita. O nome aleatório tira o alvo do
+    // controle de quem planta; o sufixo continua igual para o `erase` e a
+    // varredura de órfãos reconhecerem o temporário.
+    const file = path.join(dir, 'aleatorio.zke');
+    const first = tempPathFor(file);
+    const second = tempPathFor(file);
+
+    expect(first).not.toBe(second);
+    expect(first.startsWith(file)).toBe(true);
+    expect(first.endsWith(TEMP_SUFFIX)).toBe(true);
+    expect(first).not.toBe(`${file}${TEMP_SUFFIX}`);
+  });
+
+  it('não segue o symlink plantado no nome previsível do temporário', () => {
+    // O ataque de P5b: o `.tmp` de nome fixo aponta para o `vault.zkv`, e a
+    // escrita atravessa o link e destrói o container. Com o nome aleatório e o
+    // `wx`, o link antigo fica onde está e o alvo não é tocado.
+    const victim = path.join(dir, 'vault.zkv');
+    const file = path.join(dir, 'credencial.zke');
+    fs.writeFileSync(victim, 'container original');
+    fs.symlinkSync(victim, `${file}${TEMP_SUFFIX}`);
+
+    writeSecretFile(file, 'novo segredo');
+
+    expect(fs.readFileSync(victim, 'utf8')).toBe('container original');
+    expect(fs.readFileSync(file, 'utf8')).toBe('novo segredo');
+  });
+>>>>>>> 16e8b01 (não vai mais para o github)
 });
 
 /**

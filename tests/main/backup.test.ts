@@ -99,6 +99,21 @@ describe('backup integral do cofre', () => {
     }
   });
 
+  it('não segue o symlink plantado no .tmp previsível do pendrive', () => {
+    // P5b: o export gravava em `${destino}.tmp` com `writeFileSync`, que segue
+    // symlink. Um pendrive hostil planta esse nome apontando para o `vault.zkv`
+    // e o backup sobrescreve o container. O nome aleatório e o `wx` fecham isso.
+    const destination = exportTo('pendrive-hostil.gbk');
+    const victim = containerFile();
+    const before = fs.readFileSync(victim);
+    fs.symlinkSync(victim, `${destination}.tmp`);
+
+    exportBackup(destination, '1.0.0');
+
+    expect(fs.readFileSync(victim).equals(before)).toBe(true);
+    expect(unpackBackup(fs.readFileSync(destination)).files.length).toBeGreaterThan(0);
+  });
+
   it('recusa pacote adulterado sem tocar no cofre atual', () => {
     const destination = exportTo('adulterado.gbk');
     exportBackup(destination, '1.0.0');
@@ -124,6 +139,22 @@ describe('backup integral do cofre', () => {
     );
 
     expect(() => restoreBackup(destination)).toThrow(currentMessages().errors.backupInvalid);
+  });
+
+  it('recusa container inválido no pacote antes de apagar o cofre atual', () => {
+    // P4: o pacote é autofabricável (SHA-256 não é assinatura). Antes, um
+    // `vault.zkv` que não era container passava pela checagem de digest, o
+    // cofre atual era apagado e o lixo tomava o lugar. Agora o container é
+    // validado antes do erase.
+    const destination = exportTo('container-invalido.gbk');
+    const before = fs.readFileSync(containerFile());
+    fs.writeFileSync(
+      destination,
+      packBackup([{ path: 'vault.zkv', data: Buffer.from('ZKV1 nao e um container') }], '1.0.0'),
+    );
+
+    expect(() => restoreBackup(destination)).toThrow(currentMessages().errors.backupInvalid);
+    expect(fs.readFileSync(containerFile()).equals(before)).toBe(true);
   });
 
   it('recusa arquivo inexistente', () => {

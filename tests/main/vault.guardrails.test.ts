@@ -29,6 +29,8 @@ import type { PersistedAuthState } from '@zero/types';
 const MASTER = 'senha-mestra-guardinha24';
 const PIN = '49201733';
 const OTHER_PIN = '73918264';
+/** PIN novo dos testes de redefinição; distinto do PIN real e do de coação. */
+const NEW_PIN = '18520473';
 const m = currentMessages();
 const PHRASE = 'Na feira de hoje o cavalo branco comeu exatamente doze cenouras gigantes';
 
@@ -60,6 +62,11 @@ describe('limite estrito de tentativas', () => {
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
     expect(setNukeLimit(-1)).toEqual(
+      expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
+    );
+    // o campo é UInt32 no container: acima disso o `writeUInt32BE` estourava
+    // `RangeError` no meio da gravação, em vez de devolver erro de domínio
+    expect(setNukeLimit(2 ** 32)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
   });
@@ -109,6 +116,20 @@ describe('PIN de coação', () => {
     );
   });
 
+  it('bloqueado, não muda nem revela as proteções de pânico', () => {
+    // P2: `clearPanicPin` e `setNukeLimit` não exigiam sessão, e `panicStatus`
+    // anunciava a existência do segundo caminho sem credencial. O IPC bloqueado
+    // virava um jeito de desarmar a proteção.
+    const m = currentMessages();
+    vaultSession().wipe();
+
+    expect(setNukeLimit(50)).toEqual(
+      expect.objectContaining({ ok: false, error: m.errors.vaultLocked }),
+    );
+    expect(() => clearPanicPin()).toThrow(m.errors.vaultLocked);
+    expect(panicStatus()).toEqual({ hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 });
+  });
+
   it('exige 8 dígitos e recusa PIN previsível, com o cofre aberto', async () => {
     const m = currentMessages();
     await unlock({ credential: PIN, kind: 'pin' });
@@ -138,7 +159,7 @@ describe('redefinição de PIN', () => {
     const m = currentMessages();
     vaultSession().wipe();
     writeAuthState(NEUTRAL);
-    const result = await resetPin({ phrase: 'poucas palavras', newPin: OTHER_PIN });
+    const result = await resetPin({ phrase: 'poucas palavras', newPin: NEW_PIN });
     expect(result.ok).toBe(false);
     expect(result.error).toBe(m.errors.wrongRecovery);
   });
@@ -154,7 +175,7 @@ describe('redefinição de PIN', () => {
 
   it('recusa enquanto a trava exponencial está de pé', async () => {
     writeAuthState({ ...NEUTRAL, attempts: 3, lockUntil: Date.now() + 60_000 });
-    const result = await resetPin({ phrase: PHRASE, newPin: OTHER_PIN });
+    const result = await resetPin({ phrase: PHRASE, newPin: NEW_PIN });
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Muitas tentativas');
     writeAuthState(NEUTRAL);
@@ -164,11 +185,22 @@ describe('redefinição de PIN', () => {
     writeAuthState(NEUTRAL);
     const result = await resetPin({
       phrase: 'outra frase completamente diferente escrita aqui agora',
-      newPin: OTHER_PIN,
+      newPin: NEW_PIN,
     });
     expect(result).toEqual(
       expect.objectContaining({ ok: false, error: currentMessages().errors.wrongRecovery }),
     );
+  });
+
+  it('recusa instalar o PIN de coação como novo PIN', async () => {
+    // P10: `tryPanicUnlock` roda antes da cadeia normal. Se a redefinição
+    // aceitasse o PIN de coação como novo PIN, o login seguinte destruiria o
+    // cofre em vez de abri-lo. A recusa só acontece depois da frase, para não
+    // virar oráculo de pânico para quem não provou a recuperação.
+    writeAuthState(NEUTRAL);
+    const result = await resetPin({ phrase: PHRASE, newPin: OTHER_PIN });
+
+    expect(result).toEqual(expect.objectContaining({ ok: false, error: m.errors.panicPinSame }));
   });
 
   it('reembrulha a frase quando o perfil de custo está desatualizado', async () => {
@@ -177,7 +209,7 @@ describe('redefinição de PIN', () => {
     const checkKdf = vi.spyOn(unwrapping, 'isKdfUpToDate').mockReturnValue(false);
     const wrap = vi.spyOn(recovery, 'wrap');
 
-    const result = await resetPin({ phrase: PHRASE, newPin: OTHER_PIN });
+    const result = await resetPin({ phrase: PHRASE, newPin: NEW_PIN });
 
     expect(result.ok).toBe(true);
     expect(checkKdf).toHaveBeenCalledWith('recovery', expect.any(Object));

@@ -3,11 +3,12 @@ import path from 'node:path';
 import { containerFile, entriesDir, authDir } from '@zero/main/layout';
 import { listAuthIds } from '@zero/main/auth-store';
 import { listEntryIds } from '@zero/main/entries-store';
+import { unpackVaultContainer } from '@zero/main/container';
 import { vaultStorage } from '@zero/main/facade';
 import { vaultSession } from '@zero/main/session';
 import { clearDestroyedFlag } from '@zero/main/erasure-state';
 import { setupVaultDirectory } from '@zero/main/privilege';
-import { writeSecretFile } from '@zero/main/structure';
+import { tempPathFor, writeSecretFile } from '@zero/main/structure';
 import { packBackup, unpackBackup } from '@zero/main/backup/backup-container';
 import { currentMessages } from '@zero/main/i18n';
 import type { BackupSegment } from '@zero/main/backup/backup-container';
@@ -43,9 +44,11 @@ function readBackup(source: string): Buffer {
 }
 
 function writeBackupFile(destination: string, data: Buffer): void {
-  const tmp = `${destination}.tmp`;
+  // nome aleatório + `wx`: o pendrive é território hostil, e um `.tmp` fixo
+  // plantado como symlink levava a escrita para o `vault.zkv`
+  const tmp = tempPathFor(destination);
   try {
-    fs.writeFileSync(tmp, data, { mode: 0o600 });
+    fs.writeFileSync(tmp, data, { mode: 0o600, flag: 'wx' });
     fs.renameSync(tmp, destination);
     // melhor esforço: mídia removível (FAT/exFAT) recusa chmod
     try {
@@ -54,6 +57,13 @@ function writeBackupFile(destination: string, data: Buffer): void {
       // sem permissão de mode no sistema de arquivos: o conteúdo continua cifrado
     }
   } catch (error) {
+    // o temporário é nosso (o `wx` recusou qualquer coisa pré-existente);
+    // limpar evita deixar lixo no pendrive quando o rename falha
+    try {
+      fs.rmSync(tmp, { force: true });
+    } catch {
+      // melhor esforço
+    }
     throw new Error(currentMessages().errors.backupWriteFailed, { cause: error });
   }
 }
@@ -114,13 +124,28 @@ export function exportBackup(destination: string, appVersion: string): BackupRes
 
 /**
  * Substitui o cofre atual pelos arquivos do backup. O pacote é validado por
- * inteiro (magic, versão, digest global, SHA-256 de cada arquivo) antes de
- * qualquer escrita; um byte trocado derruba aqui, com o cofre atual intacto.
+ * inteiro (magic, versão, digest global, SHA-256 de cada arquivo) e o
+ * `vault.zkv` restaurado é conferido antes de qualquer escrita: um pacote
+ * autofabricado com SHA-256 coerente não pode mais apagar o cofre atual para
+ * gravar um container inválido.
  */
 export function restoreBackup(source: string): RestoreResult {
   const opened = unpackBackup(readBackup(source));
   const container = opened.files.find((file) => file.path === 'vault.zkv');
   if (container === undefined) throw new Error(currentMessages().errors.backupInvalid);
+
+  // a validação do container precisa vir antes do erase: o pacote inteiro é
+  // autofabricável (SHA-256 não é assinatura), então só a forma do `vault.zkv`
+  // separa um cofre restaurável de um monte de bytes que apagaria o atual
+  const parsed = unpackVaultContainer(container.data);
+  if (!parsed.ok) throw new Error(currentMessages().errors.backupInvalid);
+  const methods = parsed.data.methods;
+  if (methods.master === undefined && methods.pin === undefined && methods.recovery === undefined) {
+    throw new Error(currentMessages().errors.backupInvalid);
+  }
+  if (parsed.data.manifest === null) {
+    throw new Error(currentMessages().errors.backupInvalid);
+  }
 
   ensureStructure();
   vaultSession().wipe();
