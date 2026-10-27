@@ -178,7 +178,12 @@ Camadas:
   (`no-nested-ternary`, `no-await-in-loop`, `no-shadow` fora de `src/`). Não
   desligar regra para o código passar: ou a regra entra e o código se ajusta,
   ou ela não entra e o motivo fica escrito.
-- `npm test` (ou `test:coverage`): Vitest em `tests/**`.
+- `npm test` (ou `test:coverage`): Vitest em `tests/**`. Todo trabalho de
+  teste fecha em **100%** de comandos, ramos, funções e linhas: o limiar já é
+  obrigatório em `vitest.config.mts`, e um ramo que o código não alcança de
+  jeito nenhum ganha `/* v8 ignore next */` com o motivo escrito ao lado, nunca
+  um limiar menor. Quem escreve ou mexe em teste roda `npm run test:coverage`
+  antes de concluir.
 - `npm run test:e2e` (ou `test:e2e:bundled` / `test:e2e:packaged`): E2E com
   Playwright em `e2e/**`; sobe o app compilado (`out/`) e o payload do `.deb`.
   Precisa de `npm run build` (ou `dist:dir`) antes; é lento e não entra no

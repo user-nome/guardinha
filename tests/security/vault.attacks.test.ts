@@ -366,6 +366,24 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
     vaultKey.fill(0);
   });
 
+  it('copiar o arquivo de 2FA de A sobre o de B é detectado pelo hash do manifesto', async () => {
+    // P6 pelo lado dos tokens: a troca mantém a lista de ids, então só o
+    // SHA-256 gravado no manifesto separa o token legítimo do conteúdo alheio.
+    const vaultKey = randomBytes(32);
+    const idA = '77777777-7777-4777-8777-777777777777';
+    const idB = '88888888-8888-4888-8888-888888888888';
+    await seedVault({
+      vaultKey,
+      credentials: { master: MASTER },
+      authIds: [idA, idB],
+    });
+
+    fs.copyFileSync(`${authDir()}/${idA}.zka`, `${authDir()}/${idB}.zka`);
+
+    expect(() => verifyManifest(vaultKey)).toThrow();
+    vaultKey.fill(0);
+  });
+
   it('detecta um token de 2FA injetado ou removido', async () => {
     const vaultKey = randomBytes(32);
     await seedVault({

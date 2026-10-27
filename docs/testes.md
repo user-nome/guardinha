@@ -164,6 +164,12 @@ texto e HTML, e limiar de **100%** para linhas, comandos, funções e ramos. Aba
 disso o `npm run test:coverage` reprova, e o job "Testes e cobertura" do
 workflow `quality.yml` fica vermelho junto.
 
+A meta vale para todo trabalho de teste, não só para o fechamento que zerou o
+relatório: quem adiciona um teste ou muda um caminho coberto roda
+`npm run test:coverage` e entrega os quatro números em 100%. Um ramo impossível
+de alcançar não vira limiar menor nem teste artificial: fica com
+`/* v8 ignore next */` e o motivo escrito ao lado, como os casos abaixo.
+
 O limiar subiu de 90% para 95% depois da varredura de mutação (`docs/mutation.md`):
 ela mostrou que os ramos que faltavam eram os de decisão, isto é, cofre
 ausente, arquivo fechado e falha de I/O, que é justamente onde um teste que

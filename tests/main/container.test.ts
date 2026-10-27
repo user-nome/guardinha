@@ -419,6 +419,27 @@ describe('manifesto de integridade', () => {
     );
     expect(() => openManifest(key, broken)).toThrow();
   });
+
+  it('falha quando ids ou authIds não são listas de texto', () => {
+    const key = randomBytes(32);
+    const idsNotList = encryptRecord({ v: 3, ids: 'nao-e-lista', authIds: [], ...HASHES }, key);
+    const authNotList = encryptRecord({ v: 3, ids: [], authIds: 'nao-e-lista', ...HASHES }, key);
+
+    expect(() => openManifest(key, idsNotList)).toThrow();
+    expect(() => openManifest(key, authNotList)).toThrow();
+  });
+
+  it('falha quando entries ou auth não são mapas de hash', () => {
+    const key = randomBytes(32);
+    const entriesNotMap = encryptRecord({ v: 3, ids: [], authIds: [], entries: [], auth: {} }, key);
+    const authNotMap = encryptRecord(
+      { v: 3, ids: [], authIds: [], entries: {}, auth: 'nao-e-mapa' },
+      key,
+    );
+
+    expect(() => openManifest(key, entriesNotMap)).toThrow();
+    expect(() => openManifest(key, authNotMap)).toThrow();
+  });
 });
 
 describe('leitura fail-closed de buffer truncado', () => {

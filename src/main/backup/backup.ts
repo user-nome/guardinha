@@ -139,10 +139,8 @@ export function restoreBackup(source: string): RestoreResult {
   // separa um cofre restaurável de um monte de bytes que apagaria o atual
   const parsed = unpackVaultContainer(container.data);
   if (!parsed.ok) throw new Error(currentMessages().errors.backupInvalid);
-  const methods = parsed.data.methods;
-  if (methods.master === undefined && methods.pin === undefined && methods.recovery === undefined) {
-    throw new Error(currentMessages().errors.backupInvalid);
-  }
+  // `unpackVaultContainer` já exige master ou PIN; a checagem que sobra aqui é
+  // a do manifesto, porque um cofre sem selo não é um cofre restaurável
   if (parsed.data.manifest === null) {
     throw new Error(currentMessages().errors.backupInvalid);
   }

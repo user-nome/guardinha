@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { authDir, containerFile, entriesDir } from '@zero/main/layout';
 import { exportBackup, restoreBackup } from '@zero/main/backup/backup';
 import { packBackup, unpackBackup } from '@zero/main/backup/backup-container';
+import { packVaultContainer } from '@zero/main/container';
 import { currentMessages } from '@zero/main/i18n';
 import { listEntryIds } from '@zero/main/entries-store';
 import { listAuthIds } from '@zero/main/auth-store';
@@ -143,6 +144,28 @@ describe('backup integral do cofre', () => {
       destination,
       packBackup(
         [{ path: '.entries/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.zke', data: Buffer.from('x') }],
+        '1.0.0',
+      ),
+    );
+
+    expect(() => restoreBackup(destination)).toThrow(currentMessages().errors.backupInvalid);
+  });
+
+  it('recusa container válido sem manifesto selado', () => {
+    // sem o manifesto não há como provar que o diretório restaurado é o do
+    // pacote: o cofre até abriria, mas a lista de credenciais viraria a do disco
+    const destination = exportTo('sem-manifesto.gbk');
+    const current = vaultStorage.readContainer();
+    if (current === null) throw new Error('o cofre do teste sumiu');
+    fs.writeFileSync(
+      destination,
+      packBackup(
+        [
+          {
+            path: 'vault.zkv',
+            data: packVaultContainer({ ...current, manifest: null }),
+          },
+        ],
         '1.0.0',
       ),
     );
