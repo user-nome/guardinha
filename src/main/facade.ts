@@ -14,7 +14,6 @@ import {
 } from '@zero/main/entries-store';
 import { deleteAuth, listAuthIds, readAuthPayload, writeAuthPayload } from '@zero/main/auth-store';
 import {
-  initManifest,
   readAuthState,
   readVaultContainer,
   updateManifest,
@@ -180,10 +179,6 @@ export class VaultStorageFacade {
 
   // ---------- Manifesto de integridade ----------
 
-  public initManifest(vaultKey: Buffer): void {
-    initManifest(vaultKey);
-  }
-
   public updateManifest(vaultKey: Buffer): void {
     updateManifest(vaultKey);
   }
@@ -202,6 +197,10 @@ export class VaultStorageFacade {
   /**
    * Decifra o arquivo da credencial e confere a forma: payload inválido ou
    * registro fora do contrato vira o erro único de adulteração (fail-closed).
+   *
+   * O id decifrado precisa ser o id do arquivo. Sem isso, copiar o `.zke` de A
+   * sobre o de B mantém o conjunto de nomes que o manifesto confere e a lista
+   * mostraria A duas vezes.
    */
   public readRecord(id: string, vaultKey: Buffer): Credential {
     let record: Credential | null;
@@ -210,7 +209,7 @@ export class VaultStorageFacade {
     } catch {
       throw tampered();
     }
-    if (record === null) throw tampered();
+    if (record?.id !== id) throw tampered();
     return record;
   }
 
@@ -234,7 +233,8 @@ export class VaultStorageFacade {
 
   /**
    * Decifra o token e confere a forma. O segredo sai daqui apenas para o
-   * cálculo do código, dentro do main.
+   * cálculo do código, dentro do main. O id decifrado também precisa ser o do
+   * arquivo, pela mesma razão do `readRecord`.
    */
   public readAuthSecret(id: string, vaultKey: Buffer): AuthSecret {
     let record: AuthSecret | null;
@@ -243,7 +243,7 @@ export class VaultStorageFacade {
     } catch {
       throw tampered();
     }
-    if (record === null) throw tampered();
+    if (record?.id !== id) throw tampered();
     return record;
   }
 

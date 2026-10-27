@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { currentMessages } from '@zero/main/i18n';
 import { eraseVault } from '@zero/main/erase';
-import { clearDestroyedFlag } from '@zero/main/erasure-state';
+import { clearDestroyedFlag, isVaultDestroyed } from '@zero/main/erasure-state';
 import { cleanStaleTempFiles, writeEntryPayload } from '@zero/main/entries-store';
 import { writeAuthPayload } from '@zero/main/auth-store';
 import { saveEntry } from '@zero/main/entries';
@@ -13,6 +13,7 @@ import { authDir, containerFile, entriesDir, vaultDir } from '@zero/main/layout'
 import {
   readAuthState,
   readVaultContainer,
+  updateManifest,
   writeAuthState,
   writeVaultContainer,
 } from '@zero/main/storage';
@@ -94,6 +95,25 @@ describe('Cryptographic Erase (eraseVault)', () => {
 
     expect(result.failed).toBeGreaterThanOrEqual(1);
     expect(fs.existsSync(preso)).toBe(true);
+  });
+
+  it('não marca o cofre como destruído quando o container continua no disco', () => {
+    // P7: a marca de destruição libera "cofre destruído" na tela e bloqueia
+    // novas gravações. Se o erase falha e o `vault.zkv` continua lá, marcar
+    // deixa o cofre somente leitura até reiniciar, com o PIN ainda abrindo tudo.
+    // Aqui o diretório fica sem permissão de escrita, então o unlink final falha.
+    seedVault([]);
+    const entrada = vaultDir();
+    fs.chmodSync(entrada, 0o500);
+    try {
+      const result = eraseVault();
+
+      expect(result.failed).toBeGreaterThanOrEqual(1);
+      expect(fs.existsSync(containerFile())).toBe(true);
+      expect(isVaultDestroyed()).toBe(false);
+    } finally {
+      fs.chmodSync(entrada, 0o700);
+    }
   });
 
   it('apaga os tokens de 2FA e a pasta .auth junto com o resto', () => {
@@ -190,13 +210,11 @@ describe('o container não ressuscita depois do erase', () => {
     expect(readAuthState()).toMatchObject({ attempts: 0, attemptsMaster: 0, nukeLimit: 0 });
   });
 
-  it('initManifest posterior não recria o vault.zkv sem chave', async () => {
+  it('updateManifest posterior não recria o vault.zkv sem chave', () => {
     seedVault(['bbbbbbbb-2222-4222-8222-222222222222']);
-    const { initManifest } = await import('@zero/main/storage');
-    const key = Buffer.alloc(32, 3);
 
     eraseVault();
-    initManifest(key);
+    updateManifest(Buffer.alloc(32, 3));
 
     expect(fs.existsSync(containerFile())).toBe(false);
   });

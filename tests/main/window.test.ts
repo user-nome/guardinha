@@ -152,6 +152,17 @@ describe('guardas de navegação e sessão', () => {
     expect(grant.mock.calls.every(([value]) => !value)).toBe(true);
   });
 
+  it('a checagem síncrona de permissão também nega, sem diálogo', () => {
+    // sem `setPermissionCheckHandler` o Electron devolve "granted" para a
+    // consulta síncrona, mesmo com o request handler negando o diálogo
+    expect(session.defaultSession.setPermissionCheckHandler).toHaveBeenCalledTimes(1);
+    const check = session.defaultSession.setPermissionCheckHandler.mock.calls[0]?.[0];
+    expect(check?.()).toBe(false);
+    expect(session.defaultSession.setDevicePermissionHandler).toHaveBeenCalledTimes(1);
+    const device = session.defaultSession.setDevicePermissionHandler.mock.calls[0]?.[0];
+    expect(device?.()).toBe(false);
+  });
+
   it('canal clipboard:copy copia pelo proxy do main', async () => {
     const handler = ipcMain.handle.mock.calls.find(
       ([channel]) => channel === 'clipboard:copy',

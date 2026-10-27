@@ -16,10 +16,10 @@ export const VAULT_MAGIC = Buffer.from('ZKVAULT1', 'ascii');
 export const ENTRY_MAGIC = Buffer.from('ZENTRY01', 'ascii');
 
 /** Versão atual do container, a única que este app lê e grava. */
-export const VAULT_VERSION = 5;
+export const VAULT_VERSION = 6;
 
 /** Versão do manifesto cifrado dentro do container. */
-export const MANIFEST_VERSION = 2;
+export const MANIFEST_VERSION = 3;
 
 /** Largura de cada campo primitivo do cabeçalho. */
 export const MAGIC_BYTES = 8;

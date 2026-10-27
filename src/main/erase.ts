@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import { authDir, containerFile, entriesDir } from '@zero/main/layout';
 import { markVaultDestroyed } from '@zero/main/erasure-state';
 import { SHRED_PASSES, shredDirectory, shredFile } from '@zero/main/shred';
-import { TEMP_SUFFIX, vaultFiles } from '@zero/main/structure';
+import { vaultFiles } from '@zero/main/structure';
 import type { EraseResult } from '@zero/types';
 
 /**
@@ -39,9 +39,10 @@ export function eraseVault(): EraseResult {
   let shredded = 0;
   let failed = 0;
 
-  // o container e o `.tmp` entram primeiro e à mão: `vaultFiles()` pode não
-  // estar liberado para leitura se o shred anterior derrubou a pasta
-  const targets = new Set<string>([containerFile(), `${containerFile()}${TEMP_SUFFIX}`]);
+  // o container entra primeiro e à mão: `vaultFiles()` pode não estar liberado
+  // para leitura se o shred anterior derrubou a pasta. Os temporários da escrita
+  // atômica têm nome aleatório e são cobertos pela listagem da pasta.
+  const targets = new Set<string>([containerFile()]);
   for (const file of vaultFiles()) targets.add(file);
 
   for (const file of targets) {
@@ -56,6 +57,10 @@ export function eraseVault(): EraseResult {
     else failed++;
   }
 
-  markVaultDestroyed();
+  // a marca de destruição é a condição criptográfica, não a intenção: só vale
+  // quando o `vault.zkv` deixou de existir. Se o shred falhou (I/O, modo 000),
+  // a chave continua no disco e marcar aqui deixaria o cofre somente leitura
+  // até reiniciar, com a tela dizendo "destruído" e o PIN ainda abrindo tudo.
+  if (!fs.existsSync(containerFile())) markVaultDestroyed();
   return { shredded, failed };
 }

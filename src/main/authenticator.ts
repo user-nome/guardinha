@@ -153,6 +153,10 @@ export function removeToken(id: string): AuthToken[] {
  *
  * O segredo é decifrado por token, usado e o buffer é zerado antes de sair do
  * escopo. Um único IPC por virada de período serve a tela inteira.
+ *
+ * Não chama `touch()`: a tela consulta os códigos sozinha a cada virada de
+ * período, e contar essa consulta como atividade impedia o auto-lock de 5
+ * minutos de disparar enquanto a aba de 2FA estivesse aberta.
  */
 export function currentCodes(nowMs: number = Date.now()): AuthCode[] {
   if (vaultSession().isDecoy()) return [];
@@ -170,6 +174,5 @@ export function currentCodes(nowMs: number = Date.now()): AuthCode[] {
     });
     secret.fill(0);
   }
-  touch();
   return codes;
 }

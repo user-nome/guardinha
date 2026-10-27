@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { packEntryPayload, unpackEntryPayload } from '@zero/main/container';
+import { sha256Hex } from '@zero/main/crypto';
 import { currentMessages } from '@zero/main/i18n';
 import { authDir } from '@zero/main/layout';
 import { ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
@@ -52,6 +53,12 @@ export function readAuthPayload(id: string): SaltedPayload {
   const payload = unpackEntryPayload(fs.readFileSync(file));
   if (payload === null) throw new Error(currentMessages().errors.vaultTampered);
   return payload;
+}
+
+/** SHA-256 dos bytes gravados, para o manifesto prender o conteúdo (P6). */
+export function hashAuth(id: string): string {
+  assertSafeAuthId(id);
+  return sha256Hex(fs.readFileSync(authFile(id)));
 }
 
 /** Grava de forma atômica, em 0600, como as credenciais. */

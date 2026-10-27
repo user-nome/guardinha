@@ -132,6 +132,11 @@ export function randomBytes(size: number): Buffer {
   return crypto.randomBytes(size);
 }
 
+/** SHA-256 em hexadecimal, para o manifesto prender o conteúdo do arquivo (P6). */
+export function sha256Hex(data: Buffer): string {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
 export function randomUuid(): string {
   return crypto.randomUUID();
 }
@@ -150,13 +155,19 @@ export function randomUuid(): string {
  * Aperto que realmente conta contra força bruta é o custo do Argon2id, não o
  * tamanho destes dois.
  */
-export function encryptRecord(data: object, key: Buffer, info = KEY_INFO_ENTRY): SaltedPayload {
+export function encryptRecord(
+  data: object,
+  key: Buffer,
+  info = KEY_INFO_ENTRY,
+  aad?: string,
+): SaltedPayload {
   const salt = crypto.randomBytes(SALT_BYTES);
   const entryKey = deriveRecordKey(key, salt, info);
   const iv = crypto.randomBytes(IV_BYTES);
 
   try {
     const cipher = crypto.createCipheriv(AES_ALGORITHM, entryKey, iv);
+    if (aad !== undefined) cipher.setAAD(Buffer.from(aad, 'utf8'));
     const jsonStr = JSON.stringify(data);
     let encrypted = cipher.update(jsonStr, 'utf8', 'hex');
     encrypted += cipher.final('hex');
@@ -178,6 +189,7 @@ export function decryptRecord(
   payload: SaltedPayload,
   vaultKey: Buffer,
   info = KEY_INFO_ENTRY,
+  aad?: string,
 ): unknown {
   const salt = Buffer.from(payload.salt, 'hex');
   const entryKey = deriveRecordKey(vaultKey, salt, info);
@@ -188,6 +200,7 @@ export function decryptRecord(
       entryKey,
       Buffer.from(payload.iv, 'hex'),
     );
+    if (aad !== undefined) decipher.setAAD(Buffer.from(aad, 'utf8'));
     decipher.setAuthTag(Buffer.from(payload.tag, 'hex'));
 
     let decrypted = decipher.update(payload.encryptedData, 'hex', 'utf8');

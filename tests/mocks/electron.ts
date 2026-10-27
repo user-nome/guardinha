@@ -108,9 +108,13 @@ export type PermissionRequestHandler = (
   details: unknown,
 ) => void;
 
+export type PermissionCheckHandler = () => boolean;
+
 export const session = {
   defaultSession: {
     setPermissionRequestHandler: vi.fn<(handler: PermissionRequestHandler) => void>(),
+    setPermissionCheckHandler: vi.fn<(handler: PermissionCheckHandler) => void>(),
+    setDevicePermissionHandler: vi.fn<(handler: PermissionCheckHandler) => void>(),
   },
 };
 
@@ -140,4 +144,6 @@ export function resetElectronMock(): void {
   clipboard.writeText.mockClear();
   clipboard.readText.mockReset().mockResolvedValue('');
   session.defaultSession.setPermissionRequestHandler.mockClear();
+  session.defaultSession.setPermissionCheckHandler.mockClear();
+  session.defaultSession.setDevicePermissionHandler.mockClear();
 }

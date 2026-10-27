@@ -137,6 +137,20 @@ describe('tokens de 2FA', () => {
     expect(code?.remainingMs).toBeLessThanOrEqual(30_000);
   });
 
+  it('consultar os códigos não conta como atividade nem rearma o auto-lock', () => {
+    // P1: a aba de 2FA consulta `currentCodes` sozinha a cada virada de período.
+    // Quando a leitura chamava `touch()`, o temporizador de 5 minutos reiniciava
+    // para sempre e o cofre nunca trancava com a aba aberta.
+    saveTokenFromUri(GITHUB_URI);
+    const touch = vi.spyOn(vaultSession(), 'touch');
+    try {
+      currentCodes(1111111109 * 1000);
+      expect(touch).not.toHaveBeenCalled();
+    } finally {
+      touch.mockRestore();
+    }
+  });
+
   it('recusa segredo fora do alfabeto base32 ou menor que 128 bits', () => {
     // `1` não está no alfabeto Base32, então nem entra no cálculo do tamanho.
     expect(() => saveToken(draft({ secret: `${'A'.repeat(25)}1` }))).toThrow(

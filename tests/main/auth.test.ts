@@ -4,6 +4,7 @@ import {
   calculateLockout,
   getLockRemainingMs,
   loadAuthState,
+  openableUrl,
   registerFailedAttempt,
   resetAttempts,
   validateDomainFormat,
@@ -209,6 +210,13 @@ describe('validações de formato', () => {
     expect(validateDomainFormat('sub.example.com.br')).toBe(true);
     expect(validateDomainFormat('https://example.com/path')).toBe(true);
     expect(validateDomainFormat('não é domínio')).toBe(false);
+  });
+
+  it('URL para abrir preserva o https:// já escrito e prefixa o hostname nu', () => {
+    // O caminho com esquema explícito não pode virar `https://https://...`
+    expect(openableUrl('https://example.com/path')).toBe('https://example.com/path');
+    expect(openableUrl('example.com')).toBe('https://example.com');
+    expect(() => openableUrl('http://example.com')).toThrow();
   });
 });
 

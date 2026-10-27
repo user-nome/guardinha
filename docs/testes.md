@@ -32,7 +32,7 @@ e o score é uma medida de tendência, não um portão.
 | `tests/main/auth.test.ts`                       | Trava exponencial, validações de formato e contadores de falha.             |
 | `tests/main/authenticator.test.ts`              | Regras dos tokens, segredo e integração com o manifesto.                    |
 | `tests/main/clipboard.test.ts`                  | Limpeza programada do clipboard e descarte do proxy.                        |
-| `tests/main/container.test.ts`                  | Formatos do container e payload, versão 5, cabeçalho e flags.               |
+| `tests/main/container.test.ts`                  | Formatos do container e payload, versão 6, cabeçalho e flags.               |
 | `tests/main/create-permission.test.ts`          | Cancelamento da criação quando a autorização de diretório falha.            |
 | `tests/main/crypto.test.ts`                     | Argon2id, cifragem de registros, gerador e frase de recuperação.            |
 | `tests/main/entries.rules.test.ts`              | Validações das credenciais salvas.                                          |
@@ -163,6 +163,12 @@ nunca no `npm test` nem no `npm run check`; os comandos e as decisões estão em
 texto e HTML, e limiar de **100%** para linhas, comandos, funções e ramos. Abaixo
 disso o `npm run test:coverage` reprova, e o job "Testes e cobertura" do
 workflow `quality.yml` fica vermelho junto.
+
+A meta vale para todo trabalho de teste, não só para o fechamento que zerou o
+relatório: quem adiciona um teste ou muda um caminho coberto roda
+`npm run test:coverage` e entrega os quatro números em 100%. Um ramo impossível
+de alcançar não vira limiar menor nem teste artificial: fica com
+`/* v8 ignore next */` e o motivo escrito ao lado, como os casos abaixo.
 
 O limiar subiu de 90% para 95% depois da varredura de mutação (`docs/mutation.md`):
 ela mostrou que os ramos que faltavam eram os de decisão, isto é, cofre

@@ -46,9 +46,11 @@ contrário).
   ocorre no parser compartilhado e novamente no processo main, inclusive para
   entradas enviadas diretamente por IPC. O algoritmo HMAC (SHA-1, SHA-256 ou
   SHA-512) continua definido pelo serviço e não substitui esse requisito.
-- **Manifesto cobre os tokens de 2FA**: a versão 2 do manifesto lista também os
-  ids de `.auth/`, então apagar um `.zka` ou plantar o próprio derruba a listagem
-  com o erro único de adulteração, como já acontecia com as credenciais.
+- **Manifesto cobre os tokens de 2FA e o conteúdo dos arquivos**: a versão 3 do
+  manifesto lista os ids de `.auth/` e de `.entries/` e guarda o SHA-256 dos
+  bytes de cada arquivo, então apagar um `.zka`, plantar o próprio ou trocar o
+  conteúdo de dois arquivos existentes derruba a listagem com o erro único de
+  adulteração.
 - **Cryptographic Erase (autodestruição do cofre)**: apagar o `vault.zkv` é o
   que destrói o cofre, porque ele é o único lugar onde existe a chave do cofre
   embrulhada. Sem a chave, cada `.zke` vira ruído matemático e o AES-256-GCM
@@ -93,15 +95,18 @@ contrário).
   que a trava exponencial corta antes da derivação Argon2id.
 - **AES-256-GCM por registro**: cada arquivo usa um salt e um IV aleatórios de
   128 bits, gerados por `crypto.randomBytes` do Node.js. A chave de cada arquivo
-  é derivada via HKDF-SHA512; `vault.zkv` (versão 5) guarda cada chave
+  é derivada via HKDF-SHA512; `vault.zkv` (versão 6) guarda cada chave
   embrulhada com o custo do Argon2id daquele método, a trava exponencial, o
   contador de tentativas da senha mestra, o limite de autodestruição e o
-  manifesto cifrado. O container aceita somente v5; versões anteriores são
-  recusadas como formato incompatível. O custo por método pode ser atualizado
-  no desbloqueio em que a credencial correspondente é usada.
-- **Integridade fail-closed**: o manifesto cifrado lista os registros; arquivo
-  removido ou injetado de fora do app vira um único erro de adulteração, sem
-  detalhes: nada é carregado.
+  manifesto cifrado. Cada método tem `info` de HKDF e AAD do GCM próprios
+  (`guardinha-method-<tipo>-v1`), então o blob de um método não decifra no slot
+  de outro. O container aceita somente v6; versões anteriores são recusadas como
+  formato incompatível. O custo por método pode ser atualizado no desbloqueio em
+  que a credencial correspondente é usada.
+- **Integridade fail-closed**: o manifesto cifrado (versão 3) lista os registros
+  e o SHA-256 dos bytes de cada `.zke` e `.zka`; arquivo removido, injetado ou
+  com conteúdo trocado de lugar vira um único erro de adulteração, sem detalhes:
+  nada é carregado.
 - **Cofre fora de `~/`**: `/var/lib/.guardinha/` é `root:root 0711` sem
   listagem (navegar/excluir o topo exige sudo) e o cofre é 0700 com dono
   usuário, sobrevive à limpeza da pasta do usuário e não fica em caminhos
@@ -189,7 +194,10 @@ contrário).
   aceito desse cofre.
 - **A trava exponencial protege contra o app, não contra o disco**: o campo
   `attempts` do `vault.zkv` mora num arquivo com dono usuário, então quem já
-  tenha o arquivo pode zerá-lo e chutar à vontade. A trava serve para conter
+  tenha o arquivo pode zerá-lo e chutar à vontade. O mesmo vale para
+  `attemptsMaster`, `nukeLimit` e as flags de método: o cabeçalho do container
+  é texto claro, fora do GCM, então quem tem escrita no arquivo desarma a trava
+  e o limite estrito reescrevendo esses campos. A trava serve para conter
   tentativas pela interface do app (e recusa a espera sem nem chegar a rodar o
   Argon2); a defesa real contra atacante com o arquivo e tempo ilimitado é o
   custo do Argon2id, medido em ~2,1 s por chute de PIN com a máquina quieta
@@ -202,6 +210,18 @@ contrário).
   (não há TPM nem cofre de hardware no alvo). Mitigado por zerar a chave no
   lock manual e no auto-lock de 5 minutos, o que limita a janela de exposição;
   rodar como outro usuário já está fora do escopo (abaixo).
+- **Pacote `.gbk` sem assinatura**: o SHA-256 do backup prova integridade, não
+  origem. Restaurar por cima de um cofre existente exige a sessão aberta,
+  então um pacote forjado não substitui o cofre de quem está bloqueado; mas um
+  usuário já desbloqueado que confirme a restauração de um arquivo hostil troca
+  o próprio cofre. Autenticidade de verdade pediria assinatura com chave
+  exchange fora de banda, que o app não tem. Aceito enquanto a origem do `.gbk`
+  for responsabilidade do usuário.
+- **Rollback integral do cofre**: o manifesto v3 prende o conteúdo de cada
+  `.zke` e `.zka`, mas quem copia um manifesto antigo junto com os arquivos
+  antigos devolve um estado coerente e cifrado com a mesma chave. Detectar isso
+  exigiria contador monotônico fora do dispositivo. Aceito: o atacante já tem
+  escrita no cofre e o efeito é voltar a um estado que o dono reconhece.
 - **`/usr/bin/xdg-open` sai do confinamento**: para `shell.openExternal` (o
   botão que abre o domínio da credencial no navegador) funcionar, o perfil
   concede `ux` ao abridor do sistema: a cadeia inteira (shell, `gio`,

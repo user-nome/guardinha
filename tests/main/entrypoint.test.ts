@@ -131,9 +131,12 @@ describe('canal shell:open-domain', () => {
     expect(shell.openExternal).toHaveBeenCalledWith('https://exemplo.com');
   });
 
-  it('respeita o esquema http que já veio na credencial', () => {
-    call('shell:open-domain', appFrame(), 'http://exemplo.com/pagina');
-    expect(shell.openExternal).toHaveBeenCalledWith('http://exemplo.com/pagina');
+  it('recusa http:// e não entrega a URL em claro ao navegador', () => {
+    const m = currentMessages();
+    expect(() => call('shell:open-domain', appFrame(), 'http://exemplo.com/pagina')).toThrow(
+      m.errors.invalidDomain,
+    );
+    expect(shell.openExternal).not.toHaveBeenCalled();
   });
 
   it('recusa domínio vazio ou malformado sem abrir nada', () => {
@@ -145,7 +148,6 @@ describe('canal shell:open-domain', () => {
     expect(shell.openExternal).not.toHaveBeenCalled();
   });
 });
-
 describe('canal clipboard:copy', () => {
   it('recusa payload que não seja texto', () => {
     // o renderer nunca deve poder injetar objeto no clipboard nativo

@@ -36,3 +36,12 @@ export const KEY_INFO_ENTRY = 'guardinha-vault-entry-v1';
 
 /** Rótulo do HKDF dos tokens de 2FA (`.zka`). */
 export const KEY_INFO_AUTH = 'guardinha-vault-auth-v1';
+
+/**
+ * Rótulo de domínio de cada método de desbloqueio (P9). Vira o `info` do HKDF e
+ * a AAD do AES-256-GCM do embrulho, então copiar o blob do PIN para o slot de
+ * pânico (ou qualquer outra troca de papel) falha na autenticação.
+ */
+export function methodKeyInfo(kind: string): string {
+  return `guardinha-method-${kind}-v1`;
+}
