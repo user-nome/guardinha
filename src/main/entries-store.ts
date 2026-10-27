@@ -9,7 +9,7 @@ import {
   vaultFiles,
   writeSecretFile,
 } from '@zero/main/structure';
-import { randomBytes } from '@zero/main/crypto';
+import { randomBytes, sha256Hex } from '@zero/main/crypto';
 import { SHRED_PASSES, shredFile } from '@zero/main/shred';
 import type { SaltedPayload } from '@zero/types/crypto';
 import type { TempCleanupResult } from '@zero/types';
@@ -65,6 +65,12 @@ export function readEntryPayload(id: string): SaltedPayload {
   const payload = unpackEntryPayload(raw);
   if (payload === null) throw tampered();
   return payload;
+}
+
+/** SHA-256 dos bytes gravados, para o manifesto prender o conteúdo (P6). */
+export function hashEntry(id: string): string {
+  assertSafeEntryId(id);
+  return sha256Hex(fs.readFileSync(entryFile(id)));
 }
 
 export function writeEntryPayload(id: string, payload: SaltedPayload): void {

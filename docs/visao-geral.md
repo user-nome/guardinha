@@ -79,7 +79,7 @@ não entra no pacote.
   no `vault.zkv` e zerado no bloqueio.
 - **`vault.zkv`**: arquivo único com as chaves embrulhadas por método (cada uma
   com o custo de Argon2id do seu método), a trava exponencial, o limite de
-  autodestruição e o manifesto cifrado (versão 5).
+  autodestruição e o manifesto cifrado (versão 6).
 - **`.zke`**: arquivo cifrado de uma credencial salva, com salt e IV próprios.
 - **Argon2id (KDF)**: função de derivação que torna cada tentativa de adivinhação
   cara em CPU e memória; o custo varia por método (`cofre.md`).

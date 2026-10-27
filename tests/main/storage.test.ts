@@ -189,7 +189,7 @@ describe('erros de payload e manifesto adulterados', () => {
     writeVaultContainer(container());
     const data = readVaultContainer();
     if (data === null) throw new Error('container de teste não foi gravado');
-    data.manifest = sealManifest(Buffer.alloc(32, 1), [], []);
+    data.manifest = sealManifest(Buffer.alloc(32, 1), [], [], { entries: {}, auth: {} });
     writeVaultContainer(data);
 
     expect(() => verifyManifest(Buffer.alloc(32, 2))).toThrow(
@@ -314,7 +314,7 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
     // que move a linha de base, nunca o caminho de leitura.
     const chave = Buffer.alloc(32, 3);
     const data = container();
-    data.manifest = sealManifest(chave, [], []);
+    data.manifest = sealManifest(chave, [], [], { entries: {}, auth: {} });
     writeVaultContainer(data);
     const antes = readVaultContainer()?.manifest;
 

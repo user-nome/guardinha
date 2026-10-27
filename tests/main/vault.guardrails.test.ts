@@ -53,56 +53,56 @@ beforeAll(async () => {
 }, 120_000);
 
 describe('limite estrito de tentativas', () => {
-  it('recusa limite que não é inteiro ou é negativo', () => {
+  it('recusa limite que não é inteiro ou é negativo', async () => {
     const m = currentMessages();
-    expect(setNukeLimit(12.5)).toEqual(
+    expect(await setNukeLimit(12.5)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
-    expect(setNukeLimit(Number.NaN)).toEqual(
+    expect(await setNukeLimit(Number.NaN)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
-    expect(setNukeLimit(-1)).toEqual(
+    expect(await setNukeLimit(-1)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
     // o campo é UInt32 no container: acima disso o `writeUInt32BE` estourava
     // `RangeError` no meio da gravação, em vez de devolver erro de domínio
-    expect(setNukeLimit(2 ** 32)).toEqual(
+    expect(await setNukeLimit(2 ** 32)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
   });
 
-  it('recusa limite ligado abaixo do piso, para não confundir com erro de digitação', () => {
+  it('recusa limite ligado abaixo do piso, para não confundir com erro de digitação', async () => {
     const m = currentMessages();
-    expect(setNukeLimit(10)).toEqual(
+    expect(await setNukeLimit(10)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.nukeLimitTooLow }),
     );
   });
 
-  it('aceita desligar com 0 e qualquer valor no piso ou acima', () => {
-    expect(setNukeLimit(0).ok).toBe(true);
-    expect(setNukeLimit(50).ok).toBe(true);
+  it('aceita desligar com 0 e qualquer valor no piso ou acima', async () => {
+    expect((await setNukeLimit(0)).ok).toBe(true);
+    expect((await setNukeLimit(50)).ok).toBe(true);
   });
 
-  it('recomeça a contagem quando o limite muda de valor', () => {
-    setNukeLimit(80);
+  it('recomeça a contagem quando o limite muda de valor', async () => {
+    await setNukeLimit(80);
     // a contagem anterior foi medida contra outro teto e não vale para o novo
     const state = readAuthState();
     expect(state.nukeLimit).toBe(80);
     expect(state.attemptsMaster).toBe(0);
-    setNukeLimit(0);
+    await setNukeLimit(0);
   });
 
-  it('o limite sobrevive ao reset da trava, por ser configuração do cofre', () => {
-    setNukeLimit(60);
+  it('o limite sobrevive ao reset da trava, por ser configuração do cofre', async () => {
+    await setNukeLimit(60);
     writeAuthState({ ...NEUTRAL, nukeLimit: 60 });
     expect(readAuthState().nukeLimit).toBe(60);
-    setNukeLimit(0);
+    await setNukeLimit(0);
   });
 
-  it('o estado das proteções reflete o limite gravado', () => {
-    setNukeLimit(70);
+  it('o estado das proteções reflete o limite gravado', async () => {
+    await setNukeLimit(70);
     expect(panicStatus().nukeLimit).toBe(70);
-    setNukeLimit(0);
+    await setNukeLimit(0);
     expect(panicStatus().nukeLimit).toBe(0);
   });
 });
@@ -116,17 +116,17 @@ describe('PIN de coação', () => {
     );
   });
 
-  it('bloqueado, não muda nem revela as proteções de pânico', () => {
+  it('bloqueado, não muda nem revela as proteções de pânico', async () => {
     // P2: `clearPanicPin` e `setNukeLimit` não exigiam sessão, e `panicStatus`
     // anunciava a existência do segundo caminho sem credencial. O IPC bloqueado
     // virava um jeito de desarmar a proteção.
     const m = currentMessages();
     vaultSession().wipe();
 
-    expect(setNukeLimit(50)).toEqual(
+    expect(await setNukeLimit(50)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.vaultLocked }),
     );
-    expect(() => clearPanicPin()).toThrow(m.errors.vaultLocked);
+    await expect(clearPanicPin()).rejects.toThrow(m.errors.vaultLocked);
     expect(panicStatus()).toEqual({ hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 });
   });
 
@@ -250,8 +250,8 @@ describe('cofre ausente', () => {
     expect(result).toMatchObject({ ok: false, error: m.errors.vaultMissing });
   });
 
-  it('setNukeLimit diz que o cofre não existe', () => {
-    const result = setNukeLimit(50);
+  it('setNukeLimit diz que o cofre não existe', async () => {
+    const result = await setNukeLimit(50);
 
     expect(result).toMatchObject({ ok: false, error: m.errors.vaultMissing });
   });
@@ -264,10 +264,10 @@ describe('cofre ausente', () => {
     expect(readAuthState()).toEqual(NEUTRAL);
   });
 
-  it('clearPanicPin não explode e devolve o estado neutro', () => {
+  it('clearPanicPin não explode e devolve o estado neutro', async () => {
     // Sem container não há PIN de coação para remover, e a função precisa
     // devolver o status assim mesmo em vez de estourar em cima do chamador.
-    expect(clearPanicPin()).toMatchObject({ exists: false, attempts: 0, lockUntil: null });
+    expect(await clearPanicPin()).toMatchObject({ exists: false, attempts: 0, lockUntil: null });
   });
 
   it('escrever estado de trava não recria o cofre do nada', () => {
@@ -278,14 +278,14 @@ describe('cofre ausente', () => {
 });
 
 describe('piso do limite de autodestruição', () => {
-  it('recusa 1 e aceita 0 como desligado', () => {
+  it('recusa 1 e aceita 0 como desligado', async () => {
     // O `limit > 0` é o que separa "desligado" (0) de "abaixo do piso" (1..49).
     // Com o `0` virando `1`, um limite de 1 passaria a ser aceito e a
     // autodestruição dispararia na primeira senha mestra errada.
-    expect(setNukeLimit(1)).toEqual(
+    expect(await setNukeLimit(1)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.nukeLimitTooLow }),
     );
-    expect(setNukeLimit(0).ok).toBe(true);
+    expect((await setNukeLimit(0)).ok).toBe(true);
     expect(panicStatus().nukeLimit).toBe(0);
   });
 });

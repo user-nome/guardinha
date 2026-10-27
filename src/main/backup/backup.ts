@@ -147,6 +147,14 @@ export function restoreBackup(source: string): RestoreResult {
     throw new Error(currentMessages().errors.backupInvalid);
   }
 
+  // P4: substituir um cofre existente exige a sessão aberta, ou seja, a
+  // credencial atual provada. O SHA-256 do pacote não é assinatura, então sem
+  // esta guarda um `.gbk` forjado trocaria o cofre de quem só clicou em
+  // restaurar. Máquina formatada (sem cofre) continua restaurando de graça.
+  if (vaultStorage.exists() && !vaultSession().isUnlocked()) {
+    throw new Error(currentMessages().errors.vaultLocked);
+  }
+
   ensureStructure();
   vaultSession().wipe();
   vaultStorage.erase();

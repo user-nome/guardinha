@@ -32,7 +32,7 @@ e o score é uma medida de tendência, não um portão.
 | `tests/main/auth.test.ts`                       | Trava exponencial, validações de formato e contadores de falha.             |
 | `tests/main/authenticator.test.ts`              | Regras dos tokens, segredo e integração com o manifesto.                    |
 | `tests/main/clipboard.test.ts`                  | Limpeza programada do clipboard e descarte do proxy.                        |
-| `tests/main/container.test.ts`                  | Formatos do container e payload, versão 5, cabeçalho e flags.               |
+| `tests/main/container.test.ts`                  | Formatos do container e payload, versão 6, cabeçalho e flags.               |
 | `tests/main/create-permission.test.ts`          | Cancelamento da criação quando a autorização de diretório falha.            |
 | `tests/main/crypto.test.ts`                     | Argon2id, cifragem de registros, gerador e frase de recuperação.            |
 | `tests/main/entries.rules.test.ts`              | Validações das credenciais salvas.                                          |

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import fsExtra from 'fs-extra';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authDir, containerFile, entriesDir } from '@zero/main/layout';
 import { exportBackup, restoreBackup } from '@zero/main/backup/backup';
 import { packBackup, unpackBackup } from '@zero/main/backup/backup-container';
@@ -13,6 +13,7 @@ import { listAuthIds } from '@zero/main/auth-store';
 import { saveEntry } from '@zero/main/entries';
 import { saveToken } from '@zero/main/authenticator';
 import { vaultStorage } from '@zero/main/facade';
+import { vaultSession } from '@zero/main/session';
 import { createVault } from '@zero/main/vault';
 import * as privilege from '@zero/main/privilege';
 
@@ -33,6 +34,14 @@ let outDir: string;
 
 function exportTo(name: string): string {
   return path.join(outDir, name);
+}
+
+/**
+ * Abre uma sessão descartável: a guarda do P4 olha só `isUnlocked()`, porque a
+ * restauração não decifra nada (o pacote é cópia do que já está cifrado).
+ */
+function markUnlocked(): void {
+  vaultSession().adopt(Buffer.alloc(32, 7));
 }
 
 describe('backup integral do cofre', () => {
@@ -171,6 +180,7 @@ describe('backup integral do cofre', () => {
 
     // simula a máquina formatada: o cofre e a chave em memória somem
     vaultStorage.erase();
+    vaultSession().wipe();
     expect(fs.existsSync(containerFile())).toBe(false);
 
     const restored = restoreBackup(destination);
@@ -193,6 +203,7 @@ describe('backup integral do cofre', () => {
     // escritas.
     const destination = exportTo('ordem.gbk');
     exportBackup(destination, '1.0.0');
+    markUnlocked();
     const written: string[] = [];
     const original = fsExtra.renameSync;
     const rename = vi.spyOn(fsExtra, 'renameSync').mockImplementation((from, to) => {
@@ -209,6 +220,22 @@ describe('backup integral do cofre', () => {
     expect(written.filter((target) => target === containerFile())).toHaveLength(1);
     expect(written[written.length - 1]).toBe(containerFile());
   });
+
+  it('recusa restaurar por cima de um cofre existente com a sessão bloqueada', () => {
+    // P4: o SHA-256 do pacote não é assinatura, então um `.gbk` forjado trocaria
+    // o cofre de quem só clicou em restaurar. A sessão aberta é a prova da
+    // credencial atual; sem ela, a restauração não pode encostar no disco.
+    const destination = exportTo('bloqueado.gbk');
+    exportBackup(destination, '1.0.0');
+    const before = fs.readFileSync(containerFile());
+    vaultSession().wipe();
+
+    expect(() => restoreBackup(destination)).toThrow(currentMessages().errors.vaultLocked);
+    expect(fs.readFileSync(containerFile()).equals(before)).toBe(true);
+
+    // devolve a sessão que os testes seguintes usam; a chave não é decifrada
+    markUnlocked();
+  });
 });
 
 describe('backup: destino e pasta do cofre indisponíveis', () => {
@@ -223,6 +250,10 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    markUnlocked();
   });
 
   it('grava o pacote mesmo em mídia que recusa o modo do arquivo', () => {

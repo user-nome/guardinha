@@ -193,7 +193,7 @@ describe('PIN de coação', () => {
   });
 
   it('remove o caminho de pânico quando o PIN é apagado', async () => {
-    clearPanicPin();
+    await clearPanicPin();
 
     expect(hasPanicPin()).toBe(false);
     expect((await unlock({ credential: PANIC_PIN, kind: 'pin' })).ok).toBe(false);
@@ -215,23 +215,23 @@ describe('autodestruição por tentativas da senha mestra', () => {
     expect(panicStatus().nukeLimit).toBe(0);
   });
 
-  it('recusa limite abaixo do piso, para não confundir com erro de digitação', () => {
-    expect(setNukeLimit(5).ok).toBe(false);
-    expect(setNukeLimit(MIN_NUKE_LIMIT - 1).ok).toBe(false);
-    expect(setNukeLimit(-1).ok).toBe(false);
-    expect(setNukeLimit(1.5).ok).toBe(false);
+  it('recusa limite abaixo do piso, para não confundir com erro de digitação', async () => {
+    expect((await setNukeLimit(5)).ok).toBe(false);
+    expect((await setNukeLimit(MIN_NUKE_LIMIT - 1)).ok).toBe(false);
+    expect((await setNukeLimit(-1)).ok).toBe(false);
+    expect((await setNukeLimit(1.5)).ok).toBe(false);
     expect(panicStatus().nukeLimit).toBe(0);
   });
 
-  it('aceita o limite a partir do piso e o persiste', () => {
-    const result = setNukeLimit(MIN_NUKE_LIMIT);
+  it('aceita o limite a partir do piso e o persiste', async () => {
+    const result = await setNukeLimit(MIN_NUKE_LIMIT);
 
     expect(result.ok).toBe(true);
     expect(panicStatus().nukeLimit).toBe(MIN_NUKE_LIMIT);
   });
 
   it('não apaga o cofre uma tentativa antes do corte', async () => {
-    setNukeLimit(MIN_NUKE_LIMIT);
+    await setNukeLimit(MIN_NUKE_LIMIT);
     seedAttemptsMaster(MIN_NUKE_LIMIT - 2);
 
     const result = await unlock({ credential: WRONG_MASTER, kind: 'master' });
@@ -242,7 +242,7 @@ describe('autodestruição por tentativas da senha mestra', () => {
   });
 
   it('apaga o cofre ao cruzar o limite com senha mestra errada', async () => {
-    setNukeLimit(MIN_NUKE_LIMIT);
+    await setNukeLimit(MIN_NUKE_LIMIT);
     seedAttemptsMaster(MIN_NUKE_LIMIT - 1);
 
     const result = await unlock({ credential: WRONG_MASTER, kind: 'master' });
@@ -253,7 +253,7 @@ describe('autodestruição por tentativas da senha mestra', () => {
   });
 
   it('PIN errado não apaga o cofre, mesmo com o limite armado', async () => {
-    setNukeLimit(MIN_NUKE_LIMIT);
+    await setNukeLimit(MIN_NUKE_LIMIT);
     seedAttemptsMaster(MIN_NUKE_LIMIT - 1);
 
     const result = await unlock({ credential: '11111111', kind: 'pin' });
@@ -263,18 +263,18 @@ describe('autodestruição por tentativas da senha mestra', () => {
     expect(loadAuthState().attemptsMaster).toBe(MIN_NUKE_LIMIT - 1);
   });
 
-  it('trocar o limite recomeça a contagem', () => {
+  it('trocar o limite recomeça a contagem', async () => {
     seedAttemptsMaster(40);
 
-    setNukeLimit(80);
+    await setNukeLimit(80);
 
     expect(panicStatus().attemptsMaster).toBe(0);
   });
 
   it('zerar o limite desliga a autodestruição', async () => {
-    setNukeLimit(MIN_NUKE_LIMIT);
+    await setNukeLimit(MIN_NUKE_LIMIT);
 
-    expect(setNukeLimit(0).ok).toBe(true);
+    expect((await setNukeLimit(0)).ok).toBe(true);
     expect(panicStatus().nukeLimit).toBe(0);
     seedAttemptsMaster(MIN_NUKE_LIMIT + 10);
     expect((await unlock({ credential: WRONG_MASTER, kind: 'master' })).ok).toBe(false);

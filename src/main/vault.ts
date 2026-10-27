@@ -37,6 +37,26 @@ import type {
   VaultStatus,
 } from '@zero/types';
 
+/**
+ * Fila de operações do cofre, curta e por processo: desbloqueio, redefinição de
+ * PIN, criação e mutações do container fazem read-modify-write com `await` no
+ * meio (Argon2id custa segundos). Sem a fila, duas chamadas leem o mesmo
+ * container e a última gravação descarta a outra, o que pode perder uma
+ * tentativa contada ou uma troca de PIN.
+ *
+ * Só as funções exportadas passam por aqui. Os helpers internos se chamam
+ * direto, sem reentrar na fila, que é o que evita deadlock (`unlockNow` chama
+ * `panicDestroyNow`, por exemplo).
+ */
+let vaultQueue: Promise<unknown> = Promise.resolve();
+
+function exclusive<T>(task: () => Promise<T> | T): Promise<T> {
+  const run = vaultQueue.then(task, task);
+  // uma falha não pode envenenar a fila: a próxima operação roda mesmo assim
+  vaultQueue = run.catch(() => undefined);
+  return run;
+}
+
 export function getStatus(): VaultStatus {
   const auth = loadAuthState();
   // a sessão decoy é o único caso em que o cofre "existe" sem container: é o
@@ -74,7 +94,7 @@ export function lock(): VaultStatus {
  * e uma falha de I/O precisa aparecer no log em vez de virar "destruído" na
  * tela com a chave ainda no disco.
  */
-export async function panicDestroy(): Promise<VaultStatus> {
+async function panicDestroyNow(): Promise<VaultStatus> {
   vaultSession().wipe();
   const erased = vaultStorage.erase();
   if (erased.failed > 0) {
@@ -85,6 +105,11 @@ export async function panicDestroy(): Promise<VaultStatus> {
   }
   await secureClipboard.dispose();
   return getStatus();
+}
+
+/** Entra na fila do cofre: destruir no meio de um desbloqueio deixaria a chave viva. */
+export function panicDestroy(): Promise<VaultStatus> {
+  return exclusive(panicDestroyNow);
 }
 
 /** Chave da sessão corrente; lança o erro localizado se o cofre estiver bloqueado. */
@@ -129,7 +154,11 @@ async function upgradeMethod(
 }
 
 /** Cria o cofre com frase de recuperação escrita pelo próprio usuário. */
-export async function createVault(input: CreateVaultInput): Promise<VaultResult> {
+export function createVault(input: CreateVaultInput): Promise<VaultResult> {
+  return exclusive(() => createVaultNow(input));
+}
+
+async function createVaultNow(input: CreateVaultInput): Promise<VaultResult> {
   const m = currentMessages();
   if (!isMasterPasswordFormat(input.masterPassword)) {
     return { ok: false, error: m.errors.invalidMasterLength, status: getStatus() };
@@ -198,7 +227,7 @@ export async function createVault(input: CreateVaultInput): Promise<VaultResult>
     methods,
     // o selo inicial acontece antes de o arquivo existir: um container sem
     // manifesto nunca é um cofre novo, é um cofre adulterado
-    manifest: sealManifest(vaultKey, [], []),
+    manifest: sealManifest(vaultKey, [], [], { entries: {}, auth: {} }),
   };
   vaultStorage.writeContainer(container);
   // a chave assume a sessão (Singleton)
@@ -302,7 +331,11 @@ async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData)
  * (`src/main/unlock.ts`) decide: trava exponencial, formato, Argon2id e
  * integridade, nesta ordem de custo.
  */
-export async function unlock(input: UnlockInput): Promise<VaultResult> {
+export function unlock(input: UnlockInput): Promise<VaultResult> {
+  return exclusive(() => unlockNow(input));
+}
+
+async function unlockNow(input: UnlockInput): Promise<VaultResult> {
   const m = currentMessages();
   // Um cofre ilegível (de outra versão, ou danificado) não é erro de
   // credencial: é o arquivo. Sem este catch a exceção sobe pelo handler do IPC e
@@ -317,7 +350,7 @@ export async function unlock(input: UnlockInput): Promise<VaultResult> {
 
   // antes de tudo, e sem respectar a trava: o PIN de pânico destrói o cofre
   if (await tryPanicUnlock(input, container)) {
-    await panicDestroy();
+    await panicDestroyNow();
     // A pessoa sob coação precisa de um cofre aberto e vazio para mostrar, não
     // de um erro que denuncie o mecanismo. A sessão decoy não guarda chave
     // alguma (a real já saiu da RAM), então nada aqui decifra um `.zke`.
@@ -330,7 +363,7 @@ export async function unlock(input: UnlockInput): Promise<VaultResult> {
   if (rejected !== null) return rejected;
   // a senha mestra cruzou o limite estrito: autodestruição, sem abrir nada
   if (context.nuked === true) {
-    await panicDestroy();
+    await panicDestroyNow();
     return { ok: false, error: m.errors.vaultDestroyed, status: getStatus() };
   }
   const vaultKey = context.vaultKey;
@@ -352,7 +385,11 @@ export async function unlock(input: UnlockInput): Promise<VaultResult> {
  * Instala (ou troca) o PIN de coação. Exige cofre desbloqueado, porque sem a
  * chave do cofre não há como reembrulhar a decoy com o Argon2id certo.
  */
-export async function setPanicPin(input: PanicPinInput): Promise<VaultResult> {
+export function setPanicPin(input: PanicPinInput): Promise<VaultResult> {
+  return exclusive(() => setPanicPinNow(input));
+}
+
+async function setPanicPinNow(input: PanicPinInput): Promise<VaultResult> {
   const m = currentMessages();
   if (!vaultSession().isUnlocked()) return fail(m.errors.vaultLocked);
   if (!isPinFormat(input.pin)) return fail(m.errors.invalidPin);
@@ -373,18 +410,20 @@ export async function setPanicPin(input: PanicPinInput): Promise<VaultResult> {
 }
 
 /** Remove o PIN de coação; o cofre volta a não ter caminho de pânico. */
-export function clearPanicPin(): VaultStatus {
-  // sem sessão aberta não há como distinguir o dono do cofre de um chamador
-  // qualquer do IPC; a remoção é permanente e exige a mesma prova que instalar
-  if (vaultStorage.exists() && !vaultSession().isUnlocked()) {
-    throw new Error(currentMessages().errors.vaultLocked);
-  }
-  const container = vaultStorage.readContainer();
-  if (container !== null) {
-    delete container.methods.panic;
-    vaultStorage.writeContainer(container);
-  }
-  return getStatus();
+export function clearPanicPin(): Promise<VaultStatus> {
+  return exclusive(() => {
+    // sem sessão aberta não há como distinguir o dono do cofre de um chamador
+    // qualquer do IPC; a remoção é permanente e exige a mesma prova que instalar
+    if (vaultStorage.exists() && !vaultSession().isUnlocked()) {
+      throw new Error(currentMessages().errors.vaultLocked);
+    }
+    const container = vaultStorage.readContainer();
+    if (container !== null) {
+      delete container.methods.panic;
+      vaultStorage.writeContainer(container);
+    }
+    return getStatus();
+  });
 }
 
 /** true se o cofre tem PIN de coação instalado (para a interface). */
@@ -419,7 +458,11 @@ export function panicStatus(): PanicStatus {
  * definitiva (a frase de recuperação não salva, já que o arquivo que a
  * embrulha foi apagado). Quem liga, liga sabendo; ver `SECURITY.md`.
  */
-export function setNukeLimit(limit: number): VaultResult {
+export function setNukeLimit(limit: number): Promise<VaultResult> {
+  return exclusive(() => setNukeLimitNow(limit));
+}
+
+function setNukeLimitNow(limit: number): VaultResult {
   const m = currentMessages();
   // o campo é UInt32 no container: acima disso o `writeUInt32BE` lançaria
   // `RangeError` no meio da gravação, em vez de devolver erro de domínio
@@ -445,7 +488,11 @@ export function setNukeLimit(limit: number): VaultResult {
  * Redefine o PIN provando posse da frase de recuperação (único uso da frase).
  * Em caso de sucesso o cofre já sai desbloqueado com o novo PIN.
  */
-export async function resetPin(input: ResetPinInput): Promise<VaultResult> {
+export function resetPin(input: ResetPinInput): Promise<VaultResult> {
+  return exclusive(() => resetPinNow(input));
+}
+
+async function resetPinNow(input: ResetPinInput): Promise<VaultResult> {
   const m = currentMessages();
   const container = vaultStorage.readContainer();
   if (container === null) return fail(m.errors.vaultMissing);
