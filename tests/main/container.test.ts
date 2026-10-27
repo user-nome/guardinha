@@ -13,11 +13,11 @@ import { encryptRecord, randomBytes } from '@zero/main/crypto';
 import type { VaultContainerData, VaultUnpackResult, WrappedMethod } from '@zero/main/container';
 
 /**
- * Formato do container. A v5 é a única suportada: cabeçalho de 41 bytes, sem
- * tripo global de KDF (cada método carrega o custo do seu Argon2id) e sem
- * caminho de leitura anterior. Como o app ainda não tem usuários, formato
- * antigo não tem a quem proteger, e um leitor só da v5 é bem mais difícil de
- * ler errado do que um que ramifica por versão.
+ * Formato do container. A v6 é a única suportada: cabeçalho de 41 bytes, sem
+ * tripo global de KDF (cada método carrega o custo do seu Argon2id), papel
+ * autenticado por método e sem caminho de leitura anterior. Como o app ainda não
+ * tem usuários, formato antigo não tem a quem proteger, e um leitor só da v6 é
+ * bem mais difícil de ler errado do que um que ramifica por versão.
  */
 
 const HEADER_BYTES = 41;
@@ -136,14 +136,14 @@ describe('container do cofre (vault.zkv)', () => {
     expect(restored).toEqual({ ok: true, data });
   });
 
-  it('grava na versão 5, com cabeçalho de 41 bytes e o custo por método', () => {
+  it('grava na versão 6, com cabeçalho de 41 bytes e o custo por método', () => {
     const data = sampleContainer();
     const master = data.methods.master;
     const pin = data.methods.pin;
     if (master === undefined || pin === undefined) throw new Error('fixture incompleta');
 
     const packed = packVaultContainer(data);
-    expect(packed.readUInt32BE(8)).toBe(5);
+    expect(packed.readUInt32BE(8)).toBe(6);
     // o cabeçalho inteiro cabe em 41 bytes: não sobrou KDF global no meio
     expect(packed.readUInt32BE(20)).toBe(2); // attempts
     expect(packed.readUInt8(32)).toBe(0x1f); // as quatro flags de método + manifesto
@@ -271,7 +271,7 @@ describe('container do cofre (vault.zkv)', () => {
 
   it('recusa um cabeçalho cortado no meio dos campos', () => {
     const packed = packVaultContainer(sampleContainer());
-    // 41 bytes declarados como v5, mas sem os 8 bytes finais do cabeçalho
+    // 41 bytes declarados como v6, mas sem os 8 bytes finais do cabeçalho
     expect(refusal(packed.subarray(0, HEADER_BYTES - 4))).toBe('damaged');
     expect(refusal(packed.subarray(0, 8))).toBe('damaged');
   });
@@ -359,18 +359,27 @@ describe('payload de entrada (.zke)', () => {
 describe('manifesto de integridade', () => {
   const IDS = ['aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', 'ffffffff-0000-4000-8000-000000000000'];
   const AUTH_IDS = ['11111111-2222-4333-8444-555555555555'];
+  const HASHES = {
+    entries: {
+      'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee': 'a'.repeat(64),
+      'ffffffff-0000-4000-8000-000000000000': 'b'.repeat(64),
+    },
+    auth: { '11111111-2222-4333-8444-555555555555': 'c'.repeat(64) },
+  };
 
-  it('roundtrip devolve os mesmos ids', () => {
+  it('roundtrip devolve os mesmos ids e hashes', () => {
     const key = randomBytes(32);
-    expect(openManifest(key, sealManifest(key, IDS, AUTH_IDS))).toEqual({
+    expect(openManifest(key, sealManifest(key, IDS, AUTH_IDS, HASHES))).toEqual({
       ids: IDS,
       authIds: AUTH_IDS,
+      entries: HASHES.entries,
+      auth: HASHES.auth,
     });
   });
 
   it('falha com a chave errada', () => {
     const key = randomBytes(32);
-    const blob = sealManifest(key, IDS, []);
+    const blob = sealManifest(key, IDS, [], HASHES);
     expect(() => openManifest(randomBytes(32), blob)).toThrow();
   });
 
@@ -378,7 +387,7 @@ describe('manifesto de integridade', () => {
     // o `v` mora dentro do blob cifrado, então trocar a versão do manifesto não
     // muda o container: um manifesto velho é recusado, não adivinhado
     const key = randomBytes(32);
-    const old = encryptRecord({ v: 1, ids: IDS }, key);
+    const old = encryptRecord({ v: 2, ids: IDS, authIds: [], ...HASHES }, key);
     expect(() => openManifest(key, old)).toThrow();
   });
 
@@ -390,8 +399,46 @@ describe('manifesto de integridade', () => {
 
   it('falha quando a lista de tokens não é uma lista de texto', () => {
     const key = randomBytes(32);
-    const broken = encryptRecord({ v: 2, ids: IDS, authIds: [1] }, key);
+    const broken = encryptRecord({ v: 3, ids: IDS, authIds: [1], ...HASHES }, key);
     expect(() => openManifest(key, broken)).toThrow();
+  });
+
+  it('falha quando o mapa de hashes tem valor que não é SHA-256', () => {
+    // P6: o hash é o que prende o conteúdo; aceitar formato livre daria ao
+    // manifesto uma promessa que a verificação não consegue cumprir
+    const key = randomBytes(32);
+    const broken = encryptRecord(
+      {
+        v: 3,
+        ids: IDS,
+        authIds: [],
+        entries: { 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee': 'nao-e-hash' },
+        auth: {},
+      },
+      key,
+    );
+    expect(() => openManifest(key, broken)).toThrow();
+  });
+
+  it('falha quando ids ou authIds não são listas de texto', () => {
+    const key = randomBytes(32);
+    const idsNotList = encryptRecord({ v: 3, ids: 'nao-e-lista', authIds: [], ...HASHES }, key);
+    const authNotList = encryptRecord({ v: 3, ids: [], authIds: 'nao-e-lista', ...HASHES }, key);
+
+    expect(() => openManifest(key, idsNotList)).toThrow();
+    expect(() => openManifest(key, authNotList)).toThrow();
+  });
+
+  it('falha quando entries ou auth não são mapas de hash', () => {
+    const key = randomBytes(32);
+    const entriesNotMap = encryptRecord({ v: 3, ids: [], authIds: [], entries: [], auth: {} }, key);
+    const authNotMap = encryptRecord(
+      { v: 3, ids: [], authIds: [], entries: {}, auth: 'nao-e-mapa' },
+      key,
+    );
+
+    expect(() => openManifest(key, entriesNotMap)).toThrow();
+    expect(() => openManifest(key, authNotMap)).toThrow();
   });
 });
 
@@ -522,6 +569,10 @@ describe('tamanho em disco do container', () => {
 });
 
 const IDS = ['aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa', 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb'];
+const HASHES = {
+  entries: { 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa': 'a'.repeat(64) },
+  auth: {},
+};
 
 describe('recusa do manifesto pela mensagem', () => {
   it('recusa payloads que decifram para um valor que não é objeto', () => {
@@ -537,31 +588,36 @@ describe('recusa do manifesto pela mensagem', () => {
     // passaria, e o usuário veria um erro sem dizer o que houve.
     const key = randomBytes(32);
 
-    expect(() => openManifest(key, encryptRecord({ v: 2, ids: [1], authIds: [] }, key))).toThrow(
-      'Manifesto de integridade inválido.',
-    );
-    expect(() => openManifest(key, encryptRecord({ v: 1, ids: IDS, authIds: [] }, key))).toThrow(
-      'Manifesto de integridade inválido.',
-    );
-    expect(() => openManifest(key, encryptRecord({ v: 2, ids: IDS, authIds: [1] }, key))).toThrow(
-      'Manifesto de integridade inválido.',
-    );
+    expect(() =>
+      openManifest(key, encryptRecord({ v: 3, ids: [1], authIds: [], ...HASHES }, key)),
+    ).toThrow('Manifesto de integridade inválido.');
+    expect(() =>
+      openManifest(key, encryptRecord({ v: 2, ids: IDS, authIds: [], ...HASHES }, key)),
+    ).toThrow('Manifesto de integridade inválido.');
+    expect(() =>
+      openManifest(key, encryptRecord({ v: 3, ids: IDS, authIds: [1], ...HASHES }, key)),
+    ).toThrow('Manifesto de integridade inválido.');
   });
 
-  it('mantém a versão do manifesto em 2, porque trocar invalida todo token de 2FA', () => {
+  it('mantém a versão do manifesto em 3, com os hashes de conteúdo', () => {
     const key = randomBytes(32);
-    const blob = sealManifest(key, IDS, ['a', 'b']);
+    const blob = sealManifest(key, IDS, ['a', 'b'], HASHES);
 
-    expect(openManifest(key, blob)).toEqual({ ids: IDS, authIds: ['a', 'b'] });
+    expect(openManifest(key, blob)).toEqual({
+      ids: IDS,
+      authIds: ['a', 'b'],
+      entries: HASHES.entries,
+      auth: {},
+    });
   });
 
   it('recusa um manifesto gravado com a versão seguinte', () => {
     // O teste acima só prova que o par escreve e lê a mesma versão. Este é o
-    // outro lado do contrato: um manifesto selado com 3 (o número que a próxima
+    // outro lado do contrato: um manifesto selado com 4 (o número que a próxima
     // versão usaria) tem de ser recusado, senão subir a versão abriria em silêncio
     // os arquivos que a versão de hoje gravou.
     const key = randomBytes(32);
-    const future = encryptRecord({ v: 3, ids: IDS, authIds: [] }, key);
+    const future = encryptRecord({ v: 4, ids: IDS, authIds: [], ...HASHES }, key);
     expect(() => openManifest(key, future)).toThrow('Manifesto de integridade inválido.');
   });
 });

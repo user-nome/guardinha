@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { resetAttempts } from '@zero/main/auth';
 import { KDF_CREDENTIAL, KDF_PIN, deriveKey, encryptRecord, randomBytes } from '@zero/main/crypto';
+import { methodKeyInfo } from '@zero/main/crypto-constants';
 import { currentMessages } from '@zero/main/i18n';
 import { listEntries, removeEntry, saveEntry } from '@zero/main/entries';
 import { vaultStorage } from '@zero/main/facade';
@@ -297,7 +298,8 @@ describe('ciclo de vida do cofre (integração)', () => {
     };
     const kdfSalt = randomBytes(16);
     const derived = await deriveKey(PIN, kdfSalt, oldKdf);
-    const payload = encryptRecord({ key: vaultKey.toString('hex') }, derived);
+    const info = methodKeyInfo('pin');
+    const payload = encryptRecord({ key: vaultKey.toString('hex') }, derived, info, info);
 
     const container = readVaultContainer();
     if (container === null) throw new Error('container sumiu');
@@ -358,7 +360,7 @@ describe('apaga a chave derivada de trabalho', () => {
     // `finally` do `tryPanicUnlock` é o que se quer exercitar aqui.
     const derivadas = capturarDerivadas('panic');
     const result = await unlock({ credential: '15975300', kind: 'pin' });
-    clearPanicPin();
+    await clearPanicPin();
 
     expect(result.ok).toBe(false);
     expect(getStatus().exists).toBe(true);
@@ -374,7 +376,7 @@ describe('apaga a chave derivada de trabalho', () => {
 
     expect(derivadas.length).toBeGreaterThan(0);
     for (const buffer of derivadas) expect(buffer.every((byte) => byte === 0)).toBe(true);
-    clearPanicPin();
+    await clearPanicPin();
   }, 120_000);
 
   it('na redefinição do PIN pela frase de recuperação', async () => {
@@ -434,7 +436,7 @@ describe('o PIN de pânico recusa ser o PIN real', () => {
   it('recusa, não instala e não deixa caminho de pânico', async () => {
     // o teste anterior falhou de propósito e deixou trava exponencial
     await garanteDesbloqueado();
-    clearPanicPin();
+    await clearPanicPin();
     expect(hasPanicPin()).toBe(false);
 
     // descobre qual é o PIN de verdade: o mesmo teste 8 pode ter trocado o PIN
@@ -446,7 +448,7 @@ describe('o PIN de pânico recusa ser o PIN real', () => {
         real = candidato;
         break;
       }
-      clearPanicPin();
+      await clearPanicPin();
     }
     expect(real).not.toBeNull();
 
@@ -456,7 +458,7 @@ describe('o PIN de pânico recusa ser o PIN real', () => {
     expect(result.ok).toBe(false);
     expect(result.error).toBe(currentMessages().errors.panicPinSame);
     expect(hasPanicPin()).toBe(false);
-    clearPanicPin();
+    await clearPanicPin();
   }, 120_000);
 });
 
@@ -538,7 +540,7 @@ describe('falha de derivação não vira exceção', () => {
       recusa = await unlock({ credential: '15975300', kind: 'pin' });
     } finally {
       vi.restoreAllMocks();
-      clearPanicPin();
+      await clearPanicPin();
     }
 
     expect(recusa).toMatchObject({ ok: false });
@@ -554,7 +556,7 @@ describe('falha de derivação não vira exceção', () => {
       instalacao = await setPanicPin({ pin: PIN });
     } finally {
       vi.restoreAllMocks();
-      clearPanicPin();
+      await clearPanicPin();
     }
 
     // a derivação recusou, então o PIN não é o do cofre: ele instala
@@ -579,13 +581,12 @@ describe('estado sem cofre na tela', () => {
     }
   });
 
-  it('clearPanicPin devolve o status sem container, em vez de lançar', () => {
+  it('clearPanicPin devolve o status sem container, em vez de lançar', async () => {
     const leitura = vi.spyOn(vaultStorage, 'readContainer').mockReturnValue(null);
     try {
       // não há container para apagar caminho de pânico, e a resposta é o status
       // de sempre: sem `if (container !== null)`, o `delete` derrubaria a tela
-      expect(() => clearPanicPin()).not.toThrow();
-      expect(clearPanicPin()).toMatchObject({ exists: true });
+      await expect(clearPanicPin()).resolves.toMatchObject({ exists: true });
     } finally {
       leitura.mockRestore();
     }

@@ -68,6 +68,13 @@ SHA-256 de cada arquivo) antes de qualquer escrita, e exige que exista um
 `vault.zkv` no pacote. Um arquivo corrompido derruba a restauração com o cofre
 atual intacto.
 
+Substituir um cofre **existente** exige a sessão aberta: a credencial atual
+é a prova de que quem clicou em restaurar pode trocar o cofre. Sem cofre, como
+numa máquina formatada, a restauração continua livre. O SHA-256 do pacote não é
+assinatura, então a autenticidade do `.gbk` segue dependendo de o arquivo vir de
+uma origem confiável; a guarda impede que um pacote forjado substitua o cofre
+sem a credencial atual.
+
 Validado o pacote:
 
 1. `ensureStructure()` garante as pastas do cofre (com o helper do PolicyKit via

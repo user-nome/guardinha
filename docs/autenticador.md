@@ -110,14 +110,15 @@ token entra na mesma varredura que a credencial.
 
 ## Integridade
 
-O manifesto cifrado do cofre passou da versão 1 para a versão 2 e agora lista as
-duas coisas: `ids` (credenciais) e `authIds` (tokens).
+O manifesto cifrado do cofre está na versão 3 e lista as duas coisas: `ids`
+(credenciais) e `authIds` (tokens), com o SHA-256 dos bytes de cada arquivo em
+`entries` e `auth`.
 
-O código atual exige `v: 2`, com `ids` e `authIds`; não há compatibilidade com
-manifestos v1. Além disso, o container aceita somente a versão 5. Um arquivo de
-container antigo é recusado como formato incompatível antes de o manifesto ser
-aberto. O campo `v` fica dentro do blob AES-256-GCM e não altera o cabeçalho do
-container.
+O código atual exige `v: 3`, com `ids`, `authIds` e os dois mapas de hash; não há
+compatibilidade com manifestos v1 nem v2. Além disso, o container aceita somente
+a versão 6. Um arquivo de container antigo é recusado como formato incompatível
+antes de o manifesto ser aberto. O campo `v` fica dentro do blob AES-256-GCM e
+não altera o cabeçalho do container.
 
 O motivo de cobrir os tokens: sem isso, apagar um `.zka` ou plantar o seu
 próprio passaria despercebido. O segredo TOTP trocado em silêncio é exatamente

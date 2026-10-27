@@ -35,15 +35,15 @@ raiz do projeto por meio de `GUARDINHA_VAULT_DIR`.
 Arquivo binário com magic `ZKVAULT1`, escrito e lido apenas em
 `src/main/container.ts`. Toda leitura é fail-closed: forma inválida,
 truncamento, parâmetro fora da faixa, flag desconhecida ou byte a mais no fim
-são recusados como adulteração; uma versão diferente de 5 recebe um erro
+são recusados como adulteração; uma versão diferente de 6 recebe um erro
 específico de formato incompatível. Nunca é devolvido conteúdo em claro.
 
-Cabeçalho de **41 bytes**, versão 5 (valores em big endian):
+Cabeçalho de **41 bytes**, versão 6 (valores em big endian):
 
 | Offset | Tamanho | Campo                                      |
 | ------ | ------- | ------------------------------------------ |
 | 0      | 8       | Magic `ZKVAULT1`                           |
-| 8      | 4       | Versão (`5`)                               |
+| 8      | 4       | Versão (`6`)                               |
 | 12     | 8       | `createdAt` (epoch em ms)                  |
 | 20     | 4       | Tentativas da trava exponencial            |
 | 24     | 8       | `lockUntil` (epoch em ms; `0` = sem trava) |
@@ -55,7 +55,9 @@ O cabeçalho é único e fixo: **não há caminho de leitura para versão anteri
 A v4 tinha no meio um tripo de KDF global que era só informativo desde a v3 (cada
 método já carrega o custo do seu Argon2id, e o PIN precisa ser mais caro que a
 senha mestra, então um campo só não representava os dois); a v5 o removeu e
-ficou com 41 bytes. Qualquer versão diferente de `5` é recusada como formato
+ficou com 41 bytes. A v6 não mudou o cabeçalho: passou a dar identidade
+autenticada a cada método e a prender o conteúdo de cada arquivo no
+manifesto. Qualquer versão diferente de `6` é recusada como formato
 incompatível (fail-closed), em vez de ser classificada como arquivo adulterado.
 O app ainda não tinha usuários ao remover a compatibilidade com os formatos
 anteriores.
@@ -63,9 +65,11 @@ anteriores.
 Depois do cabeçalho vêm os blocos indicados pelas flags, nesta ordem: chave
 embrulhada da senha mestra, do PIN, da frase de recuperação, do **PIN de
 coação** e o manifesto. Cada bloco traz
-`salt(16) + iv(16) + tag(16) + tamanho(4) + texto cifrado`. No container v5,
+`salt(16) + iv(16) + tag(16) + tamanho(4) + texto cifrado`. No container v6,
 cada método também traz os próprios 12 bytes de parâmetros Argon2id e um salt
-de KDF de 16 bytes antes do bloco cifrado.
+de KDF de 16 bytes antes do bloco cifrado. O embrulho de cada método usa
+`info` de HKDF e AAD do AES-256-GCM próprios (`guardinha-method-<tipo>-v1`),
+então um blob copiado para o slot de outro método não decifra.
 
 ## Custo do Argon2id por método
 
@@ -171,10 +175,12 @@ JSON guarda `id`, `title`, `username`, `password`, `domain`, `notes`,
 ## Manifesto de integridade
 
 O `vault.zkv` guarda também uma lista cifrada dos ids de credenciais (`ids`) e
-de tokens de 2FA (`authIds`) no manifesto. Ao listar, o main compara o
-manifesto com os diretórios `.entries` e `.auth`: arquivo removido ou injetado
-de fora do app vira um único erro de adulteração, sem detalhes, e nada é
-carregado (`src/main/storage.ts`, `verifyManifest`).
+de tokens de 2FA (`authIds`) no manifesto, junto do SHA-256 dos bytes de cada
+`.zke` e `.zka`. Ao listar, o main compara o manifesto com os diretórios
+`.entries` e `.auth`: arquivo removido, injetado ou com conteúdo trocado de
+lugar vira um único erro de adulteração, sem detalhes, e nada é carregado
+(`src/main/storage.ts`, `verifyManifest`). Trocar o conteúdo de A pelo de B
+mantém a lista de nomes, mas muda o digest e é recusado antes da leitura.
 
 ## Trava exponencial e auto-lock
 

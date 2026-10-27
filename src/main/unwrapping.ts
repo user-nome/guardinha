@@ -7,6 +7,7 @@ import {
   randomBytes,
 } from '@zero/main/crypto';
 import type { VaultKdfParams, WrappedMethod } from '@zero/main/container';
+import { methodKeyInfo } from '@zero/main/crypto-constants';
 import { currentMessages } from '@zero/main/i18n';
 import { isRecord } from '@zero/shared/record';
 import type { UnlockKind } from '@zero/types';
@@ -74,8 +75,9 @@ class Argon2KeyUnwrapper implements KeyUnwrapper {
   public async wrap(vaultKey: Buffer, credential: string): Promise<WrappedMethod> {
     const kdfSalt = randomBytes(16);
     const derived = await deriveKey(credential, kdfSalt, this.kdf);
+    const info = methodKeyInfo(this.kind);
     try {
-      const payload = encryptRecord({ key: vaultKey.toString('hex') }, derived);
+      const payload = encryptRecord({ key: vaultKey.toString('hex') }, derived, info, info);
       return { kdf: this.kdf, kdfSalt: kdfSalt.toString('hex'), payload };
     } finally {
       // falha na cifragem não pode deixar a chave derivada legível na memória
@@ -88,7 +90,8 @@ class Argon2KeyUnwrapper implements KeyUnwrapper {
   }
 
   public unwrap(method: WrappedMethod, derived: Buffer): Buffer {
-    return asVaultKey(decryptRecord(method.payload, derived));
+    const info = methodKeyInfo(this.kind);
+    return asVaultKey(decryptRecord(method.payload, derived, info, info));
   }
 }
 

@@ -5,16 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { authDir, entriesDir, vaultDir } from '@zero/main/layout';
-<<<<<<< HEAD
-import { TEMP_SUFFIX, ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
-=======
 import {
   TEMP_SUFFIX,
   ensureVaultStructure,
   tempPathFor,
   writeSecretFile,
 } from '@zero/main/structure';
->>>>>>> 16e8b01 (não vai mais para o github)
 
 /**
  * A escrita atômica do cofre mora em um lugar só. Ela foi copiada quatro vezes
@@ -123,8 +119,6 @@ describe('writeSecretFile', () => {
     const file = path.join(dir, 'sem-pasta', 'sub.zkv');
     expect(() => writeSecretFile(file, 'falha')).toThrow();
   });
-<<<<<<< HEAD
-=======
 
   it('o temporário tem nome imprevisível e o sufixo que a varredura procura', () => {
     // O nome fixo `${arquivo}.tmp` deixava um pendrive ou um diretório hostil
@@ -155,7 +149,6 @@ describe('writeSecretFile', () => {
     expect(fs.readFileSync(victim, 'utf8')).toBe('container original');
     expect(fs.readFileSync(file, 'utf8')).toBe('novo segredo');
   });
->>>>>>> 16e8b01 (não vai mais para o github)
 });
 
 /**

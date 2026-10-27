@@ -322,8 +322,15 @@ export function unpackEntryPayload(buffer: Buffer): SaltedPayload | null {
   };
 }
 
-/** Ids que o manifesto afirma existir: credenciais e tokens de 2FA. */
-export interface ManifestContent {
+/** Ids e hashes que o manifesto afirma existir: credenciais e tokens de 2FA. */
+export interface ManifestHashes {
+  /** SHA-256 dos bytes de cada `.zke`, por id da credencial. */
+  entries: Record<string, string>;
+  /** SHA-256 dos bytes de cada `.zka`, por id do token. */
+  auth: Record<string, string>;
+}
+
+export interface ManifestContent extends ManifestHashes {
   ids: string[];
   authIds: string[];
 }
@@ -338,26 +345,48 @@ function stringList(value: unknown): string[] | null {
   return result;
 }
 
-/** Sela os dois conjuntos de ids com a chave do cofre (AES-256-GCM + HKDF). */
-export function sealManifest(vaultKey: Buffer, ids: string[], authIds: string[]): SaltedPayload {
-  return encryptRecord({ v: MANIFEST_VERSION, ids, authIds }, vaultKey);
+/** Mapa id → SHA-256 hexadecimal; qualquer forma fora disso invalida o manifesto. */
+function hashMap(value: unknown): Record<string, string> | null {
+  if (!isRecord(value)) return null;
+  const result: Record<string, string> = {};
+  for (const [id, hash] of Object.entries(value)) {
+    if (id === '' || typeof hash !== 'string' || !/^[0-9a-f]{64}$/i.test(hash)) return null;
+    result[id] = hash;
+  }
+  return result;
 }
 
 /**
- * Abre o manifesto; qualquer forma inesperada lança (fail-closed).
- *
- * A v1 não tem `authIds` e significa lista vazia: ela foi gravada antes de o
- * app saber gerar 2FA, então não há `.auth` que o manifesto precise cobrir.
+ * Sela ids, hashes de conteúdo e a chave do cofre (AES-256-GCM + HKDF). O hash
+ * por arquivo é o que pega a troca de conteúdo entre dois nomes que já existem
+ * (P6): o conjunto de ids continua igual, mas o SHA-256 não bate.
  */
+export function sealManifest(
+  vaultKey: Buffer,
+  ids: string[],
+  authIds: string[],
+  hashes: ManifestHashes,
+): SaltedPayload {
+  return encryptRecord(
+    { v: MANIFEST_VERSION, ids, authIds, entries: hashes.entries, auth: hashes.auth },
+    vaultKey,
+  );
+}
+
+/** Abre o manifesto; qualquer forma inesperada lança (fail-closed). */
 export function openManifest(vaultKey: Buffer, payload: SaltedPayload): ManifestContent {
   const m = currentMessages();
   const decoded = decryptRecord(payload, vaultKey);
   if (!isRecord(decoded)) throw new Error(m.errors.invalidManifest);
   const value = decoded;
+  if (value.v !== MANIFEST_VERSION) throw new Error(m.errors.invalidManifest);
   const ids = stringList(value.ids);
   if (ids === null) throw new Error(m.errors.invalidManifest);
-  if (value.v !== MANIFEST_VERSION) throw new Error(m.errors.invalidManifest);
   const authIds = stringList(value.authIds);
   if (authIds === null) throw new Error(m.errors.invalidManifest);
-  return { ids, authIds };
+  const entries = hashMap(value.entries);
+  if (entries === null) throw new Error(m.errors.invalidManifest);
+  const auth = hashMap(value.auth);
+  if (auth === null) throw new Error(m.errors.invalidManifest);
+  return { ids, authIds, entries, auth };
 }

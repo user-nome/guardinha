@@ -46,6 +46,27 @@ describe('a chave sai da memória antes do disco', () => {
     expect(vaultSession().isUnlocked()).toBe(false);
   });
 
+  it('avisa no log quando o erase deixa arquivos para trás', async () => {
+    // uma falha de I/O não pode virar "destruído" na tela com a chave ainda no
+    // disco: o aviso é o único sinal de que o cofre pode abrir de novo
+    const vaultKey = randomBytes(32);
+    await seedVault({
+      vaultKey,
+      credentials: { master: MASTER },
+      entryIds: [ENTRY_ID],
+    });
+    vaultSession().adopt(vaultKey);
+    vi.spyOn(vaultStorage, 'erase').mockReturnValue({ shredded: 1, failed: 1 });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await panicDestroy();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('1 arquivo(s)'));
+    // a chave sai da RAM mesmo quando o disco não foi limpo por inteiro
+    expect(vaultKey.every((byte) => byte === 0)).toBe(true);
+    expect(vaultSession().keyOrNull()).toBeNull();
+  });
+
   it('zera a chave e apaga container, credenciais e tokens no caminho feliz', async () => {
     const vaultKey = randomBytes(32);
     await seedVault({

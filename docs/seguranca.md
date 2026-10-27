@@ -17,6 +17,9 @@ quem precisa mexer no código saber onde cada medida mora e o que ela protege.
 | AES-256-GCM por registro e HKDF-SHA512 por arquivo       | `src/main/crypto.ts`                                                        |
 | Fachada única de persistência (fs, cifra, manifesto)     | `src/main/facade.ts`                                                        |
 | Manifesto cifrado e falha fechada na adulteração         | `src/main/container.ts`, `src/main/storage.ts`                              |
+| Papel autenticado de cada método (HKDF e AAD por tipo)   | `src/main/crypto-constants.ts`, `src/main/unwrapping.ts`                    |
+| Restauração sobre cofre existente exige sessão aberta    | `src/main/backup/backup.ts`                                                 |
+| Operações do cofre serializadas (sem lost update)        | `src/main/vault.ts` (`exclusive`)                                           |
 | Credenciais validadas antes de gravar                    | `src/main/entries.ts`, `src/main/auth.ts`                                   |
 | Segredo de 2FA cifrado e fora do renderer                | `src/main/authenticator.ts`, `src/main/auth-store.ts`                       |
 | Algoritmo de 2FA conforme a RFC (serviço manda, não nós) | `src/main/totp.ts`, `src/shared/otpauth.ts`                                 |
@@ -52,7 +55,7 @@ Página do app → assertAppFrame → regra de domínio → fachada → arquivo 
 ```
 
 Nenhuma entrada do renderer passa direto para o disco: o id precisa ser UUID
-conhecido, o domínio aberto no navegador precisa começar por `http`/`https` e
+conhecido, o domínio aberto no navegador precisa começar por `https` e
 a chave do cofre é exigida pelas funções de domínio (`requireSessionKey`).
 `vault.ts`, `entries.ts` e `authenticator.ts` não tocam `fs` nem cifra: passam
 pela `VaultStorageFacade` (`src/main/facade.ts`). O desbloqueio passa pela cadeia
@@ -67,7 +70,7 @@ O acesso ao disco é concentrado, e a divisão é por domínio, não por arquivo
 | --------------------------- | -------------------------------------------------------- |
 | `src/main/layout.ts`        | Nada: só resolve caminhos, sem `fs` e sem Electron       |
 | `src/main/structure.ts`     | Pastas, permissões e a escrita atômica em 0600           |
-| `src/main/storage.ts`       | O `vault.zkv`; aceita somente o formato v5               |
+| `src/main/storage.ts`       | O `vault.zkv`; aceita somente o formato v6               |
 | `src/main/entries-store.ts` | Os arquivos `.zke` de cada credencial                    |
 | `src/main/auth-store.ts`    | Os arquivos `.zka` de cada token de 2FA                  |
 | `src/main/shred.ts`         | Sobrescrita e remoção; recebe sempre caminho já validado |
@@ -106,6 +109,11 @@ faz I/O, mas somente para as preferências não sensíveis em
   inteiro.** `restoreBackup` chama `clearDestroyedFlag()` apenas quando
   `unpackBackup` já conferiu magic, versão, digest global e cada SHA-256; liberar
   antes deixaria um pacote corrompido apagar o cofre bom.
+- **As operações do cofre são serializadas** (`exclusive`, em `vault.ts`):
+  desbloqueio, redefinição de PIN e mutações do container fazem read-modify-write
+  com Argon2id no meio, e duas em paralelo perdem uma tentativa contada ou uma
+  troca de PIN. Operação nova que grava o container entra na fila; os helpers
+  internos não entram, para não travar em deadlock.
 - **O `O_NOFOLLOW` do `shredFile`**: sem ele, um symlink no lugar do arquivo
   faria a sobrescrita happen no alvo, que é exatamente o oposto do que se quer.
 - **O PIN de pânico não conta tentativa**: se contasse, o aumento do contador

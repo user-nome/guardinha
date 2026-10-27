@@ -9,9 +9,9 @@ import { currentMessages } from '@zero/main/i18n';
 import { containerFile } from '@zero/main/layout';
 import { isVaultDestroyed } from '@zero/main/erasure-state';
 import { ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
-import { listAuthIds } from '@zero/main/auth-store';
-import { listEntryIds } from '@zero/main/entries-store';
-import type { ManifestContent, VaultContainerData } from '@zero/main/container';
+import { listAuthIds, hashAuth } from '@zero/main/auth-store';
+import { listEntryIds, hashEntry } from '@zero/main/entries-store';
+import type { ManifestContent, ManifestHashes, VaultContainerData } from '@zero/main/container';
 import type { PersistedAuthState } from '@zero/types';
 
 /**
@@ -109,11 +109,22 @@ export function writeAuthState(state: PersistedAuthState): void {
 
 // ---------- Manifesto de integridade (cifrado com a chave do cofre) ----------
 
+/** Hashes de conteúdo de todos os arquivos cobertos pelo manifesto. */
+function contentHashes(ids: string[], authIds: string[]): ManifestHashes {
+  const entries: Record<string, string> = {};
+  for (const id of ids) entries[id] = hashEntry(id);
+  const auth: Record<string, string> = {};
+  for (const id of authIds) auth[id] = hashAuth(id);
+  return { entries, auth };
+}
+
 /** Reescreve o manifesto a partir do diretório (após salvar/remover). */
 export function updateManifest(vaultKey: Buffer): void {
   const data = readVaultContainer();
   if (data === null) return;
-  data.manifest = sealManifest(vaultKey, listEntryIds(), listAuthIds());
+  const ids = listEntryIds();
+  const authIds = listAuthIds();
+  data.manifest = sealManifest(vaultKey, ids, authIds, contentHashes(ids, authIds));
   writeVaultContainer(data);
 }
 
@@ -142,11 +153,26 @@ export function verifyManifest(vaultKey: Buffer): void {
     throw tampered();
   }
 
+  const entryIds = listEntryIds();
+  const authIds = listAuthIds();
   const sameSet = (claimed: string[], actual: string[]): boolean => {
     const set = new Set(actual);
     return claimed.length === set.size && claimed.every((id) => set.has(id));
   };
-  if (!sameSet(expected.ids, listEntryIds()) || !sameSet(expected.authIds, listAuthIds())) {
+  if (!sameSet(expected.ids, entryIds) || !sameSet(expected.authIds, authIds)) {
+    throw tampered();
+  }
+  // o conjunto de nomes igual não prova conteúdo: trocar `.zke` de A por B
+  // mantém a lista e só o SHA-256 gravado no manifesto denuncia (P6)
+  try {
+    for (const id of entryIds) {
+      if (expected.entries[id] !== hashEntry(id)) throw tampered();
+    }
+    for (const id of authIds) {
+      if (expected.auth[id] !== hashAuth(id)) throw tampered();
+    }
+  } catch {
+    // arquivo sumiu entre a listagem e a leitura, ou hash diferente: adulteração
     throw tampered();
   }
 }

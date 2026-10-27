@@ -2,6 +2,7 @@
 import nodeCrypto from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { KDF_CREDENTIAL, KDF_PIN, decryptRecord, encryptRecord } from '@zero/main/crypto';
+import { methodKeyInfo } from '@zero/main/crypto-constants';
 import { isKdfUpToDate, keyUnwrapperFor } from '@zero/main/unwrapping';
 import type { CredentialKind } from '@zero/main/unwrapping';
 import type { WrappedMethod } from '@zero/main/container';
@@ -81,10 +82,11 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
 
   it('recusa chave desembrulhada com tamanho diferente de 32 bytes', () => {
     const derived = Buffer.alloc(32, 7);
+    const info = methodKeyInfo('master');
     const method: WrappedMethod = {
       kdf: keyUnwrapperFor('master').kdf,
       kdfSalt: '00'.repeat(16),
-      payload: encryptRecord({ key: 'curta' }, derived),
+      payload: encryptRecord({ key: 'curta' }, derived, info, info),
     };
 
     expect(() => keyUnwrapperFor('master').unwrap(method, derived)).toThrow(
@@ -96,10 +98,11 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
     // O container é dado de fora: um `key` que não é string precisa cair na
     // guarda, e não chegar ao `Buffer.from` como qualquer outro tipo.
     const derived = Buffer.alloc(32, 7);
+    const info = methodKeyInfo('master');
     const method: WrappedMethod = {
       kdf: keyUnwrapperFor('master').kdf,
       kdfSalt: '00'.repeat(16),
-      payload: encryptRecord({ key: Array.from({ length: 64 }, () => 0) }, derived),
+      payload: encryptRecord({ key: Array.from({ length: 64 }, () => 0) }, derived, info, info),
     };
 
     expect(() => keyUnwrapperFor('master').unwrap(method, derived)).toThrow(
@@ -111,7 +114,8 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
     const method = await keyUnwrapperFor('pin').wrap(VAULT_KEY, PIN);
     const derived = await keyUnwrapperFor('pin').derive(method, PIN);
     // o payload guarda a chave em hex cifrado; sem o derived certo ele não abre
-    expect(() => decryptRecord(method.payload, Buffer.alloc(32, 1))).toThrow();
+    const info = methodKeyInfo('pin');
+    expect(() => decryptRecord(method.payload, Buffer.alloc(32, 1), info, info)).toThrow();
     derived.fill(0);
   });
 });

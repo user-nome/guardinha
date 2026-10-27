@@ -8,8 +8,9 @@ import {
   type VaultMethods,
   type WrappedMethod,
 } from '@zero/main/container';
-import { writeAuthPayload } from '@zero/main/auth-store';
-import { writeEntryPayload } from '@zero/main/entries-store';
+import { writeAuthPayload, hashAuth } from '@zero/main/auth-store';
+import { writeEntryPayload, hashEntry } from '@zero/main/entries-store';
+import { methodKeyInfo } from '@zero/main/crypto-constants';
 import { clearDestroyedFlag } from '@zero/main/erasure-state';
 import { containerFile, vaultDir } from '@zero/main/layout';
 import { vaultSession } from '@zero/main/session';
@@ -35,14 +36,19 @@ export type WrappedKind = (typeof KINDS)[number];
  * deve depender do código que ele vai atacar (se o embrulhador real regredir, o
  * teste ainda monta um container válido e falha na asserção certa).
  */
-export async function wrapCheap(vaultKey: Buffer, credential: string): Promise<WrappedMethod> {
+export async function wrapCheap(
+  vaultKey: Buffer,
+  credential: string,
+  kind: WrappedKind,
+): Promise<WrappedMethod> {
   const kdfSalt = randomBytes(16);
   const derived = await deriveKey(credential, kdfSalt, CHEAP_KDF);
+  const info = methodKeyInfo(kind);
   try {
     return {
       kdf: { algo: 'argon2id', ...CHEAP_KDF },
       kdfSalt: kdfSalt.toString('hex'),
-      payload: encryptRecord({ key: vaultKey.toString('hex') }, derived),
+      payload: encryptRecord({ key: vaultKey.toString('hex') }, derived, info, info),
     };
   } finally {
     derived.fill(0);
@@ -79,7 +85,8 @@ export async function seedVault(options: SeedOptions): Promise<VaultContainerDat
   const methods: VaultMethods = {};
   for (const kind of KINDS) {
     const credential = options.credentials?.[kind];
-    if (credential !== undefined) methods[kind] = await wrapCheap(options.vaultKey, credential);
+    if (credential !== undefined)
+      methods[kind] = await wrapCheap(options.vaultKey, credential, kind);
   }
 
   const entryIds = options.entryIds ?? [];
@@ -97,6 +104,11 @@ export async function seedVault(options: SeedOptions): Promise<VaultContainerDat
     );
   }
 
+  const hashes = {
+    entries: Object.fromEntries(entryIds.map((id) => [id, hashEntry(id)])),
+    auth: Object.fromEntries(authIds.map((id) => [id, hashAuth(id)])),
+  };
+
   const data: VaultContainerData = {
     createdAt: Date.now(),
     attempts: options.attempts ?? 0,
@@ -104,7 +116,8 @@ export async function seedVault(options: SeedOptions): Promise<VaultContainerDat
     attemptsMaster: options.attemptsMaster ?? 0,
     nukeLimit: options.nukeLimit ?? 0,
     methods,
-    manifest: options.manifest === false ? null : sealManifest(options.vaultKey, entryIds, authIds),
+    manifest:
+      options.manifest === false ? null : sealManifest(options.vaultKey, entryIds, authIds, hashes),
   };
   writeVaultContainer(data);
 

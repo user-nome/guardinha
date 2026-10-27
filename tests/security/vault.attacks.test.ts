@@ -128,9 +128,9 @@ describe('desbloqueio: quem entra e quem fica de fora', () => {
   }, 120_000);
 
   it('copiar o blob do PIN para o slot de pânico não transforma o PIN em gatilho', async () => {
-    // P9: o container não autentica o papel de cada método. Sem a conferência
-    // de blob idêntico, copiar `methods.pin` para `methods.panic` faria o login
-    // normal destruir o cofre em vez de abri-lo.
+    // P9: cada método tem `info` de HKDF e AAD próprios. O blob do PIN no slot
+    // de pânico continua sendo um blob de PIN: o caminho de coação falha ao
+    // decifrar e o login normal segue pelo slot original.
     const vaultKey = randomBytes(32);
     const container = await seedVault({
       vaultKey,
@@ -147,6 +147,32 @@ describe('desbloqueio: quem entra e quem fica de fora', () => {
 
     expect(result.ok).toBe(true);
     expect(vaultSession().isUnlocked()).toBe(true);
+    expect(vaultSession().isDecoy()).toBe(false);
+    expect(fs.existsSync(containerFile())).toBe(true);
+    vaultKey.fill(0);
+  }, 120_000);
+
+  it('copiar o blob do pânico para o slot do PIN não transforma a coação em login', async () => {
+    // P9 pelo outro lado: sem a identidade do método, o blob do pânico no slot
+    // do PIN abriria o cofre de verdade com o PIN de coação, e quem está sob
+    // coação veria o cofre real em vez do vazio.
+    const vaultKey = randomBytes(32);
+    const container = await seedVault({
+      vaultKey,
+      credentials: { pin: PIN, panic: PANIC_PIN },
+      entryIds: [ENTRY_ID],
+    });
+    const panicMethod = container.methods.panic;
+    if (panicMethod === undefined) throw new Error('o fixture não gravou o método panic');
+    container.methods.pin = panicMethod;
+    delete container.methods.panic;
+    vaultStorage.writeContainer(container);
+    vaultSession().wipe();
+
+    const result = await unlock({ credential: PANIC_PIN, kind: 'pin' });
+
+    expect(result.ok).toBe(false);
+    expect(vaultSession().isUnlocked()).toBe(false);
     expect(vaultSession().isDecoy()).toBe(false);
     expect(fs.existsSync(containerFile())).toBe(true);
     vaultKey.fill(0);
@@ -307,10 +333,10 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
     vaultKey.fill(0);
   });
 
-  it('copiar o arquivo de A sobre o de B não faz B exibir A', async () => {
-    // P6: o manifesto prende o conjunto de nomes, não o conteúdo. Copiar
-    // `.zke` de A sobre B mantém a lista de ids, então a conferência de
-    // manifesto passa; o id decifrado é que denuncia a troca.
+  it('copiar o arquivo de A sobre o de B é detectado pelo hash do manifesto', async () => {
+    // P6: o manifesto prende o conjunto de nomes e o SHA-256 de cada arquivo.
+    // Copiar `.zke` de A sobre B mantém a lista de ids, então a conferência de
+    // conjunto passaria; o hash gravado é que denuncia a troca antes da leitura.
     const vaultKey = randomBytes(32);
     const idA = '55555555-5555-4555-8555-555555555555';
     const idB = '66666666-6666-4666-8666-666666666666';
@@ -334,9 +360,27 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
 
     fs.copyFileSync(`${entriesDir()}/${idA}.zke`, `${entriesDir()}/${idB}.zke`);
 
-    expect(() => verifyManifest(vaultKey)).not.toThrow();
-    expect(vaultStorage.readRecord(idA, vaultKey).title).toBe('A');
+    expect(() => verifyManifest(vaultKey)).toThrow();
+    // e o caminho de leitura continua barrando o conteúdo trocado
     expect(() => vaultStorage.readRecord(idB, vaultKey)).toThrow();
+    vaultKey.fill(0);
+  });
+
+  it('copiar o arquivo de 2FA de A sobre o de B é detectado pelo hash do manifesto', async () => {
+    // P6 pelo lado dos tokens: a troca mantém a lista de ids, então só o
+    // SHA-256 gravado no manifesto separa o token legítimo do conteúdo alheio.
+    const vaultKey = randomBytes(32);
+    const idA = '77777777-7777-4777-8777-777777777777';
+    const idB = '88888888-8888-4888-8888-888888888888';
+    await seedVault({
+      vaultKey,
+      credentials: { master: MASTER },
+      authIds: [idA, idB],
+    });
+
+    fs.copyFileSync(`${authDir()}/${idA}.zka`, `${authDir()}/${idB}.zka`);
+
+    expect(() => verifyManifest(vaultKey)).toThrow();
     vaultKey.fill(0);
   });
 
@@ -482,4 +526,47 @@ describe('contadores de falha', () => {
     expect(readVaultContainer()?.attempts).toBe(3);
     vaultKey.fill(0);
   });
+
+  it('duas tentativas concorrentes não rodam a derivação ao mesmo tempo', async () => {
+    // H3: sem a fila, as duas chamadas leem o mesmo container e uma gravação
+    // descarta a outra. A prova mais direta é a derivação sobreposta: a fila
+    // corta antes de gastar o Argon2id, então o pico de derivações é 1.
+    const vaultKey = randomBytes(32);
+    await seedVault({ vaultKey, credentials: { pin: PIN } });
+    vaultSession().wipe();
+    resetAttempts();
+
+    const alvo = keyUnwrapperFor('pin');
+    const original = alvo.derive.bind(alvo);
+    let ativos = 0;
+    let pico = 0;
+    const spy = vi.spyOn(alvo, 'derive').mockImplementation(async (method, credential) => {
+      ativos += 1;
+      pico = Math.max(pico, ativos);
+      try {
+        return await original(method, credential);
+      } finally {
+        ativos -= 1;
+      }
+    });
+
+    try {
+      const [primeira, segunda] = await Promise.all([
+        unlock({ credential: '00000000', kind: 'pin' }),
+        unlock({ credential: '00000001', kind: 'pin' }),
+      ]);
+      expect(primeira.ok).toBe(false);
+      expect(segunda.ok).toBe(false);
+    } finally {
+      spy.mockRestore();
+      vaultKey.fill(0);
+    }
+
+    expect(pico).toBe(1);
+    // a primeira falha conta e arma a trava; a segunda, agora serializada, já
+    // entra na espera em vez de gastar uma tentativa a mais
+    const state = readVaultContainer();
+    expect(state?.attempts).toBe(1);
+    expect(state?.lockUntil).not.toBeNull();
+  }, 120_000);
 });

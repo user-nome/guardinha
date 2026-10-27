@@ -4,6 +4,28 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
+## [Não lançado]
+
+### Alterado
+
+- **Container na versão 6 e manifesto na versão 3.** Cada método de desbloqueio
+  passou a ter `info` de HKDF e AAD do AES-256-GCM próprios
+  (`guardinha-method-<tipo>-v1`), então copiar o blob de um método para o slot
+  de outro não decifra. O manifesto agora guarda o SHA-256 dos bytes de cada
+  `.zke` e `.zka`, além dos ids, e a listagem recusa conteúdo trocado entre
+  arquivos existentes. Não há migração: cofres das versões anteriores são
+  recusados como formato incompatível, como já era a regra do projeto.
+- **Restauração por cima de cofre existente exige sessão aberta.** O pacote
+  `.gbk` continua sem assinatura, mas um cofre já bloqueado não é mais
+  substituído por um arquivo forjado. Numa máquina sem cofre, a restauração
+  segue livre.
+- **Operações do cofre serializadas.** `createVault`, `unlock`, `resetPin`,
+  `setPanicPin`, `clearPanicPin`, `setNukeLimit` e `panicDestroy` passam por uma
+  fila de promessas, para que duas chamadas concorrentes não percam uma
+  tentativa contada nem uma troca de PIN.
+- **Domínio para abrir no navegador só aceita `https://`.** `http://` passou a
+  ser recusado também na validação de formato, e não só na hora de abrir.
+
 ## [2.0.1] - 2026-10-22
 
 ### Alterado

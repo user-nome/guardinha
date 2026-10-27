@@ -91,7 +91,7 @@ export function validateUsernameFormat(username: string): boolean {
 
 export function validateDomainFormat(domain: string): boolean {
   if (domain === '') return true;
-  return /^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(domain) || /^https?:\/\//i.test(domain);
+  return /^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(domain) || /^https:\/\//i.test(domain);
 }
 
 /**
