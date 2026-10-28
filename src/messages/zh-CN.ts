@@ -209,6 +209,11 @@ export const zhCN: Messages = {
     secretLabel: '设置密钥（Base32）',
     secretPlaceholder: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP',
     secretHint: '密钥会被规范化：转为大写，去掉空格和连字符。',
+    weakSecretWarning: (bits: number): string =>
+      `此密钥为 ${bits} 位。OWASP 建议至少 128 位（Base32 26 个字符），` +
+      '理想为 160 位（32 个字符）。令牌仍可使用，但建议选择更长的密钥。',
+    belowRecommendedSecretWarning: (bits: number): string =>
+      `此密钥为 ${bits} 位，达到 OWASP 最低要求。建议使用 160 位（Base32 32 个字符）。`,
     issuerLabel: '服务',
     issuerPlaceholder: '我的服务',
     accountLabel: '账号',
@@ -338,7 +343,7 @@ export const zhCN: Messages = {
     invalidAuthTokenUri:
       '`otpauth://` 地址无效。请确认已完整粘贴（从 `otpauth://totp/` 开始），' +
       '并且签发方与标签一致。',
-    invalidAuthSecret: '设置密钥必须是有效的 Base32（A-Z 和 2-7），且至少包含 128 位（16 字节）。',
+    invalidAuthSecret: '设置密钥必须是有效的 Base32（A-Z 和 2-7），且至少包含 80 位（10 字节）。',
     authTokenNotFound: '未找到该 2FA 令牌。',
     // ---- 金库整体备份 ----
     backupInvalid: '备份文件无效。',

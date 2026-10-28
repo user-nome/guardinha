@@ -1,49 +1,55 @@
 import { base32Decode, isBase32, normalizeBase32 } from '@zero/shared/base32';
+import {
+  OTP_ALGORITHMS,
+  OTP_DEFAULT_ALGORITHM,
+  OTP_DEFAULT_DIGITS,
+  OTP_DEFAULT_PERIOD,
+  OTP_DIGIT_CHOICES,
+  OTP_PERIOD_RANGE,
+  OTP_SECRET_MIN_BYTES,
+} from '@zero/shared/otp-constants';
+import type { OtpAlgorithm } from '@zero/shared/otp-constants';
 
 /**
- * Provisionamento de token OTP pelo formato `otpauth://` (o que o Google
- * Authenticator publica na wiki *Key Uri Format* e que hoje está em rascunho
- * no IETF). É regra pura: o renderer valida o que o usuário cola e o main usa
- * a mesma função, então os dois lados concordam sobre o que é um token válido.
+ * Provisionamento de token OTP pelo formato `otpauth://` (o *Key Uri Format*,
+ * que hoje está em rascunho no IETF). É regra pura: o renderer valida o que o
+ * usuário cola e o main usa a mesma função, então os dois lados concordam
+ * sobre o que é um token válido.
  *
  * O formato é `otpauth://totp/<rótulo>?secret=<Base32>&issuer=…&algorithm=…&digits=…&period=…`.
  */
 
-export type OtpAlgorithm = 'SHA1' | 'SHA256' | 'SHA512';
-
-/** Parâmetros que o app sabe gerar. O algoritmo vem do serviço, nunca de nós. */
-export const OTP_ALGORITHMS: readonly OtpAlgorithm[] = ['SHA1', 'SHA256', 'SHA512'];
+// As constantes moram em `otp-constants.ts`; a reexportação mantém o contrato
+// antigo de quem já importava tudo por `@zero/shared/otpauth`.
+export {
+  OTP_ALGORITHMS,
+  OTP_DEFAULT_ALGORITHM,
+  OTP_DEFAULT_DIGITS,
+  OTP_DEFAULT_PERIOD,
+  OTP_DIGIT_CHOICES,
+  OTP_PERIOD_RANGE,
+  OTP_SECRET_MIN_BYTES,
+};
+export type { OtpAlgorithm };
 
 export function isOtpAlgorithm(value: unknown): value is OtpAlgorithm {
   return OTP_ALGORITHMS.some((algorithm) => algorithm === value);
 }
 
 /**
- * O padrão de GitHub, Discord, Google, AWS, Coinbase e de quase todo serviço é
- * SHA1 com 6 dígitos a cada 30 s. Os outros dois existem porque alguns serviços
- * (Azure AD, parte do OAuth) pedem SHA256 ou SHA512.
- */
-export const OTP_DEFAULT_ALGORITHM: OtpAlgorithm = 'SHA1';
-export const OTP_DEFAULT_DIGITS = 6;
-export const OTP_DEFAULT_PERIOD = 30;
-/**
- * Piso do segredo em bytes: 128 bits, o mínimo obrigatório da RFC 4226.
+ * Bits que o segredo Base32 carrega. `null` quando o texto não é Base32.
  *
- * A RFC 4226 exige pelo menos 128 bits e recomenda 160. O app adota o piso
- * obrigatório: 16 bytes, que 26 caracteres Base32 carregam. O efeito colateral
- * é recusar serviços que ainda emitem segredo de 16 caracteres (80 bits), uma
- * escolha explícita de segurança em vez de compatibilidade.
+ * O piso aceito é 80 bits; a OWASP recomenda 128 bits como mínimo e 160 como
+ * ideal. A tela usa o número para avisar sem bloquear o cadastro, porque o
+ * tamanho da chave é escolhido pelo serviço, não pelo usuário.
  */
-export const OTP_SECRET_MIN_BYTES = 16;
-
-/** O draft do IETF só admite 6 ou 8; nada de serviço real usa fora disso. */
-export const OTP_DIGIT_CHOICES: readonly number[] = [6, 8];
-
-/**
- * Teto do período. Não é segurança, é sanidade: o `period` multiplica direto a
- * janela de espera na tela e um valor absurdo vira um token que parece travado.
- */
-export const OTP_PERIOD_RANGE = [15, 300] as const;
+export function otpSecretBits(secret: string): number | null {
+  const bytes = base32Decode(secret);
+  if (bytes === null) return null;
+  const bits = bytes.length * 8;
+  bytes.fill(0);
+  return bits;
+}
 
 export interface OtpUri {
   issuer: string;

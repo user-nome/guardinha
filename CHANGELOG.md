@@ -4,6 +4,36 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
+## [2.3.0] - 2026-10-27
+
+### Adicionado
+
+- **Migração automática do cofre v5 para a v6.** A 2.2.1 passou a gravar o
+  container na v6 e o manifesto na v3, mas recusava os cofres anteriores. Agora
+  a v5 é lida e migrada no desbloqueio: o método usado é reembrulhado com a
+  identidade própria (`guardinha-method-<tipo>-v1`), o manifesto é re-selado com
+  os hashes de conteúdo e o container sobe para a v6. Cada um dos outros
+  métodos migra no desbloqueio da própria credencial, porque reembrulhar exige
+  a credencial em mãos; um cofre meio migrado abre normalmente.
+- **Snapshot de downgrade antes da primeira migração.** `vault.zkv.v<versão>.bak`
+  é gravado em `0600` e nunca sobrescrito. Se a versão nova tiver um defeito,
+  restaurar esse arquivo por cima do `vault.zkv` devolve o cofre ao app antigo.
+  O Cryptographic Erase apaga o snapshot junto com o resto.
+- **A migração não derruba o desbloqueio.** Manifesto que não confere com o
+  diretório ou falha de escrita adiam a migração e deixam o container antigo
+  intacto. No desbloqueio, se o snapshot não puder ser criado, a migração é
+  abortada; na redefinição de PIN, o novo PIN é gravado mesmo assim e a falha
+  fica no log.
+
+### Corrigido
+
+- **Segredo de 2FA de 80 bits voltou a ser aceito.** Serviços que emitem chave
+  de 16 caracteres Base32 (80 bits) voltaram a ser aceitos; o piso de 128 bits
+  introduzido na 2.0.1 recusava essas chaves com a mensagem de que precisam de
+  pelo menos 128 bits. O piso volta a 80 bits, como na 1.7.1 a 1.9.1, e a tela
+  passa a avisar quando a chave fica abaixo do mínimo da OWASP (128 bits) e do
+  recomendado (160 bits), sem bloquear o cadastro.
+
 ## [2.2.1]
 
 ### Alterado

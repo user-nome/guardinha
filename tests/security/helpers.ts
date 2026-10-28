@@ -110,6 +110,7 @@ export async function seedVault(options: SeedOptions): Promise<VaultContainerDat
   };
 
   const data: VaultContainerData = {
+    version: 6,
     createdAt: Date.now(),
     attempts: options.attempts ?? 0,
     lockUntil: options.lockUntil ?? null,

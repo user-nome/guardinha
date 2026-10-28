@@ -12,6 +12,10 @@ import {
   OTP_DEFAULT_PERIOD,
   OTP_DIGIT_CHOICES,
   OTP_PERIOD_RANGE,
+  OTP_SECRET_MIN_BYTES,
+  OTP_SECRET_OWASP_MIN_BYTES,
+  OTP_SECRET_OWASP_RECOMMENDED_BYTES,
+  otpSecretBits,
   parseOtpAuthUri,
 } from '@zero/shared';
 import type { OtpAlgorithm } from '@zero/shared';
@@ -117,6 +121,23 @@ export function AuthTokenModal({
 
   /** Prévia do que o endereço colado resolve, antes de salvar. */
   const preview = tab === 'uri' ? parseOtpAuthUri(uri) : null;
+
+  /**
+   * Aviso de chave curta: o piso aceito é 80 bits, que é o tamanho que parte
+   * dos serviços ainda emite, mas a OWASP recomenda 128 bits como mínimo e 160
+   * como ideal. O aviso não bloqueia o salvamento: o tamanho da chave é
+   * escolhido pelo serviço, não pelo usuário.
+   */
+  const secretForAssessment = tab === 'uri' ? (preview?.secret ?? '') : secret;
+  const secretBits = secretForAssessment === '' ? null : otpSecretBits(secretForAssessment);
+  let secretWarning: string | null = null;
+  if (secretBits !== null && secretBits >= OTP_SECRET_MIN_BYTES * 8) {
+    if (secretBits < OTP_SECRET_OWASP_MIN_BYTES * 8) {
+      secretWarning = m.authenticator.weakSecretWarning(secretBits);
+    } else if (secretBits < OTP_SECRET_OWASP_RECOMMENDED_BYTES * 8) {
+      secretWarning = m.authenticator.belowRecommendedSecretWarning(secretBits);
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 flex items-start justify-center overflow-y-auto z-50 p-4 sm:p-6">
@@ -252,6 +273,12 @@ export function AuthTokenModal({
             </div>
             <p className="text-xs text-slate-500">{richText(m.authenticator.algorithmHint)}</p>
           </div>
+        )}
+
+        {secretWarning !== null && (
+          <p role="status" className="text-xs text-amber-400">
+            {secretWarning}
+          </p>
         )}
 
         {error !== null && <p className="text-xs text-rose-400">{error}</p>}

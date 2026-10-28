@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as base32 from '@zero/shared/base32';
-import { buildOtpAuthUri, isOtpAlgorithm, parseOtpAuthUri } from '@zero/shared/otpauth';
+import {
+  buildOtpAuthUri,
+  isOtpAlgorithm,
+  otpSecretBits,
+  parseOtpAuthUri,
+} from '@zero/shared/otpauth';
 
 /**
  * O formato `otpauth://` é o que os serviços entregam quando o usuário escolhe
@@ -19,6 +24,38 @@ describe('isOtpAlgorithm', () => {
     expect(isOtpAlgorithm('SHA512')).toBe(true);
     expect(isOtpAlgorithm('sha1')).toBe(false);
     expect(isOtpAlgorithm(null)).toBe(false);
+  });
+});
+
+describe('otpSecretBits', () => {
+  it('mede o segredo em bits', () => {
+    expect(otpSecretBits('JBSWY3DPEHPK3PXP')).toBe(80);
+    expect(otpSecretBits('A'.repeat(26))).toBe(128);
+    expect(otpSecretBits('A'.repeat(32))).toBe(160);
+  });
+
+  it('devolve null para o que não é Base32', () => {
+    expect(otpSecretBits('')).toBeNull();
+    expect(otpSecretBits('1')).toBeNull();
+  });
+
+  it('zera o buffer decodificado antes de devolver o tamanho', () => {
+    const vistas: Uint8Array[] = [];
+    const original = base32.base32Decode.bind(base32);
+    vi.spyOn(base32, 'base32Decode').mockImplementation((value: string) => {
+      const bytes = original(value);
+      if (bytes !== null) vistas.push(bytes);
+      return bytes;
+    });
+
+    try {
+      expect(otpSecretBits('JBSWY3DPEHPK3PXP')).toBe(80);
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(vistas).toHaveLength(1);
+    for (const buffer of vistas) expect(buffer.every((byte) => byte === 0)).toBe(true);
   });
 });
 
@@ -149,17 +186,26 @@ describe('parseOtpAuthUri', () => {
     expect(parseOtpAuthUri('otpauth://totp/Site:eu')).toBeNull();
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=')).toBeNull();
     // `1` não existe no alfabeto Base32: o Google usa `1` em nenhum segredo.
-    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${'A'.repeat(25)}1`)).toBeNull();
-    // 25 caracteres carregam 15 bytes, um a menos que o piso de 16.
+    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${'A'.repeat(15)}1`)).toBeNull();
+    // 15 caracteres carregam 9 bytes, um a menos que o piso de 10.
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=JBSWY3DPEHPK3PX')).toBeNull();
     expect(parseOtpAuthUri('otpauth://totp/Site:eu?secret=AA')).toBeNull();
-    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${'A'.repeat(25)}`)).toBeNull();
+    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${'A'.repeat(15)}`)).toBeNull();
   });
 
-  it('aceita o limite mínimo exato de 128 bits (16 bytes)', () => {
-    // 26 caracteres Base32 carregam 128 bits, o mínimo obrigatório da RFC 4226.
-    const secret = 'A'.repeat(26);
-    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${secret}`)?.secret).toBe(secret);
+  it('aceita a chave de 80 bits e os pisos da OWASP', () => {
+    // 16 caracteres Base32 carregam 80 bits; 26 carregam 128 bits (mínimo da
+    // OWASP) e 32 carregam 160 bits (o recomendado).
+    const curta = 'JBSWY3DPEHPK3PXP';
+    const owaspMin = 'A'.repeat(26);
+    const recommended = 'A'.repeat(32);
+    expect(
+      parseOtpAuthUri(`otpauth://totp/Servico:eu?secret=${curta}&issuer=Servico`)?.secret,
+    ).toBe(curta);
+    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${owaspMin}`)?.secret).toBe(owaspMin);
+    expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${recommended}`)?.secret).toBe(
+      recommended,
+    );
     expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${STRONG_SECRET}`)?.secret).toBe(
       STRONG_SECRET,
     );

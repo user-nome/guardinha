@@ -151,16 +151,16 @@ describe('tokens de 2FA', () => {
     }
   });
 
-  it('recusa segredo fora do alfabeto base32 ou menor que 128 bits', () => {
+  it('recusa segredo fora do alfabeto base32 ou menor que 80 bits', () => {
     // `1` não está no alfabeto Base32, então nem entra no cálculo do tamanho.
-    expect(() => saveToken(draft({ secret: `${'A'.repeat(25)}1` }))).toThrow(
+    expect(() => saveToken(draft({ secret: `${'A'.repeat(15)}1` }))).toThrow(
       currentMessages().errors.invalidAuthSecret,
     );
-    // 25 caracteres carregam 15 bytes: um a menos que o piso de 16.
+    // 15 caracteres carregam 9 bytes: um a menos que o piso de 10.
     expect(() => saveToken(draft({ secret: 'JBSWY3DPEHPK3PX' }))).toThrow(
       currentMessages().errors.invalidAuthSecret,
     );
-    expect(() => saveToken(draft({ secret: 'A'.repeat(25) }))).toThrow(
+    expect(() => saveToken(draft({ secret: 'A'.repeat(15) }))).toThrow(
       currentMessages().errors.invalidAuthSecret,
     );
     expect(() => saveToken(draft({ secret: 'AA' }))).toThrow(
@@ -171,9 +171,15 @@ describe('tokens de 2FA', () => {
     );
   });
 
-  it('aceita o piso de 16 bytes (26 caracteres Base32)', () => {
+  it('aceita a chave de 16 caracteres (80 bits)', () => {
+    const [token] = saveToken(draft({ secret: 'JBSWY3DPEHPK3PXP' }));
+    expect(token).toBeDefined();
+    if (token !== undefined) removeToken(token.id);
+  });
+
+  it('aceita o piso de 10 bytes (16 caracteres Base32)', () => {
     const minimum = base32Encode(randomBytes(OTP_SECRET_MIN_BYTES));
-    expect(minimum).toHaveLength(26);
+    expect(minimum).toHaveLength(16);
     const [token] = saveToken(draft({ secret: minimum }));
     expect(token).toBeDefined();
     if (token !== undefined) removeToken(token.id);

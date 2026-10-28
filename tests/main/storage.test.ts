@@ -42,6 +42,7 @@ const KDF = { algo: 'argon2id', memoryKiB: 65536, iterations: 3, parallelism: 4 
 
 function container(): VaultContainerData {
   return {
+    version: 6,
     createdAt: 1_770_000_000_000,
     attempts: 1,
     lockUntil: null,

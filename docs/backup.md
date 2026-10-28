@@ -46,8 +46,10 @@ absoluto entram. O SHA-256 do fim cobre **tudo** o que vem antes dele, manifesto
 incluído: um byte trocado em qualquer ponto derruba a leitura antes de o disco
 ser tocado.
 
-O container tem uma versão só (a `1`), como o resto do projeto: não há migração
-de formato de backup. Uma versão desconhecida é recusada com `backupUnsupportedVersion`.
+O pacote tem uma versão só (a `1`) e não há migração do próprio formato de
+backup: uma versão desconhecida é recusada com `backupUnsupportedVersion`. O
+container do cofre dentro dele pode estar em qualquer versão que o app leia, e
+a migração acontece no primeiro desbloqueio depois da restauração.
 
 ## Exportação
 
@@ -89,6 +91,12 @@ Validado o pacote:
 
 Depois disso o main empurra `vault:auto-locked` para o renderer e o cofre novo só
 abre com as credenciais do backup.
+
+Um `.gbk` gravado por uma versão anterior pode trazer um container v5. A
+restauração copia os bytes como estão (ela não tem a chave para migrar), e o
+primeiro desbloqueio faz a migração para a v6 descrita em `docs/cofre.md`. O
+`vault.zkv.v5.bak` do snapshot de downgrade não entra no pacote: ele é um
+arquivo de segurança da instalação, não parte do cofre.
 
 ## Como restaurar depois de formatar
 

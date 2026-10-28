@@ -13,6 +13,11 @@ import { secureClipboard } from '@zero/main/clipboard';
 import { clearDestroyedFlag } from '@zero/main/erasure-state';
 import { decoyKey, isKdfUpToDate, keyUnwrapperFor } from '@zero/main/unwrapping';
 import { runUnlockChain } from '@zero/main/unlock';
+import {
+  migrateAndPersist,
+  migrateContainerBestEffort,
+  persistMigration,
+} from '@zero/main/migration';
 import type { UnlockContext } from '@zero/main/unlock';
 import {
   errorMessage,
@@ -25,6 +30,7 @@ import {
 import { MIN_NUKE_LIMIT } from '@zero/shared/auth-constants';
 import { currentMessages } from '@zero/main/i18n';
 import { sealManifest } from '@zero/main/container';
+import { VAULT_VERSION } from '@zero/main/container-format';
 import type { VaultContainerData, WrappedMethod } from '@zero/main/container';
 import type {
   CreateVaultInput,
@@ -32,7 +38,6 @@ import type {
   PanicStatus,
   ResetPinInput,
   UnlockInput,
-  UnlockKind,
   VaultResult,
   VaultStatus,
 } from '@zero/types';
@@ -130,29 +135,6 @@ function fail(error: string): VaultResult {
   return { ok: false, error, status: getStatus() };
 }
 
-/**
- * Sobe o custo do Argon2id quando o método gravado está mais fraco que o
- * perfil atual. Só quem detém a credencial consegue reembrulhar, então cada
- * método sobe no próprio desbloqueio. Best-effort: sem permissão de escrita
- * agora, a subida espera a próxima desbloqueada sem derrubar o desbloqueio.
- */
-async function upgradeMethod(
-  container: VaultContainerData,
-  kind: UnlockKind,
-  credential: string,
-  vaultKey: Buffer,
-): Promise<void> {
-  const unwrapper = keyUnwrapperFor(kind);
-  const current = container.methods[kind];
-  if (current === undefined || isKdfUpToDate(kind, current)) return;
-  try {
-    container.methods[kind] = await unwrapper.wrap(vaultKey, credential);
-    vaultStorage.writeContainer(container);
-  } catch {
-    // escrita indisponível (ex.: sem sudo em /var/lib); tenta na próxima vez
-  }
-}
-
 /** Cria o cofre com frase de recuperação escrita pelo próprio usuário. */
 export function createVault(input: CreateVaultInput): Promise<VaultResult> {
   return exclusive(() => createVaultNow(input));
@@ -218,6 +200,7 @@ async function createVaultNow(input: CreateVaultInput): Promise<VaultResult> {
   };
 
   const container: VaultContainerData = {
+    version: VAULT_VERSION,
     createdAt: Date.now(),
     attempts: 0,
     lockUntil: null,
@@ -372,7 +355,13 @@ async function unlockNow(input: UnlockInput): Promise<VaultResult> {
      interno em vez de seguir com `undefined`. */
   if (vaultKey === undefined) return fail(m.errors.internal);
 
-  await upgradeMethod(container, input.kind, input.credential, vaultKey);
+  // o método usado e o manifesto migram agora; os outros métodos esperam o
+  // desbloqueio de cada credencial, que é quando ela fica disponível
+  await migrateAndPersist(container, vaultKey, {
+    kind: input.kind,
+    credential: input.credential,
+    legacyMethod: context.legacyMethod === true,
+  });
 
   // a chave nova assume a sessão (zerando a anterior) no Singleton. O manifesto
   // já foi selado na criação; re-selar aqui aceitaria exclusões feitas por fora.
@@ -517,7 +506,7 @@ async function resetPinNow(input: ResetPinInput): Promise<VaultResult> {
     // a chave de trabalho sai da RAM mesmo se o desembrulho falhar, então o
     // zero fica no `finally` e não no corpo feliz
     try {
-      const vaultKey = recovery.unwrap(method, derived);
+      const { vaultKey, legacy } = recovery.unwrapDetailed(method, derived);
       // o novo PIN não pode ser o PIN de coação: `tryPanicUnlock` roda antes da
       // cadeia normal, então o próximo login destruiria o cofre em vez de
       // abri-lo. A checagem fica **depois** da frase, para que uma frase errada
@@ -527,11 +516,22 @@ async function resetPinNow(input: ResetPinInput): Promise<VaultResult> {
         return fail(m.errors.panicPinSame);
       }
       container.methods.pin = await keyUnwrapperFor('pin').wrap(vaultKey, input.newPin);
-      // a frase está na mão: aproveita para subir o custo do método de recuperação
-      if (!isKdfUpToDate('recovery', method)) {
+      // a frase está na mão: sobe o custo do método e o reembrulha se ele ainda
+      // estiver no formato antigo
+      if (legacy || !isKdfUpToDate('recovery', method)) {
         container.methods.recovery = await recovery.wrap(vaultKey, phrase);
       }
-      vaultStorage.writeContainer(container);
+      // a redefinição também é um desbloqueio: aproveita para migrar o resto
+      // (versão, manifesto e o método de recuperação já reembrulhado acima)
+      const migrated = await migrateContainerBestEffort(container, vaultKey, {
+        kind: 'recovery',
+        credential: phrase,
+        legacyMethod: legacy,
+        methodAlreadyWrapped: true,
+      });
+      // o PIN novo já está embrulhado: grava mesmo se o snapshot de downgrade
+      // não puder ser criado (a falha fica no log, não vira "frase errada")
+      persistMigration(container, migrated, false);
 
       // a chave nova assume a sessão (zerando a anterior) no Singleton; o
       // manifesto já estava selado e não é re-selado por um desbloqueio
