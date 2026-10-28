@@ -10,8 +10,6 @@ em português do Brasil.
 
 - Removendo um pouco de comentarios do codigo e atualizando 2 dependencias.
 
-
-
 ## [2.3.0] - 2026-10-27
 
 ### Adicionado
