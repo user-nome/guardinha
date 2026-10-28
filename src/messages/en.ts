@@ -210,6 +210,12 @@ export const en: Messages = {
     secretLabel: 'Setup key (Base32)',
     secretPlaceholder: 'JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP',
     secretHint: 'The key is normalized: uppercase, no spaces and no dashes.',
+    weakSecretWarning: (bits: number): string =>
+      `This key has ${bits} bits. OWASP recommends at least 128 bits (26 Base32 characters) ` +
+      'and 160 bits (32 characters) as ideal. The token works, but prefer a longer key.',
+    belowRecommendedSecretWarning: (bits: number): string =>
+      `This key has ${bits} bits, the OWASP minimum. ` +
+      '160 bits (32 Base32 characters) is recommended.',
     issuerLabel: 'Service',
     issuerPlaceholder: 'My Service',
     accountLabel: 'Account',
@@ -353,7 +359,7 @@ export const en: Messages = {
       'Invalid `otpauth://` address. Check that you pasted the whole address, ' +
       'starting with `otpauth://totp/`, and that the issuer matches the label.',
     invalidAuthSecret:
-      'The setup key must be valid Base32 (A-Z and 2-7) and contain at least 128 bits (16 bytes).',
+      'The setup key must be valid Base32 (A-Z and 2-7) and contain at least 80 bits (10 bytes).',
     authTokenNotFound: '2FA token not found.',
     // ---- full vault backup ----
     backupInvalid: 'Invalid backup file.',

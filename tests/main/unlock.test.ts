@@ -18,6 +18,7 @@ const PHRASE = 'Na feira de hoje o cavalo branco comeu exatamente doze cenouras 
 async function makeContainer(): Promise<VaultContainerData> {
   const key = Buffer.alloc(32, 5);
   return {
+    version: 6,
     createdAt: Date.now(),
     attempts: 0,
     lockUntil: null,

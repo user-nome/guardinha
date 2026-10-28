@@ -142,8 +142,9 @@ autenticação. O formato mora em `docs/backup.md`.
 - `ResetPinInput`: `{ phrase, newPin }` (frase de recuperação + novo PIN)
 - `Credential` / `CredentialInput`: registro da credencial (senha cifrada por arquivo)
 - `AuthToken`: `{ id, issuer, account, algorithm, digits, period, createdAt, updatedAt }` (sem o segredo)
-- `AuthTokenDraft`: o mesmo mais `secret` em Base32 com pelo menos 128 bits
-  (16 bytes), só na entrada do `save`
+- `AuthTokenDraft`: o mesmo mais `secret` em Base32 com pelo menos 80 bits
+  (10 bytes), só na entrada do `save`; a tela avisa abaixo de 128 bits (mínimo
+  da OWASP) e de 160 bits (recomendado)
 - `AuthCode`: `{ id, code, remainingMs }`
 - `GeneratorOptions`: `{ length, useLower, useUpper, useNumbers, useSymbols, customEntropyWords }`
 - `AppSettings`: `{ language }`

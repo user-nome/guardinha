@@ -5,13 +5,19 @@ import {
   sealManifest,
   unpackVaultContainer,
 } from '@zero/main/container';
+import {
+  LEGACY_MANIFEST_VERSION,
+  MANIFEST_VERSION,
+  VAULT_VERSION,
+} from '@zero/main/container-format';
 import { currentMessages } from '@zero/main/i18n';
-import { containerFile } from '@zero/main/layout';
+import { containerBackupFile, containerFile } from '@zero/main/layout';
 import { isVaultDestroyed } from '@zero/main/erasure-state';
 import { ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
 import { listAuthIds, hashAuth } from '@zero/main/auth-store';
 import { listEntryIds, hashEntry } from '@zero/main/entries-store';
 import type { ManifestContent, ManifestHashes, VaultContainerData } from '@zero/main/container';
+import type { SaltedPayload } from '@zero/types/crypto';
 import type { PersistedAuthState } from '@zero/types';
 
 /**
@@ -79,6 +85,29 @@ export function writeVaultContainer(data: VaultContainerData): void {
   writeSecretFile(containerFile(), packVaultContainer(data));
 }
 
+/**
+ * Guarda uma cópia do container **antes** da primeira migração daquela versão.
+ *
+ * O snapshot é o caminho de downgrade: se a versão nova tiver um defeito, o
+ * usuário restaura `vault.zkv.v<versão>.bak` por cima do `vault.zkv` e volta a
+ * abrir o cofre com o app antigo. O arquivo é 0600 e entra na varredura do
+ * Cryptographic Erase como qualquer outro arquivo de `.vault/`.
+ *
+ * Nunca sobrescreve um snapshot existente: o primeiro (a versão mais antiga)
+ * é o que preserva o caminho de volta. Falha de escrita é propagada para que
+ * a migração seja abortada antes de o container original ser substituído.
+ */
+export function backupContainer(version: number): void {
+  const target = containerBackupFile(version);
+  if (fs.existsSync(target)) return;
+  const raw = fs.readFileSync(containerFile());
+  const unpacked = unpackVaultContainer(raw);
+  // o arquivo mudou entre a leitura do container e a cópia: melhor abortar a
+  // migração do que guardar um snapshot que não corresponde à versão lida
+  if (!unpacked.ok || unpacked.data.version !== version) throw tampered();
+  writeSecretFile(target, raw);
+}
+
 // ---------- Estado da trava exponencial (dentro do container) ----------
 
 export function readAuthState(): PersistedAuthState {
@@ -118,13 +147,32 @@ function contentHashes(ids: string[], authIds: string[]): ManifestHashes {
   return { entries, auth };
 }
 
+/** Versão do manifesto que acompanha a versão do container. */
+function manifestVersionFor(containerVersion: number): number {
+  return containerVersion === VAULT_VERSION ? MANIFEST_VERSION : LEGACY_MANIFEST_VERSION;
+}
+
+/**
+ * Sela o estado atual do diretório na versão pedida. A v2 (container v5) não
+ * carrega hashes, então nem lê os arquivos: uma credencial removida no meio
+ * da operação não pode derrubar o selo de um cofre que ainda não migrou.
+ */
+export function manifestFromDirectory(
+  vaultKey: Buffer,
+  version: number = MANIFEST_VERSION,
+): SaltedPayload {
+  const ids = listEntryIds();
+  const authIds = listAuthIds();
+  const hashes =
+    version === MANIFEST_VERSION ? contentHashes(ids, authIds) : { entries: {}, auth: {} };
+  return sealManifest(vaultKey, ids, authIds, hashes, version);
+}
+
 /** Reescreve o manifesto a partir do diretório (após salvar/remover). */
 export function updateManifest(vaultKey: Buffer): void {
   const data = readVaultContainer();
   if (data === null) return;
-  const ids = listEntryIds();
-  const authIds = listAuthIds();
-  data.manifest = sealManifest(vaultKey, ids, authIds, contentHashes(ids, authIds));
+  data.manifest = manifestFromDirectory(vaultKey, manifestVersionFor(data.version));
   writeVaultContainer(data);
 }
 
@@ -141,9 +189,7 @@ export function updateManifest(vaultKey: Buffer): void {
  * plantar o seu próprio passaria despercebido: o segredo TOTP trocado em
  * silêncio é exatamente o ataque que o manifesto existe para fechar.
  */
-export function verifyManifest(vaultKey: Buffer): void {
-  const data = readVaultContainer();
-  if (data === null) throw new Error(currentMessages().errors.vaultMissing);
+export function verifyManifestData(data: VaultContainerData, vaultKey: Buffer): ManifestContent {
   if (data.manifest === null) throw tampered();
 
   let expected: ManifestContent;
@@ -162,6 +208,9 @@ export function verifyManifest(vaultKey: Buffer): void {
   if (!sameSet(expected.ids, entryIds) || !sameSet(expected.authIds, authIds)) {
     throw tampered();
   }
+  // a v2 não tem hashes: o conjunto de ids é toda a garantia que ela oferece.
+  // A migração re-sela na v3 assim que a chave está na mão.
+  if (expected.version < MANIFEST_VERSION) return expected;
   // o conjunto de nomes igual não prova conteúdo: trocar `.zke` de A por B
   // mantém a lista e só o SHA-256 gravado no manifesto denuncia (P6)
   try {
@@ -175,4 +224,11 @@ export function verifyManifest(vaultKey: Buffer): void {
     // arquivo sumiu entre a listagem e a leitura, ou hash diferente: adulteração
     throw tampered();
   }
+  return expected;
+}
+
+export function verifyManifest(vaultKey: Buffer): void {
+  const data = readVaultContainer();
+  if (data === null) throw new Error(currentMessages().errors.vaultMissing);
+  verifyManifestData(data, vaultKey);
 }

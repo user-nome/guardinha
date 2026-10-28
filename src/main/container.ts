@@ -5,8 +5,9 @@ import type { Argon2Params, SaltedPayload } from '@zero/types/crypto';
 import {
   VAULT_MAGIC,
   ENTRY_MAGIC,
-  VAULT_VERSION,
+  READABLE_VAULT_VERSIONS,
   MANIFEST_VERSION,
+  LEGACY_MANIFEST_VERSION,
   MAGIC_BYTES,
   UINT32_BYTES,
   METHOD_KDF_BYTES,
@@ -80,6 +81,13 @@ export interface VaultMethods {
 }
 
 export interface VaultContainerData {
+  /**
+   * Versão lida do arquivo. `packVaultContainer` grava exatamente esta versão,
+   * e não a atual: uma gravação incidental (trava exponencial, troca de PIN)
+   * não pode promover o container sem a migração dos métodos e do manifesto,
+   * que é o que mantém o caminho de downgrade aberto.
+   */
+  version: number;
   createdAt: number;
   attempts: number;
   lockUntil: number | null;
@@ -185,6 +193,9 @@ function readMethodBlob(buffer: Buffer, offset: number, kdf: VaultKdfParams): Me
 }
 
 export function packVaultContainer(data: VaultContainerData): Buffer {
+  if (!READABLE_VAULT_VERSIONS.includes(data.version)) {
+    throw new Error(currentMessages().errors.vaultUnsupportedVersion(data.version));
+  }
   const methods: [number, WrappedMethod | undefined][] = [
     [FLAG_MASTER, data.methods.master],
     [FLAG_PIN, data.methods.pin],
@@ -207,7 +218,7 @@ export function packVaultContainer(data: VaultContainerData): Buffer {
 
   const buffer = Buffer.alloc(size);
   VAULT_MAGIC.copy(buffer, 0);
-  buffer.writeUInt32BE(VAULT_VERSION, VERSION_OFFSET);
+  buffer.writeUInt32BE(data.version, VERSION_OFFSET);
   buffer.writeBigUInt64BE(BigInt(data.createdAt), CREATED_AT_OFFSET);
   buffer.writeUInt32BE(data.attempts, ATTEMPTS_OFFSET);
   buffer.writeBigInt64BE(BigInt(data.lockUntil ?? 0), LOCK_UNTIL_OFFSET);
@@ -245,7 +256,9 @@ export function unpackVaultContainer(buffer: Buffer): VaultUnpackResult {
   // versão diferente é arquivo de outra época (ou de futuro): fail-closed, mas
   // com o número à mão para a tela explicar o que aconteceu
   const version = buffer.readUInt32BE(VERSION_OFFSET);
-  if (version !== VAULT_VERSION) return { ok: false, reason: 'unsupported-version', version };
+  if (!READABLE_VAULT_VERSIONS.includes(version)) {
+    return { ok: false, reason: 'unsupported-version', version };
+  }
   const flags = buffer.readUInt8(FLAGS_OFFSET);
   // flag desconhecida = arquivo adulterado (ou de versão futura): fail-closed
   if ((flags & ~FLAGS_ALL) !== 0) return { ok: false, reason: 'damaged' };
@@ -286,6 +299,7 @@ export function unpackVaultContainer(buffer: Buffer): VaultUnpackResult {
   return {
     ok: true,
     data: {
+      version,
       createdAt: Number(buffer.readBigUInt64BE(CREATED_AT_OFFSET)),
       attempts: buffer.readUInt32BE(ATTEMPTS_OFFSET),
       lockUntil: lockUntilRaw === 0n ? null : Number(lockUntilRaw),
@@ -331,6 +345,8 @@ export interface ManifestHashes {
 }
 
 export interface ManifestContent extends ManifestHashes {
+  /** Versão lida do manifesto: `3` (hashes) ou `2` (só ids, da v5). */
+  version: number;
   ids: string[];
   authIds: string[];
 }
@@ -366,27 +382,46 @@ export function sealManifest(
   ids: string[],
   authIds: string[],
   hashes: ManifestHashes,
+  version: number = MANIFEST_VERSION,
 ): SaltedPayload {
+  if (version === LEGACY_MANIFEST_VERSION) {
+    // a v2 não conhece os hashes: gravá-los aqui só criaria um campo que o
+    // leitor antigo ignora e que ninguém confere
+    return encryptRecord({ v: version, ids, authIds }, vaultKey);
+  }
+  if (version !== MANIFEST_VERSION) {
+    throw new Error(currentMessages().errors.invalidManifest);
+  }
   return encryptRecord(
-    { v: MANIFEST_VERSION, ids, authIds, entries: hashes.entries, auth: hashes.auth },
+    { v: version, ids, authIds, entries: hashes.entries, auth: hashes.auth },
     vaultKey,
   );
 }
 
-/** Abre o manifesto; qualquer forma inesperada lança (fail-closed). */
+/**
+ * Abre o manifesto; qualquer forma inesperada lança (fail-closed). A v2 é a
+ * única versão antiga aceita: ela não tem hashes, então a conferência de
+ * conteúdo fica para depois da migração, que a re-sela na v3.
+ */
 export function openManifest(vaultKey: Buffer, payload: SaltedPayload): ManifestContent {
   const m = currentMessages();
   const decoded = decryptRecord(payload, vaultKey);
   if (!isRecord(decoded)) throw new Error(m.errors.invalidManifest);
   const value = decoded;
-  if (value.v !== MANIFEST_VERSION) throw new Error(m.errors.invalidManifest);
+  const version = value.v;
+  if (version !== MANIFEST_VERSION && version !== LEGACY_MANIFEST_VERSION) {
+    throw new Error(m.errors.invalidManifest);
+  }
   const ids = stringList(value.ids);
   if (ids === null) throw new Error(m.errors.invalidManifest);
   const authIds = stringList(value.authIds);
   if (authIds === null) throw new Error(m.errors.invalidManifest);
+  if (version === LEGACY_MANIFEST_VERSION) {
+    return { version, ids, authIds, entries: {}, auth: {} };
+  }
   const entries = hashMap(value.entries);
   if (entries === null) throw new Error(m.errors.invalidManifest);
   const auth = hashMap(value.auth);
   if (auth === null) throw new Error(m.errors.invalidManifest);
-  return { ids, authIds, entries, auth };
+  return { version, ids, authIds, entries, auth };
 }

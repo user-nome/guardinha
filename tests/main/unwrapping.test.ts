@@ -110,6 +110,21 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
     );
   });
 
+  it('recusa chave corrompida também no embrulho legado', () => {
+    // o fallback da v5 não pode transformar um registro corrompido em
+    // "credencial errada": o erro de forma continua sendo o erro de forma
+    const derived = Buffer.alloc(32, 7);
+    const method: WrappedMethod = {
+      kdf: keyUnwrapperFor('master').kdf,
+      kdfSalt: '00'.repeat(16),
+      payload: encryptRecord({ key: 'curta' }, derived),
+    };
+
+    expect(() => keyUnwrapperFor('master').unwrap(method, derived)).toThrow(
+      'Registro do cofre corrompido.',
+    );
+  });
+
   it('o payload do embrulho só abre com a chave de trabalho certa', async () => {
     const method = await keyUnwrapperFor('pin').wrap(VAULT_KEY, PIN);
     const derived = await keyUnwrapperFor('pin').derive(method, PIN);

@@ -7,6 +7,8 @@ import {
   OTP_DEFAULT_PERIOD,
   OTP_DIGIT_CHOICES,
   OTP_SECRET_MIN_BYTES,
+  OTP_SECRET_OWASP_MIN_BYTES,
+  OTP_SECRET_OWASP_RECOMMENDED_BYTES,
   OTP_PERIOD_RANGE,
 } from '@zero/shared/otp-constants';
 import type { OtpAlgorithm } from '@zero/shared/otp-constants';
@@ -42,8 +44,16 @@ describe('otp-constants', () => {
     expect(OTP_DIGIT_CHOICES).toEqual([6, 8]);
   });
 
-  it('OTP_SECRET_MIN_BYTES é 16 (128 bits)', () => {
-    expect(OTP_SECRET_MIN_BYTES).toBe(16);
+  it('OTP_SECRET_MIN_BYTES é 10 (80 bits), o que os serviços emitem', () => {
+    expect(OTP_SECRET_MIN_BYTES).toBe(10);
+  });
+
+  it('OTP_SECRET_OWASP_MIN_BYTES é 16 (128 bits)', () => {
+    expect(OTP_SECRET_OWASP_MIN_BYTES).toBe(16);
+  });
+
+  it('OTP_SECRET_OWASP_RECOMMENDED_BYTES é 20 (160 bits)', () => {
+    expect(OTP_SECRET_OWASP_RECOMMENDED_BYTES).toBe(20);
   });
 
   it('OTP_PERIOD_RANGE é [15, 300]', () => {

@@ -22,6 +22,7 @@ const EMPTY_STATE = { attempts: 0, lockUntil: null, attemptsMaster: 0, nukeLimit
  */
 function seedContainer(): void {
   writeVaultContainer({
+    version: 6,
     createdAt: BASE,
     attempts: 0,
     lockUntil: null,

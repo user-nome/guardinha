@@ -43,3 +43,12 @@ export function authDir(): string {
 export function containerFile(): string {
   return path.join(vaultDir(), 'vault.zkv');
 }
+
+/**
+ * Snapshot do container na versão anterior à migração, guardado para o
+ * downgrade. O nome carrega a versão para que uma migração futura não
+ * sobrescreva o caminho de volta da mais antiga.
+ */
+export function containerBackupFile(version: number): string {
+  return path.join(vaultDir(), `vault.zkv.v${version}.bak`);
+}

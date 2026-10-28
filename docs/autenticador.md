@@ -1,8 +1,7 @@
 # Verificador de 2FA (TOTP)
 
 Tela **Verificador 2FA** da barra lateral: os códigos de uso único que os
-serviços pedem depois da senha (GitHub, Discord, Google, AWS, Coinbase, bancos,
-marketplaces).
+serviços pedem depois da senha (bancos, marketplaces e outros).
 
 ## O padrão: RFC 6238
 
@@ -14,9 +13,9 @@ O app implementa **TOTP** (RFC 6238), que é o que todo serviço quer dizer com
 ### Por que SHA-1, se ele está quebrado
 
 SHA-1 está quebrado **para colisão**, não para HMAC. E, mais importante: **o
-algoritmo é escolhido pelo serviço, não pelo aplicativo**. GitHub, Discord,
-Google, AWS e a maioria verificam HMAC-SHA1 com 6 dígitos a cada 30 s. Um
-código "mais forte" que o servidor rejeita vale exatamente zero.
+algoritmo é escolhido pelo serviço, não pelo aplicativo**. A maioria dos
+serviços verifica HMAC-SHA1 com 6 dígitos a cada 30 s. Um código "mais forte"
+que o servidor rejeita vale exatamente zero.
 
 Por isso o campo `algorithm` existe e o app sabe gerar SHA1, SHA256 e SHA512
 (RFC 6238 §1.2), mas o padrão é SHA1 e ninguém deve "melhorar" o token para
@@ -28,17 +27,18 @@ serviço recusa.
 
 ### Formatos suportados
 
-| Parâmetro   | Valores                        | Observação                    |
-| ----------- | ------------------------------ | ----------------------------- |
-| `algorithm` | `SHA1`, `SHA256`, `SHA512`     | padrão `SHA1`                 |
-| `digits`    | `6`, `8`                       | padrão `6`                    |
-| `period`    | 15 a 300 s                     | padrão `30`                   |
-| `secret`    | Base32 (RFC 4648), sem padding | mínimo de 128 bits (16 bytes) |
+| Parâmetro   | Valores                        | Observação                          |
+| ----------- | ------------------------------ | ----------------------------------- |
+| `algorithm` | `SHA1`, `SHA256`, `SHA512`     | padrão `SHA1`                       |
+| `digits`    | `6`, `8`                       | padrão `6`                          |
+| `period`    | 15 a 300 s                     | padrão `30`                         |
+| `secret`    | Base32 (RFC 4648), sem padding | mínimo aceito de 80 bits (10 bytes) |
 
-O cadastro recusa segredos com menos de 128 bits, isto é, menos de 16 bytes
-(26 caracteres Base32). A RFC 4226 exige pelo menos 128 bits e recomenda 160;
-o app adota o piso obrigatório, uma escolha explícita que recusa serviços que
-ainda emitem segredo de 16 caracteres (80 bits). A validação ocorre no parser
+O cadastro aceita segredos a partir de 80 bits, isto é, 10 bytes (16 caracteres
+Base32). A OWASP recomenda 128 bits (16 bytes, 26 caracteres Base32) como mínimo
+e 160 bits (20 bytes, 32 caracteres) como ideal; a tela mostra um aviso quando a
+chave fica abaixo desses valores, sem bloquear o cadastro, porque o tamanho é
+escolhido pelo serviço, não pelo usuário. A validação ocorre no parser
 compartilhado e novamente no processo principal; usar SHA-1, SHA-256 ou SHA-512
 continua sendo uma escolha do serviço, não uma forma de compensar uma chave
 curta.
@@ -100,8 +100,9 @@ por token, no mesmo formato dos `.zke` das credenciais:
   `guardinha-vault-auth-v1`, **diferente** do `guardinha-vault-entry-v1` das
   credenciais, para que os dois nunca derivem a mesma chave nem por acidente;
 - escrita atômica (`.tmp` + `rename`), arquivo em `0600`, pasta em `0700`.
-- cadastro exige pelo menos 128 bits de segredo, independente do algoritmo
-  HMAC selecionado.
+- cadastro aceita a partir de 80 bits e avisa abaixo de 128 bits (mínimo da
+  OWASP) e de 160 bits (recomendado), independente do algoritmo HMAC
+  selecionado.
 
 A pasta fica **dentro** de `.vault` e não como irmã por um motivo concreto: a
 raiz `/var/lib/.guardinha/` é do sistema (`root:root 0711`, criada no
@@ -114,11 +115,14 @@ O manifesto cifrado do cofre está na versão 3 e lista as duas coisas: `ids`
 (credenciais) e `authIds` (tokens), com o SHA-256 dos bytes de cada arquivo em
 `entries` e `auth`.
 
-O código atual exige `v: 3`, com `ids`, `authIds` e os dois mapas de hash; não há
-compatibilidade com manifestos v1 nem v2. Além disso, o container aceita somente
-a versão 6. Um arquivo de container antigo é recusado como formato incompatível
-antes de o manifesto ser aberto. O campo `v` fica dentro do blob AES-256-GCM e
-não altera o cabeçalho do container.
+O código atual grava `v: 3`, com `ids`, `authIds` e os dois mapas de hash. A
+única leitura antiga é a v2, que acompanha o container v5 e só tem `ids` e
+`authIds`: ela serve à migração, que re-sela o manifesto na v3 assim que a chave
+está na mão. Não há compatibilidade com manifestos v1. O container aceita as
+versões 5 e 6: a 5 é lida para migrar e a 6 é a única que o app grava. Uma versão
+fora dessas duas é recusada como formato incompatível antes de o manifesto ser
+aberto. O campo `v` fica dentro do blob AES-256-GCM e não altera o cabeçalho do
+container.
 
 O motivo de cobrir os tokens: sem isso, apagar um `.zka` ou plantar o seu
 próprio passaria despercebido. O segredo TOTP trocado em silêncio é exatamente
