@@ -15,11 +15,24 @@ export const VAULT_MAGIC = Buffer.from('ZKVAULT1', 'ascii');
 /** Magic do payload individual de credencial: `ZENTRY01`. */
 export const ENTRY_MAGIC = Buffer.from('ZENTRY01', 'ascii');
 
-/** Versão atual do container, a única que este app lê e grava. */
+/** Versão atual do container, a única que este app grava. */
 export const VAULT_VERSION = 6;
+
+/**
+ * Versões antigas que este app ainda lê **para migrar**. A v5 tem o mesmo
+ * layout binário da v6; o que muda é o embrulho de cada método (sem papel
+ * autenticado) e o manifesto (v2, sem hashes de conteúdo).
+ */
+export const LEGACY_VAULT_VERSIONS = [5] as const;
+
+/** Toda versão que `unpackVaultContainer` aceita: a atual e as migráveis. */
+export const READABLE_VAULT_VERSIONS: readonly number[] = [VAULT_VERSION, ...LEGACY_VAULT_VERSIONS];
 
 /** Versão do manifesto cifrado dentro do container. */
 export const MANIFEST_VERSION = 3;
+
+/** Versão do manifesto da v5: só os ids, sem os hashes de conteúdo. */
+export const LEGACY_MANIFEST_VERSION = 2;
 
 /** Largura de cada campo primitivo do cabeçalho. */
 export const MAGIC_BYTES = 8;

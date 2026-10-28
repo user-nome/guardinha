@@ -14,11 +14,14 @@ import {
 } from '@zero/main/entries-store';
 import { deleteAuth, listAuthIds, readAuthPayload, writeAuthPayload } from '@zero/main/auth-store';
 import {
+  backupContainer,
+  manifestFromDirectory,
   readAuthState,
   readVaultContainer,
   updateManifest,
   vaultExists,
   verifyManifest,
+  verifyManifestData,
   writeAuthState,
   writeVaultContainer,
 } from '@zero/main/storage';
@@ -29,7 +32,8 @@ import { currentMessages } from '@zero/main/i18n';
 import { isOtpAlgorithm } from '@zero/shared';
 import type { OtpAlgorithm } from '@zero/shared';
 import { isRecord } from '@zero/shared/record';
-import type { VaultContainerData } from '@zero/main/container';
+import type { ManifestContent, VaultContainerData } from '@zero/main/container';
+import type { SaltedPayload } from '@zero/types/crypto';
 import type { Credential, EraseResult, PersistedAuthState, TempCleanupResult } from '@zero/types';
 
 function tampered(): Error {
@@ -159,6 +163,11 @@ export class VaultStorageFacade {
     writeVaultContainer(data);
   }
 
+  /** Snapshot 0600 do container antigo, para o downgrade após uma migração. */
+  public backupContainer(version: number): void {
+    backupContainer(version);
+  }
+
   // ---------- Trava exponencial (campos do container) ----------
 
   /**
@@ -183,9 +192,19 @@ export class VaultStorageFacade {
     updateManifest(vaultKey);
   }
 
+  /** Sela o diretório atual na versão de manifesto pedida. */
+  public manifestFromDirectory(vaultKey: Buffer, version: number): SaltedPayload {
+    return manifestFromDirectory(vaultKey, version);
+  }
+
   /** Confere manifesto × diretório; adulteração derruba a operação inteira. */
   public verifyManifest(vaultKey: Buffer): void {
     verifyManifest(vaultKey);
+  }
+
+  /** Mesma conferência, sobre um container já lido (usada pela migração). */
+  public verifyManifestData(data: VaultContainerData, vaultKey: Buffer): ManifestContent {
+    return verifyManifestData(data, vaultKey);
   }
 
   // ---------- Credenciais (arquivos `.zke`) ----------

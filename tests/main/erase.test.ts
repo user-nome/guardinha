@@ -49,6 +49,7 @@ function seedVault(entryIds: string[]): void {
   ensureVaultStructure();
   const cheap = { algo: 'argon2id', memoryKiB: 16_384, iterations: 1, parallelism: 1 } as const;
   const container: VaultContainerData = {
+    version: 6,
     createdAt: 1_767_268_800_000,
     attempts: 0,
     lockUntil: null,

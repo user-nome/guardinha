@@ -70,7 +70,8 @@ O acesso ao disco é concentrado, e a divisão é por domínio, não por arquivo
 | --------------------------- | -------------------------------------------------------- |
 | `src/main/layout.ts`        | Nada: só resolve caminhos, sem `fs` e sem Electron       |
 | `src/main/structure.ts`     | Pastas, permissões e a escrita atômica em 0600           |
-| `src/main/storage.ts`       | O `vault.zkv`; aceita somente o formato v6               |
+| `src/main/storage.ts`       | O `vault.zkv`; lê a v5 para migrar e grava a v6          |
+| `src/main/migration.ts`     | Orquestra a migração v5 → v6 e o snapshot de downgrade   |
 | `src/main/entries-store.ts` | Os arquivos `.zke` de cada credencial                    |
 | `src/main/auth-store.ts`    | Os arquivos `.zka` de cada token de 2FA                  |
 | `src/main/shred.ts`         | Sobrescrita e remoção; recebe sempre caminho já validado |

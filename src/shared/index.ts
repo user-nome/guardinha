@@ -20,8 +20,13 @@ export {
   OTP_DIGIT_CHOICES,
   OTP_PERIOD_RANGE,
   OTP_SECRET_MIN_BYTES,
+  otpSecretBits,
   parseOtpAuthUri,
 } from '@zero/shared/otpauth';
+export {
+  OTP_SECRET_OWASP_MIN_BYTES,
+  OTP_SECRET_OWASP_RECOMMENDED_BYTES,
+} from '@zero/shared/otp-constants';
 export type { OtpAlgorithm, OtpUri } from '@zero/shared/otpauth';
 export {
   evaluateMaster,

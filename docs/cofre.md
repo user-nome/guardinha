@@ -35,7 +35,7 @@ raiz do projeto por meio de `GUARDINHA_VAULT_DIR`.
 Arquivo binário com magic `ZKVAULT1`, escrito e lido apenas em
 `src/main/container.ts`. Toda leitura é fail-closed: forma inválida,
 truncamento, parâmetro fora da faixa, flag desconhecida ou byte a mais no fim
-são recusados como adulteração; uma versão diferente de 6 recebe um erro
+são recusados como adulteração; uma versão fora de `5` e `6` recebe um erro
 específico de formato incompatível. Nunca é devolvido conteúdo em claro.
 
 Cabeçalho de **41 bytes**, versão 6 (valores em big endian):
@@ -51,25 +51,25 @@ Cabeçalho de **41 bytes**, versão 6 (valores em big endian):
 | 33     | 4       | `attemptsMaster` (só senha mestra)         |
 | 37     | 4       | `nukeLimit` (0 = desligado)                |
 
-O cabeçalho é único e fixo: **não há caminho de leitura para versão anterior**.
-A v4 tinha no meio um tripo de KDF global que era só informativo desde a v3 (cada
-método já carrega o custo do seu Argon2id, e o PIN precisa ser mais caro que a
-senha mestra, então um campo só não representava os dois); a v5 o removeu e
-ficou com 41 bytes. A v6 não mudou o cabeçalho: passou a dar identidade
-autenticada a cada método e a prender o conteúdo de cada arquivo no
-manifesto. Qualquer versão diferente de `6` é recusada como formato
-incompatível (fail-closed), em vez de ser classificada como arquivo adulterado.
-O app ainda não tinha usuários ao remover a compatibilidade com os formatos
-anteriores.
+O cabeçalho é único e fixo. A v4 tinha no meio um tripo de KDF global que era só
+informativo desde a v3 (cada método já carrega o custo do seu Argon2id, e o PIN
+precisa ser mais caro que a senha mestra, então um campo só não representava os
+dois); a v5 o removeu e ficou com 41 bytes. A v6 não mudou o cabeçalho: passou a
+dar identidade autenticada a cada método e a prender o conteúdo de cada arquivo
+no manifesto. A v5 e a v6 compartilham o mesmo layout, então a leitura da v5 é o
+que alimenta a migração descrita abaixo. Qualquer versão fora de `5` e `6` é
+recusada como formato incompatível (fail-closed), em vez de ser classificada
+como arquivo adulterado.
 
 Depois do cabeçalho vêm os blocos indicados pelas flags, nesta ordem: chave
 embrulhada da senha mestra, do PIN, da frase de recuperação, do **PIN de
 coação** e o manifesto. Cada bloco traz
-`salt(16) + iv(16) + tag(16) + tamanho(4) + texto cifrado`. No container v6,
+`salt(16) + iv(16) + tag(16) + tamanho(4) + texto cifrado`. Nas versões 5 e 6,
 cada método também traz os próprios 12 bytes de parâmetros Argon2id e um salt
-de KDF de 16 bytes antes do bloco cifrado. O embrulho de cada método usa
+de KDF de 16 bytes antes do bloco cifrado. Na v6 o embrulho de cada método usa
 `info` de HKDF e AAD do AES-256-GCM próprios (`guardinha-method-<tipo>-v1`),
-então um blob copiado para o slot de outro método não decifra.
+então um blob copiado para o slot de outro método não decifra; na v5 os dois
+eram o rótulo padrão, sem AAD.
 
 ## Custo do Argon2id por método
 
@@ -90,8 +90,9 @@ memória ou CPU ilimitadas, não como garantia mínima de segurança.
 Um método gravado com um perfil mais barato é reembrulhado com o perfil atual
 **no desbloqueio em que a própria credencial dele é usada**. Só quem já tem a
 credencial consegue fazer isso, e o custo sobe sem nunca derrubar o
-desbloqueio (`upgradeMethod`, em `vault.ts`; best-effort quando falta
-permissão de escrita).
+desbloqueio (`prepareMigration`, em `migration.ts`; best-effort quando falta
+permissão de escrita). A mesma passagem cuida da migração de formato, porque as
+duas coisas exigem a credencial em mãos.
 
 ## Destruição do cofre
 
@@ -195,18 +196,52 @@ mantém a lista de nomes, mas muda o digest e é recusado antes da leitura.
   evento `vault:auto-locked`; a consulta de status a cada 15 s é apenas uma
   rede de segurança.
 
-## Migrações automáticas
+## Migração de formato (v5 para v6)
 
-Nenhuma. O formato em disco tem uma versão só, o layout de pastas tem um nome
-só e a extensão do payload de credencial tem uma só (`.zke`). O que existiu
-antes (`~/.guardinha-vault` em JSON, o intermediário em `$XDG_DATA_HOME`, o
-layout visível `entries/`, o payload `.enc` e o container v2/v3) foi removido
-com a migration completa: o app ainda não tinha usuário para proteger.
+A v5 e a v6 têm o mesmo layout binário; o que mudou foi o **embrulho de cada
+método** (HKDF e AAD com o papel do método, `guardinha-method-<tipo>-v1`) e o
+**manifesto** (v2, só ids; v3, ids e SHA-256 de cada arquivo). Reembrulhar um
+método exige a credencial que o protege, e o desbloqueio só tem uma na mão. Por
+isso a migração é **incremental**:
 
-A única coisa que ainda sobe sozinha é o **custo do Argon2id por método**: um
-método gravado com perfil mais barato é reembrulhado no próximo desbloqueio
-feito com essa credencial (`upgradeMethod`, em `vault.ts`), porque só quem tem a
-credencial consegue reembrulhar. Isso não muda o formato.
+1. No desbloqueio (ou na redefinição de PIN, que também prova a frase), o
+   método usado é reembrulhado na v6 e o manifesto é re-selado na v3.
+2. O container sobe para a v6 nessa mesma gravação.
+3. Os outros métodos continuam no embrulho da v5 e migram no desbloqueio de
+   cada credencial. A leitura tenta o embrulho atual e, se o GCM recusar, o da
+   v5, então um cofre meio migrado abre normalmente (`unwrapDetailed`, em
+   `unwrapping.ts`).
+4. A gravação incidental (trava exponencial, troca de PIN) preserva a versão
+   lida: uma tentativa de PIN não promove o container sem migrar os métodos e o
+   manifesto.
+
+Antes da primeira gravação que muda o formato, `storage.ts` guarda
+`vault.zkv.v<versão>.bak` em `0600` (por exemplo, `vault.zkv.v5.bak`). É o
+**caminho de downgrade**: se a versão nova tiver um defeito, basta restaurar o
+snapshot por cima do `vault.zkv` e abrir com o app antigo. O snapshot nunca é
+sobrescrito (o primeiro, da versão mais antiga, é o que preserva a volta) e o
+Cryptographic Erase o apaga junto com o resto.
+
+A migração é **best-effort**: manifesto que não confere com o diretório ou falha
+de escrita adia a migração, deixa o container antigo intacto e não derruba o
+desbloqueio. No desbloqueio, se o snapshot não puder ser criado, a migração é
+abortada (sem snapshot não há volta). Na redefinição de PIN o novo PIN já foi
+embrulhado, então a gravação acontece mesmo sem snapshot, com um aviso no log.
+`migrateAndPersist` e `persistMigration` moram em `src/main/migration.ts`.
+
+### Formatos anteriores à v5
+
+Não há caminho de leitura para eles. O que existiu antes (`~/.guardinha-vault`
+em JSON, o intermediário em `$XDG_DATA_HOME`, o layout visível `entries/`, o
+payload `.enc` e o container v2/v3) foi removido de vez, porque o app ainda não
+tinha usuário para proteger.
+
+## Custo do Argon2id
+
+O **custo do Argon2id por método** sobe sozinho: um método gravado com perfil
+mais barato é reembrulhado no próximo desbloqueio feito com essa credencial,
+porque só quem tem a credencial consegue reembrulhar. A migração de formato usa
+a mesma passagem, então subir o custo e migrar o embrulho custam um Argon2id só.
 
 ## Variáveis de ambiente
 

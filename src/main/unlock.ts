@@ -22,6 +22,8 @@ export interface UnlockContext {
   derived?: Buffer | undefined;
   /** Chave do cofre liberada quando a cadeia chega ao fim. */
   vaultKey?: Buffer | undefined;
+  /** O método usado estava no embrulho legado da v5 (candidato a migração). */
+  legacyMethod?: boolean | undefined;
   /**
    * A falha da senha mestra cruzou o limite de autodestruição. A cadeia para
    * aí, sem passar pelo Argon2id e sem tocar no manifesto, mas quem chamou
@@ -143,7 +145,9 @@ class VaultIntegrityHandler extends UnlockHandler {
        e um container sem o método do tipo só chega aqui por defeito interno. */
     if (method === undefined || derived === undefined) return credentialFailure(context);
     try {
-      context.vaultKey = keyUnwrapperFor(kind).unwrap(method, derived);
+      const unwrapped = keyUnwrapperFor(kind).unwrapDetailed(method, derived);
+      context.vaultKey = unwrapped.vaultKey;
+      context.legacyMethod = unwrapped.legacy;
       return null;
     } catch {
       return credentialFailure(context);

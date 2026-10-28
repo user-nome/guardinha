@@ -15,6 +15,16 @@ import type { UnlockKind } from '@zero/types';
 /** Todo método que embrulha a chave, inclusive a frase e o PIN de coação. */
 export type CredentialKind = UnlockKind | 'recovery' | 'panic';
 
+/** Chave desembrulhada e de que formato de embrulho ela veio. */
+export interface UnwrappedKey {
+  vaultKey: Buffer;
+  /**
+   * `true` quando o blob estava no embrulho da v5, sem o papel do método no
+   * HKDF nem na AAD. É o sinal que a migração usa para reembrulhar na v6.
+   */
+  legacy: boolean;
+}
+
 /**
  * Embrulho/desembrulho da chave do cofre (Strategy por tipo de credencial):
  * cada método tem o custo do Argon2id adequado ao segredo que o protege.
@@ -29,6 +39,8 @@ export interface KeyUnwrapper {
   derive(method: WrappedMethod, credential: string): Promise<Buffer>;
   /** Desembrulha a chave do cofre; credencial errada lança (GCM). */
   unwrap(method: WrappedMethod, derived: Buffer): Buffer;
+  /** Igual a `unwrap`, mas informa se o embrulho era o legado da v5. */
+  unwrapDetailed(method: WrappedMethod, derived: Buffer): UnwrappedKey;
 }
 
 /**
@@ -90,8 +102,28 @@ class Argon2KeyUnwrapper implements KeyUnwrapper {
   }
 
   public unwrap(method: WrappedMethod, derived: Buffer): Buffer {
+    return this.unwrapDetailed(method, derived).vaultKey;
+  }
+
+  /**
+   * Tenta primeiro o embrulho atual (HKDF e AAD com o papel do método). Se o
+   * GCM recusar, tenta o embrulho da v5, que usava o rótulo padrão e nenhuma
+   * AAD. A ordem importa: num cofre já migrado o caminho legado nem é tentado,
+   * e a identidade do método continua autenticada.
+   */
+  public unwrapDetailed(method: WrappedMethod, derived: Buffer): UnwrappedKey {
     const info = methodKeyInfo(this.kind);
-    return asVaultKey(decryptRecord(method.payload, derived, info, info));
+    let decoded: unknown;
+    try {
+      decoded = decryptRecord(method.payload, derived, info, info);
+    } catch {
+      // o GCM recusou o embrulho atual: resta o formato da v5. A chave só
+      // passa por `asVaultKey` depois, para que um registro corrompido
+      // continue sendo "registro corrompido", e não "credencial errada".
+      decoded = decryptRecord(method.payload, derived);
+      return { vaultKey: asVaultKey(decoded), legacy: true };
+    }
+    return { vaultKey: asVaultKey(decoded), legacy: false };
   }
 }
 

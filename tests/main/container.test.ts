@@ -13,11 +13,11 @@ import { encryptRecord, randomBytes } from '@zero/main/crypto';
 import type { VaultContainerData, VaultUnpackResult, WrappedMethod } from '@zero/main/container';
 
 /**
- * Formato do container. A v6 é a única suportada: cabeçalho de 41 bytes, sem
- * tripo global de KDF (cada método carrega o custo do seu Argon2id), papel
- * autenticado por método e sem caminho de leitura anterior. Como o app ainda não
- * tem usuários, formato antigo não tem a quem proteger, e um leitor só da v6 é
- * bem mais difícil de ler errado do que um que ramifica por versão.
+ * Formato do container. A v6 é a única que o app grava: cabeçalho de 41 bytes,
+ * sem tripo global de KDF (cada método carrega o custo do seu Argon2id) e papel
+ * autenticado por método. A v5 é lida só para migrar: mesmo layout, mas com o
+ * embrulho antigo e o manifesto sem hashes. A leitura ramifica por versão em
+ * dois pontos (container e manifesto) e recusa qualquer outra.
  */
 
 const HEADER_BYTES = 41;
@@ -28,6 +28,7 @@ const KDF_PIN = { algo: 'argon2id', memoryKiB: 262_144, iterations: 4, paralleli
 
 function sampleContainer(): VaultContainerData {
   return {
+    version: 6,
     createdAt: 1_767_268_800_000,
     attempts: 2,
     lockUntil: 1_767_268_810_000,
@@ -157,6 +158,24 @@ describe('container do cofre (vault.zkv)', () => {
     expect(packed.readUInt32BE(pinOffset)).toBe(262_144); // pin: 256 MiB
     expect(packed.readUInt32BE(pinOffset + 4)).toBe(4);
     expect(pin.kdf.memoryKiB).toBe(262_144);
+  });
+
+  it('lê a v5 para migrar e grava a versão que o container declara', () => {
+    // a v5 tem o mesmo layout; o que muda é o embrulho dos métodos e o
+    // manifesto. A gravação incidental precisa preservar a versão lida, senão
+    // uma tentativa de PIN promoveria o arquivo sem migrar nada.
+    const legacy: VaultContainerData = { ...sampleContainer(), version: 5 };
+    const bytes = packVaultContainer(legacy);
+    expect(bytes.readUInt32BE(8)).toBe(5);
+    expect(unpackVaultContainer(bytes)).toEqual({ ok: true, data: legacy });
+
+    const current = sampleContainer();
+    expect(unpackVaultContainer(packVaultContainer(current))).toEqual({ ok: true, data: current });
+  });
+
+  it('recusa gravar uma versão que este app não conhece', () => {
+    const future: VaultContainerData = { ...sampleContainer(), version: 7 };
+    expect(() => packVaultContainer(future)).toThrow();
   });
 
   it('cada método guarda o seu próprio custo de Argon2id', () => {
@@ -370,6 +389,7 @@ describe('manifesto de integridade', () => {
   it('roundtrip devolve os mesmos ids e hashes', () => {
     const key = randomBytes(32);
     expect(openManifest(key, sealManifest(key, IDS, AUTH_IDS, HASHES))).toEqual({
+      version: 3,
       ids: IDS,
       authIds: AUTH_IDS,
       entries: HASHES.entries,
@@ -383,12 +403,39 @@ describe('manifesto de integridade', () => {
     expect(() => openManifest(randomBytes(32), blob)).toThrow();
   });
 
-  it('recusa a versão anterior do manifesto', () => {
-    // o `v` mora dentro do blob cifrado, então trocar a versão do manifesto não
-    // muda o container: um manifesto velho é recusado, não adivinhado
+  it('lê o manifesto v2 da v5 e devolve hashes vazios', () => {
+    // o `v` mora dentro do blob cifrado: a v2 é lida para a migração, mas não
+    // promete hash nenhum, então o mapa sai vazio e a conferência de conteúdo
+    // fica para depois de a v3 ser selada
     const key = randomBytes(32);
-    const old = encryptRecord({ v: 2, ids: IDS, authIds: [], ...HASHES }, key);
-    expect(() => openManifest(key, old)).toThrow();
+    const old = encryptRecord({ v: 2, ids: IDS, authIds: [] }, key);
+    expect(openManifest(key, old)).toEqual({
+      version: 2,
+      ids: IDS,
+      authIds: [],
+      entries: {},
+      auth: {},
+    });
+  });
+
+  it('sela a v2 sem hashes e a v3 com eles', () => {
+    const key = randomBytes(32);
+    const legacy = sealManifest(key, IDS, [], HASHES, 2);
+    const current = sealManifest(key, IDS, [], HASHES, 3);
+
+    expect(openManifest(key, legacy)).toMatchObject({ version: 2, entries: {}, auth: {} });
+    expect(openManifest(key, current)).toMatchObject({
+      version: 3,
+      entries: HASHES.entries,
+      auth: HASHES.auth,
+    });
+  });
+
+  it('recusa selar uma versão de manifesto desconhecida', () => {
+    const key = randomBytes(32);
+    expect(() => sealManifest(key, IDS, [], HASHES, 4)).toThrow(
+      'Manifesto de integridade inválido.',
+    );
   });
 
   it('falha com forma inesperada (fail-closed)', () => {
@@ -583,7 +630,7 @@ describe('recusa do manifesto pela mensagem', () => {
     );
   });
 
-  it('nomeia o motivo quando a lista de ids é inválida, a versão é velha ou a de tokens é inválida', () => {
+  it('nomeia o motivo quando a lista de ids é inválida, a versão é desconhecida ou a de tokens é inválida', () => {
     // Três `throw` com o mesmo texto: sem conferir a mensagem, trocar a string
     // passaria, e o usuário veria um erro sem dizer o que houve.
     const key = randomBytes(32);
@@ -592,7 +639,7 @@ describe('recusa do manifesto pela mensagem', () => {
       openManifest(key, encryptRecord({ v: 3, ids: [1], authIds: [], ...HASHES }, key)),
     ).toThrow('Manifesto de integridade inválido.');
     expect(() =>
-      openManifest(key, encryptRecord({ v: 2, ids: IDS, authIds: [], ...HASHES }, key)),
+      openManifest(key, encryptRecord({ v: 1, ids: IDS, authIds: [], ...HASHES }, key)),
     ).toThrow('Manifesto de integridade inválido.');
     expect(() =>
       openManifest(key, encryptRecord({ v: 3, ids: IDS, authIds: [1], ...HASHES }, key)),
@@ -604,6 +651,7 @@ describe('recusa do manifesto pela mensagem', () => {
     const blob = sealManifest(key, IDS, ['a', 'b'], HASHES);
 
     expect(openManifest(key, blob)).toEqual({
+      version: 3,
       ids: IDS,
       authIds: ['a', 'b'],
       entries: HASHES.entries,
