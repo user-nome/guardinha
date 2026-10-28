@@ -3,6 +3,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import prettier from 'eslint-config-prettier';
+import i18next from 'eslint-plugin-i18next';
 
 /** Módulos do `main` autorizados a tocar `fs` (regra do AGENTS.md). */
 const FS_OWNERS = [
@@ -35,8 +36,8 @@ const ALIAS_MESSAGE =
   'Dentro de src/ só os aliases @zero/* (AGENTS.md): nada de caminho relativo entre pastas.';
 
 /**
- * Módulos de sistema, por capacidade. Um arquivo só toca os que o seu grupo
- * concede; o resto entra em `no-restricted-imports` com a mensagem do dono.
+- Módulos de sistema, por capacidade. Um arquivo só toca os que o seu grupo
+- concede; o resto entra em `no-restricted-imports` com a mensagem do dono.
  */
 const CAPABILITIES = {
   fs: ['fs', 'node:fs', 'fs/promises', 'fs-extra'],
@@ -58,10 +59,10 @@ const BANNED_SYNTAX = [
 ];
 
 /**
- * Guarda de ambiente: as duas variáveis que movem o cofre são lidas em
- * `layout.ts` e reflectidas em `privilege.ts`. Qualquer outro módulo lendo-as
- * seria um caminho de redirecionamento do cofre, e é por isso que o dono é
- * nomeado em vez de a regra valer para todo o `src/`.
+- Guarda de ambiente: as duas variáveis que movem o cofre são lidas em
+- `layout.ts` e reflectidas em `privilege.ts`. Qualquer outro módulo lendo-as
+- seria um caminho de redirecionamento do cofre, e é por isso que o dono é
+- nomeado em vez de a regra valer para todo o `src/`.
  */
 const ENV_GUARD = {
   selector:
@@ -73,9 +74,9 @@ const ENV_GUARD = {
 const ENV_OWNERS = ['src/main/layout.ts', 'src/main/privilege.ts'];
 
 /**
- * Aliases que cada camada pode usar, e os que não pode. É a matriz de camadas
- * do AGENTS.md (`src/shared` sem Node nem DOM, o renderer só com `window.api`,
- * o preload só com `@zero/types`), transformada em regra.
+- Aliases que cada camada pode usar, e os que não pode. É a matriz de camadas
+- do AGENTS.md (`src/shared` sem Node nem DOM, o renderer só com `window.api`,
+- o preload só com `@zero/types`), transformada em regra.
  */
 const LAYERS = {
   'src/shared/**/*.ts': {
@@ -113,9 +114,9 @@ const LAYERS = {
 };
 
 /**
- * `no-restricted-imports` de uma camada: barra caminho relativo, barra os
- * aliases das outras camadas e barra os módulos de sistema que a camada não
- * recebeu por `granted`.
+- `no-restricted-imports` de uma camada: barra caminho relativo, barra os
+- aliases das outras camadas e barra os módulos de sistema que a camada não
+- recebeu por `granted`.
  */
 const layerImports = (label, { allow, deny, granted, messages = {} }) => [
   'error',
@@ -141,6 +142,23 @@ const layerImports = (label, { allow, deny, granted, messages = {} }) => [
 export default tseslint.config(
   {
     ignores: ['out/**', 'release/**', 'node_modules/**', 'build/**', 'coverage/**'],
+  },
+  // Configuração específica do i18next adicionada como objeto no array principal
+  {
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    plugins: {
+      i18next,
+    },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          markupOnly: true,
+          validateTemplate: true,
+          ignoreAttribute: ['className', 'id', 'type'],
+        },
+      ],
+    },
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -222,8 +240,6 @@ export default tseslint.config(
         { allowShortCircuit: true, allowTernary: true, allowTaggedTemplates: false },
       ],
       // ----- escapes de type-safety que ninguém deve usar -----
-      // `@ts-ignore` cala o compilador inteiro; `@ts-expect-error` é a forma
-      // honesta porque some sozinho quando o tipo deixa de divergir.
       '@typescript-eslint/ban-ts-comment': 'error',
       '@typescript-eslint/prefer-ts-expect-error': 'error',
       '@typescript-eslint/consistent-type-imports': [
@@ -271,10 +287,6 @@ export default tseslint.config(
       ],
 
       // ----- o que se lança -----
-      // `no-throw-literal` barra o literal, mas deixa passar `throw objeto`.
-      // `only-throw-error` fecha esse buraco: em `src/` vale nas opções mais
-      // duras (nada de `any`, nada de `unknown`), e quem tem o privilégio de
-      // lançar valor não-Erro é o bloco dos testes, com o motivo escrito lá.
       '@typescript-eslint/only-throw-error': 'error',
 
       // ----- boas práticas gerais -----
@@ -300,7 +312,7 @@ export default tseslint.config(
       'no-useless-rename': 'error',
       'no-duplicate-imports': 'off',
 
-      // ----- armadilhas clássicas: aqui o bug é silencioso -----
+      // ----- armadilhas clássicas -----
       'accessor-pairs': 'error',
       'array-callback-return': ['error', { allowImplicit: true }],
       'block-scoped-var': 'error',
@@ -356,7 +368,7 @@ export default tseslint.config(
       'require-yield': 'error',
       'symbol-description': 'error',
 
-      // ----- limites estruturais: teto de tamanho e de aninhamento -----
+      // ----- limites estruturais -----
       'max-depth': ['error', 4],
       'max-nested-callbacks': ['error', 4],
       'max-params': ['error', 5],
@@ -365,41 +377,6 @@ export default tseslint.config(
       '@typescript-eslint/require-array-sort-compare': ['error', { ignoreStringArrays: true }],
     },
   },
-  /*
-   * Regras medidas contra o repositório inteiro e deixadas de fora, com o
-   * número de alarmes que cada uma produziria hoje. A regra do AGENTS.md é
-   * essa: regra que só produz alarme falso aqui não entra.
-   *
-   * `no-nested-ternary` (7) e `no-await-in-loop` (8, todas sequenciais por
-   * necessidade: um arquivo do cofre por vez, um teste por vez). No cofre,
-   * serial é o comportamento certo, e a régua de força em `shared/strength.ts`
-   * e as telas leem melhor com ternário aninhado do que com if encadeado.
-   *
-   * `complexity` e `max-lines-per-function`: componente de tela e parser
-   * passam de 12 e de 80 linhas legitimamente (`parseOtpAuthUri` chega a 34,
-   * `AuthModal` a 24). O teto que realmente segura o tamanho do módulo é o de
-   * arquivo, e ele vale. `max-classes-per-file` (2 arquivos) só aparece em
-   * teste e não compra nada aqui.
-   *
-   * `no-shadow` fora de `src/`: 28 ocorrências nos testes, todas do mesmo
-   * idioma (um helper local que repete o nome do fixture). Dentro de `src/`
-   * a regra vale, e é onde shadowing pode virar bug de verdade.
-   *
-   * `require-unicode-regexp`: 153 ocorrências, e a flag `u` muda a semântica
-   * de classe de caractere (`\d`, `\w` e `-` dentro de classe). Não é troca
-   * segura às cegas em código que valida segredo e base32.
-   *
-   * `no-warning-comments`: a regra casa por substring, e `todo`/`toda` é
-   * palavra comum nos comentários em português.
-   *
-   * `@typescript-eslint/no-unsafe-type-assertion`: 11 ocorrências, todas
-   * narrowings legítimos na fronteira de confiança (saída de `JSON.parse`,
-   * registro já validado campo a campo). Onde ela aponta, já há guard.
-   *
-   * `strict-void-return` (46), `prefer-destructuring` (33),
-   * `consistent-return` (4) e `prefer-named-capture-group` (8): gosto, não
-   * defeito, e o custo de adotá-las é reescrever código correto.
-   */
   {
     files: ['src/renderer/**/*.{ts,tsx}'],
     ...reactHooks.configs.flat['recommended-latest'],
@@ -411,9 +388,6 @@ export default tseslint.config(
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
-      // As regras do compilador que o `recommended-latest` não traz: efeito com
-      // dependências incompletas, memo com dependências erradas e a
-      // supressão de qualquer regra de hook por `eslint-disable`.
       'react-hooks/exhaustive-effect-dependencies': 'error',
       'react-hooks/memo-dependencies': 'error',
       'react-hooks/memoized-effect-dependencies': 'error',
@@ -431,12 +405,8 @@ export default tseslint.config(
     },
   },
   {
-    // Fronteiras do `src/`, que valem para todas as camadas.
     files: ['src/**/*.ts', 'src/**/*.tsx'],
     rules: {
-      // O teto de ~500 linhas do AGENTS.md, medido em código (sem linha em
-      // branco nem comentário), com folga: um módulo acima disso já tem duas
-      // tarefas e o próximo passo é extrair.
       'max-lines': ['error', { max: 520, skipBlankLines: true, skipComments: true }],
       'no-restricted-syntax': ['error', ...BANNED_SYNTAX, ENV_GUARD],
       '@typescript-eslint/no-shadow': 'error',
@@ -463,17 +433,12 @@ export default tseslint.config(
       ],
     },
   },
-  // `layout.ts` e `privilege.ts` são os donos do ambiente, então o guarda de
-  // `GUARDINHA_*` não vale para eles (o resto do `src/` continua valendo).
   {
     files: ENV_OWNERS,
     rules: {
       'no-restricted-syntax': ['error', ...BANNED_SYNTAX],
     },
   },
-  // Matriz de camadas: cada entrada declara o que a camada concede, então quem
-  // pertence a dois grupos (o `protocol.ts`, Electron e `fs`) é listado por
-  // último e vale a concessão maior.
   ...Object.entries(LAYERS).map(([files, spec]) => ({
     files: [files],
     rules: { 'no-restricted-imports': layerImports(files, spec) },
@@ -500,8 +465,6 @@ export default tseslint.config(
     },
   },
   {
-    // Único arquivo do `main` com duas concessões: serve o scheme do app (Electron)
-    // e sonda o bundle em disco (`fs`).
     files: ['src/main/protocol.ts'],
     rules: {
       'no-restricted-imports': layerImports('src/main', {
@@ -520,11 +483,6 @@ export default tseslint.config(
     },
   },
   {
-    // `no-throw-literal` cede lugar à variante tipada nos testes, porque lá o
-    // valor lançado é parte do que se está testando: boa parte das defesas do
-    // main só existe porque o valor lançado **não** é um `Error`, e o jeito
-    // honesto de expressar "isto é desconhecido em tempo de compilação" é o
-    // tipo `unknown`. `any` e literal continuam barrados.
     files: ['tests/**/*.{ts,tsx}'],
     rules: {
       'no-throw-literal': 'off',
@@ -535,10 +493,6 @@ export default tseslint.config(
     },
   },
   {
-    // O teto de tamanho vale para os módulos do app (bloco do `src/`). Fora
-    // dele a folga é maior porque teste e ferramenta de mutação são tabelas de
-    // caso e um runner: quebrar a 500 linhas não melhora o desenho, e o teto
-    // continua existindo para pegar crescimento sem fim.
     files: ['tests/**/*.{ts,tsx}', 'tools/**/*.ts'],
     rules: {
       'max-lines': ['error', { max: 750, skipBlankLines: true, skipComments: true }],
@@ -549,8 +503,6 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
     rules: {
       ...tseslint.configs.disableTypeChecked.rules,
-      // O config em si é JavaScript puro: não há tipo para anotar, e
-      // `explicit-function-return-type` continua valendo em `src/`.
       '@typescript-eslint/explicit-function-return-type': 'off',
     },
   },
