@@ -12,12 +12,7 @@ import {
   writeSecretFile,
 } from '@zero/main/structure';
 
-/**
- * A escrita atômica do cofre mora em um lugar só. Ela foi copiada quatro vezes
- * (container, credencial, token de 2FA e preferências) e as cópias já tinham
- * divergido. Os testes fixam o que a primitiva promete, que é o que nenhuma das
- * cópias garantia sozinha.
- */
+/** Fixa o que a escrita atômica promete: modo 0600 no destino e no temporário. */
 
 let dir: string;
 let root: string;
@@ -56,9 +51,7 @@ describe('writeSecretFile', () => {
   });
 
   it('deixa o arquivo em 0600 mesmo com umask permissivo', () => {
-    // O `mode` do `writeFileSync` é a primeira linha de defesa; com umask 0 o
-    // padrão do sistema seria 0666. Este é o teste que pega a cópia que esqueceu
-    // do `{ mode }`: sem ele, e com umask frouxo, o segredo nascia legível.
+    // com umask 0 o padrão seria 0666: sem o `{ mode }`, o segredo nasceria legível
     const before = process.umask(0o000);
     try {
       const file = path.join(dir, 'umask.zke');
@@ -70,8 +63,7 @@ describe('writeSecretFile', () => {
   });
 
   it('cria o temporário em 0600, antes do rename', () => {
-    // O `chmod` só alcança o destino. A janela em que o `.tmp` existe em disco
-    // é coberta só pelo `mode` do `writeFileSync`, então é ela que se inspeciona.
+    // o `chmod` só alcança o destino, então a janela do `.tmp` depende do `mode`
     const file = path.join(dir, 'janela.zka');
     const seen: number[] = [];
     const original = fsExtra.renameSync;

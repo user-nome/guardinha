@@ -1,20 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 
-/**
- * Coluna de conteúdo de uma tela: o mesmo esqueleto para toda aba.
- *
- * Três coisas acontecem aqui, e as três são o que impede a interface de ficar
- * grudada no canto da tela ou espremida numa janela pequena:
- *
- * - **centraliza**: a coluna tem largura máxima e fica no meio da área útil, em
- *   vez de ficar grudada no canto superior esquerdo da janela;
- * - **limita a largura máxima por tipo de tela**: formulário estreito (Gerador,
- *   Configurações, Backup) lê melhor numa coluna curta do que esticado num
- *   monitor largo; grade de cartões (Início, 2FA) é o contrário;
- * - **põe o teto das colunas**: numa tela muito larga os cartões param de
- *   esticar e continuam em três, porque a contagem de colunas mora em
- *   `card-grid.ts`, que decide pela largura da janela, e não por esta coluna.
- */
+/** Largura máxima da coluna de conteúdo: estreita para formulário, larga para grade. */
 export type PageWidth = 'narrow' | 'medium' | 'wide';
 
 const WIDTH_CLASS = {

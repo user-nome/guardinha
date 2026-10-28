@@ -1,13 +1,6 @@
 import type { Messages } from '@zero/messages/pt-BR';
 
-/**
- * 简体中文（中国大陆）。`pt-BR` é o canônico: a forma deste objeto é conferida
- * pelo TypeScript. Glossário alinhado ao app irmão (Biblioteca): 密码库 é o
- * cofre, 主密码 é a senha mestra, 金库 é a destroyAction equivalente.
- *
- * Nomes de marca (`Guardinha`, `otpauth://`, `Base32`, `SHA1`…), caminhos e
- * identificadores técnicos não se traduzem.
- */
+/** Mensagens em chinês simplificado, com a forma conferida contra o canônico `pt-BR`. */
 export const zhCN: Messages = {
   common: {
     close: '关闭',
@@ -345,7 +338,7 @@ export const zhCN: Messages = {
       '并且签发方与标签一致。',
     invalidAuthSecret: '设置密钥必须是有效的 Base32（A-Z 和 2-7），且至少包含 80 位（10 字节）。',
     authTokenNotFound: '未找到该 2FA 令牌。',
-    // ---- 金库整体备份 ----
+    // 金库整体备份
     backupInvalid: '备份文件无效。',
     backupCorrupted: '备份已损坏或被改动。未恢复任何内容。',
     backupUnsupportedVersion: (version?: number): string =>

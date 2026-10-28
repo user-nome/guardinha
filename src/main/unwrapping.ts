@@ -1,3 +1,4 @@
+/** Embrulho e desembrulho da chave do cofre: um embrulhador por tipo de credencial. */
 import {
   decryptRecord,
   deriveKey,
@@ -18,17 +19,11 @@ export type CredentialKind = UnlockKind | 'recovery' | 'panic';
 /** Chave desembrulhada e de que formato de embrulho ela veio. */
 export interface UnwrappedKey {
   vaultKey: Buffer;
-  /**
-   * `true` quando o blob estava no embrulho da v5, sem o papel do método no
-   * HKDF nem na AAD. É o sinal que a migração usa para reembrulhar na v6.
-   */
+  /** `true` quando o blob veio no embrulho legado da v5, sem papel do método. */
   legacy: boolean;
 }
 
-/**
- * Embrulho/desembrulho da chave do cofre (Strategy por tipo de credencial):
- * cada método tem o custo do Argon2id adequado ao segredo que o protege.
- */
+/** Embrulho da chave por tipo de credencial (Strategy), com o custo de Argon2id de cada segredo. */
 export interface KeyUnwrapper {
   readonly kind: CredentialKind;
   /** Custo do Argon2id deste método (lido do container, na prática). */
@@ -43,18 +38,9 @@ export interface KeyUnwrapper {
   unwrapDetailed(method: WrappedMethod, derived: Buffer): UnwrappedKey;
 }
 
-/**
- * Custo do Argon2id para um método de desbloqueio: o PIN de 8 dígitos é o
- * segredo fraco (10^8 candidatas offline) e por isso recebe o perfil mais caro;
- * senha mestra e frase de recuperação têm entropia própria, um nível abaixo.
- * O PIN de pânico é o mesmo formato do PIN e recebe o mesmo custo de Argon2id
- * por derivação. O tempo total do caminho de pânico, porém, não é igual ao de
- * um PIN comum, porque `unlock` tenta o pânico antes do fluxo normal; o risco
- * conhecido está registrado em `SECURITY.md`.
- */
+/** PIN e PIN de pânico são segredos fracos e pagam o perfil de Argon2id mais caro. */
 function kdfFor(kind: CredentialKind): VaultKdfParams {
-  // o PIN de pânico é o mesmo segredo fraco do PIN, com o mesmo custo por
-  // derivação: o tempo total do fluxo é assunto de `unlock`, não do embrulho
+  // o pânico paga o custo do PIN; o tempo total do fluxo é assunto de `unlock`
   const base = kind === 'pin' || kind === 'panic' ? kdfProfileFor('pin') : kdfProfileFor('master');
   return { algo: 'argon2id', ...base };
 }
@@ -67,12 +53,7 @@ function asVaultKey(unwrapped: unknown): Buffer {
   return Buffer.from(unwrapped.key, 'hex');
 }
 
-/**
- * Embrulhador único, parametrizado pelo tipo de credencial. Não existe uma
- * subclasse por tipo: o único comportamento que muda entre eles é o custo do
- * Argon2id (`kdfFor`), então uma hierarquia seria quatro classes vazias e
- * idênticas, sem polimorfismo nenhum.
- */
+/** Um embrulhador só, parametrizado pelo tipo: o que muda é apenas o custo do Argon2id. */
 class Argon2KeyUnwrapper implements KeyUnwrapper {
   public readonly kind: CredentialKind;
 
@@ -105,21 +86,14 @@ class Argon2KeyUnwrapper implements KeyUnwrapper {
     return this.unwrapDetailed(method, derived).vaultKey;
   }
 
-  /**
-   * Tenta primeiro o embrulho atual (HKDF e AAD com o papel do método). Se o
-   * GCM recusar, tenta o embrulho da v5, que usava o rótulo padrão e nenhuma
-   * AAD. A ordem importa: num cofre já migrado o caminho legado nem é tentado,
-   * e a identidade do método continua autenticada.
-   */
+  /** Tenta o embrulho atual e, se o GCM recusar, o legado da v5; a ordem importa. */
   public unwrapDetailed(method: WrappedMethod, derived: Buffer): UnwrappedKey {
     const info = methodKeyInfo(this.kind);
     let decoded: unknown;
     try {
       decoded = decryptRecord(method.payload, derived, info, info);
     } catch {
-      // o GCM recusou o embrulho atual: resta o formato da v5. A chave só
-      // passa por `asVaultKey` depois, para que um registro corrompido
-      // continue sendo "registro corrompido", e não "credencial errada".
+      // GCM recusou o embrulho atual: resta o formato da v5, validado por `asVaultKey`
       decoded = decryptRecord(method.payload, derived);
       return { vaultKey: asVaultKey(decoded), legacy: true };
     }
@@ -130,23 +104,12 @@ class Argon2KeyUnwrapper implements KeyUnwrapper {
 /** Todo método de desbloqueio que sabe embrulhar a chave. */
 const KINDS: readonly CredentialKind[] = ['master', 'pin', 'recovery', 'panic'];
 
-/**
- * Registro de embrulhadores por tipo de credencial (Strategy: mesma interface,
- * a régua muda por `kind`). Os embrulhadores são puros, então uma instância
- * por tipo serve para todo o app. Acrescentar um método de desbloqueio é uma
- * entrada nova em `KINDS`, sem tocar em quem chama (desbloqueio, criação do
- * cofre e redefinição de PIN).
- */
+/** Uma instância por tipo serve o app inteiro; método novo entra só em `KINDS`. */
 const UNWRAPPERS: ReadonlyMap<CredentialKind, KeyUnwrapper> = new Map<CredentialKind, KeyUnwrapper>(
   KINDS.map((kind) => [kind, new Argon2KeyUnwrapper(kind)]),
 );
 
-/**
- * Resolve o desembrulho pelo tipo de credencial. Tipo fora da união não existe
- * em tempo de compilação, mas o mapa é lido por valor vindo do container, então
- * a forma é reconferida aqui e um nome desconhecido é erro, nunca um caminho
- * silencioso sem custo de KDF.
- */
+/** Reconferência em runtime: nome desconhecido vindo do container é erro, nunca KDF zero. */
 export function keyUnwrapperFor(kind: CredentialKind): KeyUnwrapper {
   const found = UNWRAPPERS.get(kind);
   if (found === undefined) {
@@ -160,11 +123,7 @@ export function isKdfUpToDate(kind: CredentialKind, method: WrappedMethod): bool
   return isSameKdf(method.kdf, keyUnwrapperFor(kind).kdf);
 }
 
-/**
- * Gera a chave decoy do PIN de pânico. São 32 bytes aleatórios, então
- * qualquer tentativa de abrir um `.zke` com ela falha no GCM, e o app nem
- * tenta: quem entra por este caminho recebe um cofre vazio.
- */
+/** 32 bytes aleatórios: nenhum `.zke` abre com ela, então a sessão decoy fica vazia. */
 export function decoyKey(): Buffer {
   return randomBytes(32);
 }

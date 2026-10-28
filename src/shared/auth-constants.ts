@@ -1,11 +1,4 @@
-/**
- * Constantes da autenticação e trava exponencial.
- *
- * Onde o `10`, `30`, `60`, `3600`, `86400` viviam soltos em `auth.ts`,
- * `15_000` vivia em `App.tsx`, `30_000` em `clipboard.ts`, `60_000` em
- * `index.ts`, `5 * 60 * 1000` em `activity.ts`, `3` em `shred.ts`,
- * `120_000` em `privilege.ts`, `50` em `vault.ts`, `999` em `Settings.tsx`.
- */
+/** Constantes de autenticação, trava exponencial e tempos de espera do app. */
 
 export const PENALTY_DELAYS_SECONDS = [10, 30, 60, 3_600, 86_400] as const; // 10s, 30s, 1m, 1h, 24h
 

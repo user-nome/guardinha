@@ -35,16 +35,10 @@ const DUMMY_PAYLOAD = {
   encryptedData: 'dd',
 };
 
-/**
- * Cofre semeado sem passar pelo Argon2id: o Cryptographic Erase não depende de
- * a credencial ser válida, e um cofre real por teste custaria três derivações
- * (cerca de 45 s cada). Só o teste de integração, no fim do arquivo, cria um
- * cofre de verdade.
- */
+/** Cofre semeado sem Argon2id: o erase não depende da credencial, e o cofre real é caro. */
 function seedVault(entryIds: string[]): void {
   fs.rmSync(vaultDir(), { recursive: true, force: true });
-  // um erase anterior no mesmo processo deixou o cofre marcado como destruído,
-  // e é a guarda de `writeVaultContainer` recusando; aqui o teste recomeça
+  // um erase anterior deixou a marca de destruído, e é a guarda de `writeVaultContainer`
   clearDestroyedFlag();
   ensureVaultStructure();
   const cheap = { algo: 'argon2id', memoryKiB: 16_384, iterations: 1, parallelism: 1 } as const;
@@ -85,9 +79,7 @@ describe('Cryptographic Erase (eraseVault)', () => {
   });
 
   it('conta como falha o arquivo que sobrou depois da sobrescrita', () => {
-    // Sem permissão de escrita, o shred não consegue sobrescrever e o arquivo
-    // fica onde está. O relatório precisa dizer `failed` em vez de contar como
-    // shredded: é esse número que o chamador usa para saber se o disco limpou.
+    // sem permissão o shred falha e o arquivo fica: o relatório conta `failed`, não `shredded`
     seedVault([]);
     const preso = path.join(vaultDir(), 'preso.zkv.tmp');
     fs.writeFileSync(preso, 'conteudo', { mode: 0o000 });
@@ -99,10 +91,7 @@ describe('Cryptographic Erase (eraseVault)', () => {
   });
 
   it('não marca o cofre como destruído quando o container continua no disco', () => {
-    // P7: a marca de destruição libera "cofre destruído" na tela e bloqueia
-    // novas gravações. Se o erase falha e o `vault.zkv` continua lá, marcar
-    // deixa o cofre somente leitura até reiniciar, com o PIN ainda abrindo tudo.
-    // Aqui o diretório fica sem permissão de escrita, então o unlink final falha.
+    // marcar destruído com o `vault.zkv` no disco deixaria o cofre somente leitura até reiniciar
     seedVault([]);
     const entrada = vaultDir();
     fs.chmodSync(entrada, 0o500);
@@ -118,9 +107,7 @@ describe('Cryptographic Erase (eraseVault)', () => {
   });
 
   it('apaga os tokens de 2FA e a pasta .auth junto com o resto', () => {
-    // um segredo TOTP que sobrevive ao Cryptographic Erase é uma senha de
-    // servidor que sobrevive a ele, então esta é a asserção mais importante
-    // do arquivo depois da própria do container
+    // segredo TOTP que sobrevive ao erase vale tanto quanto a senha da conta
     seedVault([]);
     writeAuthPayload('bbbbbbbb-1111-4111-8111-111111111111', DUMMY_PAYLOAD);
     expect(fs.existsSync(authDir())).toBe(true);

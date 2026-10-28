@@ -44,21 +44,19 @@ describe('ciclo de vida do cofre (integração)', () => {
     expect(result.status).toMatchObject({ exists: true, locked: false, attempts: 0 });
     expect(isUnlocked()).toBe(true);
 
-    // cada método nasce com o custo do Argon2id adequado ao segredo (v3)
+    // Cada método nasce com o custo de Argon2id adequado ao segredo.
     const container = readVaultContainer();
     expect(container?.methods.pin?.kdf).toMatchObject(KDF_PIN);
     expect(container?.methods.master?.kdf).toMatchObject(KDF_CREDENTIAL);
     expect(container?.methods.recovery?.kdf).toMatchObject(KDF_CREDENTIAL);
     expect(container?.methods.pin?.kdf).not.toEqual(container?.methods.master?.kdf);
 
-    // o contador de senha mestra e o limite de autodestruição nascem zerados:
-    // um cofre novo que já contasse tentativa destruiria o dado do usuário
+    // Cofre novo nasce com contador e limite zerados; contar já destruiria o dado do usuário.
     expect(panicStatus()).toMatchObject({ nukeLimit: 0, attemptsMaster: 0, hasPanicPin: false });
   });
 
   it('1b. o lock manual limpa o clipboard na hora', () => {
-    // H4: `panicDestroy` e o encerramento já chamavam `dispose`; o lock manual
-    // não, então uma senha copiada sobrevivia até 30 s ao gesto de bloquear.
+    // O lock manual também limpa o clipboard: sem `dispose`, a senha sobrevivia 30 s.
     const dispose = vi.spyOn(secureClipboard, 'dispose').mockResolvedValue();
     try {
       lock();

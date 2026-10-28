@@ -9,12 +9,7 @@ import type { StrengthResult } from '@zero/shared/strength';
 /** Tipo de credencial que o medidor de força sabe avaliar. */
 export type StrengthKind = 'password' | 'master' | 'pin' | 'phrase';
 
-/**
- * Estratégia de avaliação (padrão Strategy): cada tipo de credencial tem sua
- * régua, e quem chama escolhe a estratégia pelo tipo, nunca a função certa.
- * Pura e sem estado, roda no main (recusa na criação) e no renderer (medidor
- * ao vivo), sem depender de React nem de Node.
- */
+/** Régua de força por tipo; quem chama escolhe a estratégia pelo tipo, nunca pela função. */
 export interface StrengthStrategy {
   readonly kind: StrengthKind;
   evaluate(value: string): StrengthResult;
@@ -29,7 +24,7 @@ class PasswordStrengthStrategy implements StrengthStrategy {
   }
 }
 
-/** Senha mestra de 24 caracteres (a régua é a da senha qualquer). */
+/** Senha mestra: usa a mesma régua da senha qualquer. */
 class MasterStrengthStrategy implements StrengthStrategy {
   public readonly kind = 'master' as const;
 
@@ -38,7 +33,7 @@ class MasterStrengthStrategy implements StrengthStrategy {
   }
 }
 
-/** PIN de 8 dígitos: nota teto "razoável", bloqueio só do degenerado. */
+/** PIN: nota teto "razoável", bloqueio só do degenerado. */
 class PinStrengthStrategy implements StrengthStrategy {
   public readonly kind = 'pin' as const;
 
@@ -47,7 +42,7 @@ class PinStrengthStrategy implements StrengthStrategy {
   }
 }
 
-/** Frase de recuperação de 12+ palavras escrita pelo usuário. */
+/** Frase de recuperação escrita pelo usuário. */
 class PhraseStrengthStrategy implements StrengthStrategy {
   public readonly kind = 'phrase' as const;
 
@@ -56,7 +51,7 @@ class PhraseStrengthStrategy implements StrengthStrategy {
   }
 }
 
-/** Mapa de estratégias: trocar a régua de um tipo é trocar uma entrada. */
+/** Trocar a régua de um tipo é trocar uma entrada aqui. */
 const STRATEGIES: Record<StrengthKind, StrengthStrategy> = {
   password: new PasswordStrengthStrategy(),
   master: new MasterStrengthStrategy(),

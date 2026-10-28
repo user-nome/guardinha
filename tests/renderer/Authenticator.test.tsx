@@ -28,11 +28,7 @@ function code(id: string, value = '071271', remainingMs = 25_000): AuthCode {
   return { id, code: value, remainingMs };
 }
 
-/**
- * O botão de exclusão do card tem `title="Excluir"` e o do diálogo de
- * confirmação também se chama "Excluir": dois elementos, mesmo nome acessível.
- * O do diálogo é o que está no cartão de confirmação, então é o último.
- */
+/** O card e o diálogo têm botões "Excluir"; o do diálogo é o último da lista. */
 function confirmDelete(): HTMLElement {
   const all = screen.getAllByRole('button', { name: 'Excluir' });
   const last = all[all.length - 1];
@@ -57,12 +53,7 @@ function barFor(codeText: string): HTMLElement {
   return bar;
 }
 
-/**
- * Renderiza com o relógio congelado em `1_000_000` para os testes que dependem
- * do valor exato de `Date.now()` (o tique, o limiar de 5 s, a fração da barra).
- * Sem `waitFor`: com timer falso a sondagem dele não avança sozinha, então o
- * carregamento inicial é liberado com `act`.
- */
+/** Congela o relógio em `1_000_000`; com timer falso, o carregamento sai por `act`. */
 async function renderFrozen(
   tokens: AuthToken[],
   codes: AuthCode[] | (() => Promise<AuthCode[]>),
@@ -447,11 +438,7 @@ describe('tela do verificador 2FA', () => {
     });
   });
 
-  // O tique é o `setInterval` real de 1 s do componente. Os testes abaixo
-  // usam o relógio real em vez de timer falso porque `waitFor` depende de
-  // timer para sondar: com o relógio parado, a sondagem nunca acontece e o
-  // worker fica pendurado. 1 s por teste é preço justo por um teste que cobre
-  // a rotação do código.
+  // o tique é o `setInterval` real de 1 s; `waitFor` não sonda com relógio parado
   it('pede os códigos de novo quando o período vira', async () => {
     const api = installApi({ tokens: [token()] });
     const codes = vi
@@ -533,8 +520,7 @@ describe('tela do verificador 2FA', () => {
     expect(await screen.findAllByText('expira em 0s')).toHaveLength(2);
   });
 
-  // A cor é a única coisa que o card decide sobre o vencimento, então o teste
-  // olha a classe: não há `aria` nem texto que carregue o limiar de 5 s.
+  // a cor é o único sinal de vencimento: não há `aria` nem texto com o limiar
   it('desenha a barra e a cor pelo que resta', async () => {
     const half = token({ id: 'aaaaaaaa-1111-4111-8111-111111111111' });
     const full = token({ id: 'bbbbbbbb-2222-4222-8222-222222222222' });
@@ -542,8 +528,7 @@ describe('tela do verificador 2FA', () => {
     const tiny = token({ id: 'dddddddd-4444-4444-8444-444444444444' });
     const soon = token({ id: 'eeeeeeee-5555-4555-8555-555555555555' });
     const later = token({ id: 'ffffffff-6666-4666-8666-666666666666' });
-    // o período 1 é válido e não pode cair no ramo de período inválido: meio
-    // segundo restante é metade da barra
+    // período 1 é válido: meio segundo restante é metade da barra
     const fast = token({ id: 'abcdefab-1111-4111-8111-111111111111', period: 1 });
     await renderFrozen(
       [half, full, invalid, tiny, soon, later, fast],
@@ -615,8 +600,7 @@ describe('modal de token', () => {
   });
 
   it('avisa na hora que o endereço colado não serve', async () => {
-    // antes só descobria o erro no botão "Salvar"; colar metade do endereço e
-    // esperar era o único jeito de perceber que faltava o segredo
+    // antes o erro só aparecia no botão "Salvar"; colar metade do endereço esperava
     const user = userEvent.setup();
     installApi();
     render(
@@ -789,8 +773,7 @@ describe('modal de token', () => {
     installApi();
     renderModal(token());
 
-    // a aba ativa não tem outro sinal além da classe: não há `aria-selected`
-    // nem texto que distinga, então a classe é o que a tela realmente decide
+    // a aba ativa só se distingue pela classe: não há `aria-selected` nem texto
     expect(screen.getByRole('button', { name: 'Digitar a chave' })).toHaveClass(
       'bg-emerald-500/10',
     );
@@ -846,11 +829,7 @@ describe('modal de token', () => {
     expect(screen.getByRole('button', { name: 'Salvar' })).toBeEnabled();
   });
 
-  /**
-   * As dicas usam os marcadores `**negrito**` e `` `código` ``, e saem por
-   * `richText`. Renderizadas como texto puro elas mostravam os asteriscos e as
-   * crases para o usuário, então o teste olha os elementos, não a string.
-   */
+  /** As dicas saem por `richText`; o teste olha os elementos, não a string. */
   describe('marcadores ricos nas dicas', () => {
     it('destaque e código viram elementos na aba do endereço', () => {
       render(

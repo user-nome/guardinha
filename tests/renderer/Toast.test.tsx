@@ -3,13 +3,7 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Toast } from '@zero/renderer/components/Toast';
 
-/**
- * O aviso flutuante é a única coisa que some sozinha na tela, então o
- * temporizador é o comportamento: 2,5 s com mensagem e nenhum temporizador sem
- * ela. O segundo ponto é o que impede o componente de pedir o fechamento de um
- * aviso que nunca apareceu, o que derrubaria o estado da tela duas vezes sem
- * nada para mostrar.
- */
+/** O temporizador de 2,5 s é o comportamento: sem mensagem, nenhum temporizador. */
 
 afterEach(() => {
   vi.useRealTimers();
@@ -33,8 +27,7 @@ describe('Toast', () => {
   });
 
   it('sem mensagem não arma temporizador nenhum', () => {
-    // Sem o guarda, o efeito chamaria `onClose` 2,5 s depois de um aviso que
-    // não existe, e a tela registraria um fechamento que ninguém pediu.
+    // Sem o guarda, o efeito fecharia um aviso que nunca apareceu.
     vi.useFakeTimers();
     const onClose = vi.fn();
     const { container } = render(<Toast message={null} onClose={onClose} />);
@@ -58,7 +51,7 @@ describe('Toast', () => {
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    // o primeiro temporizador foi limpo no cleanup do efeito
+    // O primeiro temporizador foi limpo no cleanup do efeito.
     expect(onClose).not.toHaveBeenCalled();
     act(() => {
       vi.advanceTimersByTime(1500);

@@ -58,17 +58,12 @@ import type {
   UnlockInput,
 } from '@zero/types';
 
-// o Electron exige a declaração do scheme antes do app ficar pronto, então ela
-// roda no topo do módulo, e não dentro do `whenReady`
+// o Electron exige o scheme declarado antes de ficar pronto, então roda no topo do módulo
 registerAppSchemePrivileges();
 
 let mainWindow: BrowserWindow | null = null;
 
-/**
- * Chama o diálogo síncrono já normalizado para `string | undefined`: o tipo do
- * Electron declara `string`, mas o retorno é `undefined` quando o usuário
- * cancela, e a função isola essa divergência num lugar só.
- */
+/** Normaliza o retorno do diálogo: cancelar devolve `undefined`, apesar do tipo `string`. */
 function showSaveDialog(options: SaveDialogOptions): string | undefined {
   return mainWindow === null
     ? dialog.showSaveDialogSync(options)
@@ -96,9 +91,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
-    // 400 px é a janela mais estreita em que o app ainda se lê: a grade de
-    // cartões já é uma coluna só e a Sidebar já é o trilho de ícones, então
-    // estreitar mais só corta texto. Ver `src/renderer/src/card-grid.ts`.
+    // 400 px é o mínimo legível: abaixo disso a grade já é uma coluna e só corta texto.
     minWidth: WINDOW_MIN_WIDTH,
     minHeight: WINDOW_MIN_HEIGHT,
     title: WINDOW_TITLE,
@@ -118,15 +111,13 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', () => mainWindow?.show());
 
-  // O app é uma SPA local: navegação só vale para a própria página (o reload
-  // mantém a mesma URL); qualquer salto para outra URL é recusado.
+  // A SPA é local: só a própria página navega (o reload mantém a URL), o resto é recusado.
   const targetUrl = appPageUrl();
   mainWindow.webContents.on('will-navigate', (event, url) => {
     if (url !== targetUrl) event.preventDefault();
   });
 
-  // `window.target=_blank` nunca cria janela: https vai para o navegador do
-  // sistema e o resto (http:, javascript:, file:, data:) é só recusado.
+  // `window.open` nunca cria janela: https vai para o navegador do sistema e o resto é negado.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https:\/\//i.test(url)) {
       shell.openExternal(url).catch((error: unknown) => {
@@ -143,55 +134,22 @@ function createWindow(): void {
   });
 }
 
-/**
- * Nega toda permissão web do renderer (mídia, geolocalização, notificações,
- * clipboard…): a cópia de credenciais passa pelo canal `clipboard:copy` e usa o
- * clipboard nativo no main, sem pedir permissão nenhuma ao sistema.
- */
+/** Nega toda permissão web: a cópia de credenciais usa o canal `clipboard:copy` no main. */
 function registerPermissionPolicy(): void {
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
     callback(false);
   });
-  // o request handler cobre o diálogo, mas a checagem síncrona
-  // (`navigator.permissions.query` e afins) devolve "granted" quando não há
-  // um check handler. Sem este, a promessa de "toda permissão negada" não vale.
+  // sem o check handler, a consulta síncrona devolveria "granted" e a negação seria mentira
   session.defaultSession.setPermissionCheckHandler(() => false);
   session.defaultSession.setDevicePermissionHandler(() => false);
 }
 
-/**
- * Silencia o erro de VA-API que o Chromium imprime ao subir em máquina com o
- * driver de vídeo Intel quebrado (`libva error: iHD_drv_video.so init failed`).
- *
- * A opção é a mais estreita possível: `--disable-accelerated-video-decode`
- * afeta **apenas decodificação de vídeo**, e o app não tem vídeo nenhum (nenhum
- * `<video>`, WebCodecs ou captura de canvas). A composição de tela e o WebGL
- * continuam na GPU. Desligar a GPU inteira resolveria a mensagem também, mas
- * trocaria a aceleração da interface por software em todas as máquinas, o que é
- * um custo real para esconder uma linha cosmética.
- *
- * Não é ligado só no dev de propósito: um switch que só existe em
- * desenvolvimento significa que o app nunca é testado como ele é publicado.
- */
+/** Silencia o erro de VA-API; o switch só corta vídeo, que o app não usa, e mantém a GPU. */
 function disableVideoDecode(): void {
   app.commandLine.appendSwitch('disable-accelerated-video-decode');
 }
 
-/**
- * Operação que exige a chave do cofre, com aviso de sessão perdida.
- *
- * A chave pode sumir entre o momento em que o renderer recebe o status e o
- * momento em que ele pede os dados: é o que acontece no auto-lock (o timer
- * dispara enquanto a tela está montada) e também quando o processo main
- * reinicia em `npm run dev`, que recria o `VaultSessionManager` vazio e deixa
- * o renderer com a tela que ele já tinha. Sem aviso, o renderer fica chamando
- * um cofre que não existe mais e a tela trava num erro que ninguém explica.
- *
- * A resposta continua sendo **erro**: devolver lista vazia seria fail-open e o
- * app apareceria como um cofre vazio, que é a pior leitura possível num app de
- * credenciais. O que muda é o main avisar pelo mesmo canal do auto-lock, para
- * o renderer reconsultar o status e voltar para a autenticação.
- */
+/** Operação que exige a chave: se a sessão sumiu, avisa o renderer e ainda devolve erro. */
 function withSessionNotice<T>(run: () => T): T {
   try {
     return run();
@@ -226,19 +184,13 @@ function registerIpc(): void {
     return lock();
   });
 
-  /**
-   * Autodestruição sob comando explícito do usuário. A confirmação em duas
-   * etapas mora no renderer (digitar DESTRUIR); aqui a fronteira de segurança é
-   * só a origem do frame, como em qualquer outro canal.
-   */
+  /** Destruição sob comando explícito; a confirmação em duas etapas mora no renderer. */
   ipcMain.handle('vault:destroy', (event) => {
     assertAppFrame(event);
     return panicDestroy();
   });
 
-  // ---- Proteções de pânico (PIN de coação e autodestruição por tentativas) ----
-  // Canal novo exige `assertAppFrame`: sem ele o domínio fica aberto a frame de
-  // fora, e um canal de autodestruição aberto é o pior caso possível.
+  // Todo canal novo leva `assertAppFrame`: canal de autodestruição aberto é o pior caso.
   ipcMain.handle('vault:set-panic-pin', (event, input: PanicPinInput) => {
     assertAppFrame(event);
     return setPanicPin(input);
@@ -275,9 +227,7 @@ function registerIpc(): void {
     return withSessionNotice(() => removeEntry(id));
   });
 
-  // ---- Gerador de 2FA (TOTP) ----
-  // Todos com `assertAppFrame` e `withSessionNotice`: `codes` é o canal mais
-  // sensível do grupo, porque devolve um número que autentica a conta.
+  // `codes` é o canal mais sensível do grupo: devolve um número que autentica a conta.
   ipcMain.handle('authenticator:list', (event) => {
     assertAppFrame(event);
     return withSessionNotice(listTokens);
@@ -315,12 +265,7 @@ function registerIpc(): void {
     return generateHighEntropyPassword(options);
   });
 
-  // ---- Backup integral do cofre ----
-  // O destino sempre vem do diálogo nativo, nunca da página, e o que volta para
-  // o renderer é só contagem e caminho: o pacote (`.gbk`) é cópia de bytes já
-  // cifrados, montada e lida pelo main. Nada de senha ou segredo cruza este
-  // contrato. Backup e restauração não exigem chave: a restauração precisa
-  // funcionar na máquina recém-formatada, antes de existir cofre ou sessão.
+  // O destino vem do diálogo nativo: nada de senha cruza o contrato, e restaurar não exige chave.
   ipcMain.handle('backup:export', (event) => {
     assertAppFrame(event);
     const destination = pickSavePath({

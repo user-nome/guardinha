@@ -5,11 +5,7 @@ import { Credits } from '@zero/renderer/components/Credits';
 import { DEPENDENCIES } from '@zero/renderer/attributions';
 import { installApi } from '../mocks/api.ts';
 
-/**
- * Os créditos montam duas cópias da mesma lista para a rolagem em loop não
- * mostrar emenda. O teste trava essa duplicação, que é o único jeito de a
- * animação ficar contínua.
- */
+/** Os créditos montam a lista duas vezes para a rolagem em loop não mostrar emenda. */
 
 function renderCredits(): void {
   render(

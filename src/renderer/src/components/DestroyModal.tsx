@@ -8,12 +8,7 @@ interface DestroyModalProps {
   onDestroyed: () => Promise<void>;
 }
 
-/**
- * Confirmação em duas etapas da autodestruição. Destruir o cofre é irreversível
- * e o botão que chama isto fica a um clique do "Bloquear cofre", na mesma barra
- * lateral: exigir uma palavra digitada é o que separa um toque acidental de uma
- * decisão.
- */
+/** Confirmação em duas etapas da autodestruição, para separar um toque acidental de uma decisão. */
 export function DestroyModal({ onClose, onDestroyed }: DestroyModalProps): JSX.Element {
   const m = useMessages();
   const [typed, setTyped] = useState('');
@@ -30,8 +25,7 @@ export function DestroyModal({ onClose, onDestroyed }: DestroyModalProps): JSX.E
       await window.api.vault.destroy();
       await onDestroyed();
     } catch {
-      // o cofre pode já ter sido destruído por outro caminho (PIN de coação):
-      // nesse caso não há erro a mostrar, só o estado novo
+      // o cofre pode já ter sido destruído por outro caminho (PIN de coação): só mostrar o estado novo
       await onDestroyed();
     } finally {
       setBusy(false);

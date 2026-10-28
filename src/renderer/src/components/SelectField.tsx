@@ -2,26 +2,13 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { JSX, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 
-/**
- * Campo de escolha com menu próprio, no mesmo desenho do seletor de idioma: o
- * campo é um retângulo escuro com o chevron e o menu abre abaixo, com o item
- * ativo em emerald e o check à direita.
- *
- * Existe como componente porque o `<select>` nativo entrega o popup do sistema,
- * que destoa do tema escuro e não acompanha o acento do app. Aqui o menu é do
- * app, então a navegação é a mesma do seletor de idioma: setas, Home, End,
- * Escape, Tab e clique fora.
- */
+/** Campo de escolha com menu próprio; o select nativo entrega o popup do sistema. */
 
 /** Um valor que o campo sabe oferecer, e o texto que aparece para ele. */
 export interface SelectOption<T extends string | number> {
   value: T;
   label: string;
-  /**
-   * Texto alternativo do gatilho, usado quando `compact` está ligado e o
-   * espaço do campo é o de uma coluna estreita ("pt-BR" no lugar de
-   * "Português (Brasil)"). A lista continua mostrando `label`.
-   */
+  /** Texto do gatilho em modo compacto, no lugar do rótulo completo. */
   short?: string;
 }
 
@@ -34,11 +21,7 @@ export interface SelectFieldProps<T extends string | number> {
   value: T;
   onChange: (value: T) => void;
   size?: SelectFieldSize;
-  /**
-   * O gatilho troca para `option.short` enquanto a janela for estreita (mesmo
-   * `lg` que recolhe a barra lateral), porque aí não cabe o nome inteiro. Com
-   * o campo largo, o gatilho mostra o rótulo completo de novo.
-   */
+  /** Troca o gatilho para `option.short` enquanto a janela for estreita. */
   compact?: boolean;
 }
 
@@ -67,11 +50,7 @@ const ITEM_CHECK_CLASS = {
   md: 'w-4 h-4',
 } satisfies Record<SelectFieldSize, string>;
 
-/**
- * Texto do gatilho. Em modo compacto ele carrega as duas formas do rótulo e
- * deixa o CSS escolher pela largura da janela: o nome curto na coluna estreita
- * e o nome inteiro quando há espaço. Fora do modo compacto é só o rótulo.
- */
+/** No modo compacto carrega as duas formas do rótulo e deixa o CSS escolher pela largura. */
 function triggerLabel<T extends string | number>(
   option: SelectOption<T> | undefined,
   compact: boolean,

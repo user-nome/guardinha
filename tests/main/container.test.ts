@@ -12,13 +12,7 @@ import {
 import { encryptRecord, randomBytes } from '@zero/main/crypto';
 import type { VaultContainerData, VaultUnpackResult, WrappedMethod } from '@zero/main/container';
 
-/**
- * Formato do container. A v6 é a única que o app grava: cabeçalho de 41 bytes,
- * sem tripo global de KDF (cada método carrega o custo do seu Argon2id) e papel
- * autenticado por método. A v5 é lida só para migrar: mesmo layout, mas com o
- * embrulho antigo e o manifesto sem hashes. A leitura ramifica por versão em
- * dois pontos (container e manifesto) e recusa qualquer outra.
- */
+/** Formato do container: a v6 é a única gravada e a v5 é lida só para migrar. */
 
 const HEADER_BYTES = 41;
 const METHOD_FLAGS = [0x01, 0x02, 0x04, FLAG_PANIC] as const;

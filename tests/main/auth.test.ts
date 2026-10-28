@@ -15,11 +15,7 @@ import { writeVaultContainer } from '@zero/main/storage';
 const BASE = new Date('2026-01-01T12:00:00Z').getTime();
 const EMPTY_STATE = { attempts: 0, lockUntil: null, attemptsMaster: 0, nukeLimit: 0 };
 
-/**
- * A trava exponencial agora vive dentro do `vault.zkv` (nada de JSON legível);
- * só persiste quando há um cofre. Semeia um container mínimo de forma barata
- * (sem Argon2), já que o estado não depende das credenciais serem válidas.
- */
+/** Semeia um container mínimo e barato: o estado da trava não depende das credenciais. */
 function seedContainer(): void {
   writeVaultContainer({
     version: 6,
@@ -122,8 +118,7 @@ describe('trava exponencial', () => {
   it('getLockRemainingMs trata lockUntil além do teto como vencido', () => {
     vi.useFakeTimers();
     vi.setSystemTime(BASE);
-    // estado adulterado (ou relógio recuado): sem o corte, o cofre ficaria
-    // preso para sempre porque a espera nunca começaria a diminuir
+    // estado adulterado (ou relógio recuado): sem o corte, o cofre ficaria preso para sempre
     const adulterado = { ...EMPTY_STATE, lockUntil: Number.MAX_SAFE_INTEGER };
     expect(getLockRemainingMs(adulterado)).toBe(0);
     const umMsAcimaDoTeto = { ...EMPTY_STATE, lockUntil: BASE + 86_400_001 };
@@ -223,9 +218,7 @@ describe('validações de formato', () => {
 
 describe('contador de tentativas', () => {
   it('só cruza o limite de autodestruição quando o limite está ligado', () => {
-    // `nukeLimit > 0` é o que separa "sem limite" de "com limite": com o `> 0`
-    // virando `>= 1` (ou o `0` virando `1`), um cofre sem limite cruzaria na
-    // primeira tentativa de senha mestra errada.
+    // `nukeLimit > 0` separa "sem limite" de "com limite": com `>= 1`, o cofre sem limite cruzaria
     const desligado = registerFailedAttempt('master', 0);
     expect(desligado.crossed).toBe(false);
 

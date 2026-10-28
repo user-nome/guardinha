@@ -1,3 +1,4 @@
+/** Contexto de idioma da UI: provider, hooks e marcadores ricos, sem HTML dinâmico. */
 import { createContext, useContext, useMemo } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { messages } from '@zero/messages';
@@ -9,13 +10,7 @@ interface I18nValue {
   m: Messages;
 }
 
-/**
- * Contexto de idioma da UI.
- *
- * O valor padrão é o pt-BR: componentes renderizados fora do provider (testes
- * isolados) continuam mostrando português. O provider vive no `App`, que lê o
- * idioma salvo (`settings.get`) e o troca ao salvar nas Configurações.
- */
+/** Padrão pt-BR: componente fora do provider (teste isolado) continua em português. */
 const DEFAULT_VALUE: I18nValue = { language: 'pt-BR', m: messages('pt-BR') };
 
 const I18nContext = createContext<I18nValue>(DEFAULT_VALUE);
@@ -40,13 +35,7 @@ export function useLanguage(): Language {
   return useContext(I18nContext).language;
 }
 
-/**
- * Formata os marcadores ricos de uma mensagem em nós React:
- * `**negrito**` vira `<strong>` e `` `código` `` vira `<code>`.
- *
- * Não usa `dangerouslySetInnerHTML`: os nós são criados pelo React, sem risco
- * de injeção. Devolve um array (usar com `{richText(texto)}`).
- */
+/** Converte os marcadores ricos em nós React, sem `dangerouslySetInnerHTML`. */
 export function richText(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   const pattern = /\*\*([^*]+)\*\*|`([^`]+)`/g;

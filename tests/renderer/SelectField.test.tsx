@@ -5,10 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { SelectField } from '@zero/renderer/components/SelectField';
 
 /**
- * O seletor tem menu próprio porque o `<select>` nativo entrega o popup do
- * sistema. Isso significa que a navegação é código nosso: setas, Home, End,
- * Escape, Tab e clique fora, mais o foco, que precisa voltar ao gatilho quando
- * o menu fecha. É a única parte da tela em que o teclado é o caminho principal.
+ * O seletor tem menu próprio no lugar do `<select>` nativo, então setas, Home, End e Escape são
+ * código nosso, e o foco precisa voltar ao gatilho quando o menu fecha.
  */
 
 const OPCOES = [
@@ -36,12 +34,7 @@ function opcoes(): HTMLElement[] {
   return screen.getAllByRole('option');
 }
 
-/**
- * Item do menu por índice, com guarda em vez de assertion: `noUncheckedIndexedAccess`
- * devolve `HTMLElement | undefined`, e aqui nem `!` (proibido) nem `as HTMLElement`
- * (exigido pela regra que proíbe o `!`) passam. A guarda também transforma um
- * índice errado em erro legível, em vez de um clique em `undefined`.
- */
+/** Item por índice, com guarda no lugar do `!`: índice errado vira erro legível. */
 function opcao(indice: number): HTMLElement {
   const achada = opcoes()[indice];
   if (achada === undefined) throw new Error(`a opção ${indice} não apareceu no menu`);

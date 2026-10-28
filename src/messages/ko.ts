@@ -1,13 +1,6 @@
 import type { Messages } from '@zero/messages/pt-BR';
 
-/**
- * 한국어. `pt-BR` é o canônico: a forma deste objeto é conferida pelo
- * TypeScript. Glossário alinhado ao app irmão (Biblioteca): 금고 é o cofre,
- * 마스터 비밀번호 é a senha mestra.
- *
- * Nomes de marca (`Guardinha`, `otpauth://`, `Base32`, `SHA1`…), caminhos e
- * identificadores técnicos não se traduzem.
- */
+/** Coreano; `pt-BR` é o canônico e o TypeScript confere a forma do objeto. */
 export const ko: Messages = {
   common: {
     close: '닫기',
@@ -363,7 +356,6 @@ export const ko: Messages = {
     invalidAuthSecret:
       '설정 키는 올바른 Base32(A-Z 및 2-7)여야 하며 80비트(10바이트) 이상이어야 합니다.',
     authTokenNotFound: '2FA 토큰을 찾을 수 없습니다.',
-    // ---- 금고 전체 백업 ----
     backupInvalid: '백업 파일이 유효하지 않습니다.',
     backupCorrupted: '백업이 손상되었거나 변경되었습니다. 아무것도 복원되지 않았습니다.',
     backupUnsupportedVersion: (version?: number): string =>

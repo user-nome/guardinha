@@ -3,12 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { JSX, ReactNode } from 'react';
 import { MessagesProvider, richText, useLanguage, useMessages } from '@zero/renderer/i18n';
 
-/**
- * `richText` transforma `**negrito**` e `` `código` `` em nós React sem passar
- * por `dangerouslySetInnerHTML`. Os testes abaixo travam os três detalhes que
- * fazem essa função ser segura: nunca interpreting HTML, sempre com `key`
- * distinta para o React, e sem perder o texto ao redor dos marcadores.
- */
+/** `richText` monta nós React sem HTML: com `key` própria e sem perder o texto ao redor. */
 
 function show(nodes: ReactNode[]): JSX.Element {
   return <div data-testid="rich">{nodes}</div>;
@@ -50,8 +45,7 @@ describe('richText', () => {
   });
 
   it('não interpreta HTML vindo do texto', () => {
-    // o ponto do não usar dangerouslySetInnerHTML: uma mensagem com tag
-    // precisa virar texto, nunca elemento
+    // o ponto de não usar `dangerouslySetInnerHTML`: tag vira texto, nunca elemento
     const nodes = richText('<b>injetado</b>');
     const { getByTestId } = render(show(nodes));
     expect(getByTestId('rich').querySelector('b')).toBeNull();
@@ -60,8 +54,7 @@ describe('richText', () => {
 
   it('dá chave distinta a cada nó, como o React exige na lista', () => {
     const nodes = richText('**a** **b** `c`');
-    // `key` não aparece no DOM, mas um throw do React aparece no console;
-    // renderizar sem erro já prova que as chaves são únicas
+    // `key` não aparece no DOM, mas renderizar sem throw já prova que são únicas
     expect(() => render(show(nodes))).not.toThrow();
   });
 

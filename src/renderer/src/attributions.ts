@@ -1,7 +1,4 @@
-/**
- * Atribuições por dependência (dados, não UI): não se traduzem, conforme
- * `docs/messages.md`. Título, dica e rodapé ficam em `src/messages/`.
- */
+/** Atribuições por dependência (dados, não UI): não se traduzem. */
 export interface Attribution {
   role: string;
   name: string;

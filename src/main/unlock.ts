@@ -11,10 +11,7 @@ import { formatCountdown, isMasterPasswordFormat, isPinFormat } from '@zero/shar
 import type { VaultContainerData } from '@zero/main/container';
 import type { UnlockInput, VaultResult } from '@zero/types';
 
-/**
- * Estado que corre pela cadeia: cada manipulador lê o que o anterior deixou e
- * pode encerrar a sequência devolvendo a resposta de falha.
- */
+/** Estado que corre pela cadeia: cada elo lê o que o anterior deixou. */
 export interface UnlockContext {
   readonly input: UnlockInput;
   readonly container: VaultContainerData;
@@ -24,26 +21,14 @@ export interface UnlockContext {
   vaultKey?: Buffer | undefined;
   /** O método usado estava no embrulho legado da v5 (candidato a migração). */
   legacyMethod?: boolean | undefined;
-  /**
-   * A falha da senha mestra cruzou o limite de autodestruição. A cadeia para
-   * aí, sem passar pelo Argon2id e sem tocar no manifesto, mas quem chamou
-   * precisa saber que o corte aconteceu para disparar o erase.
-   */
+  /** Falha da senha mestra cruzou o limite: a cadeia para e o erase é disparado. */
   nuked?: boolean;
 }
 
-/**
- * Resposta de um manipulador: `null` segue a cadeia, `undefined` corta a
- * sequência sem resposta (o corte da autodestruição) e o resto encerra o
- * desbloqueio.
- */
+/** `null` segue a cadeia, `undefined` corta sem resposta, o resto encerra. */
 export type HandlerOutcome = VaultResult | null | undefined;
 
-/**
- * Manipulador da cadeia (Chain of Responsibility): devolve `null` para passar a
- * requisição adiante, `undefined` para parar sem resposta, ou a resposta que
- * encerra o desbloqueio.
- */
+/** Elo da cadeia (Chain of Responsibility) do desbloqueio. */
 export abstract class UnlockHandler {
   private next: UnlockHandler | null = null;
 
@@ -68,14 +53,7 @@ function wrongCredentialError(kind: UnlockInput['kind']): string {
   return m.errors.wrongPin;
 }
 
-/**
- * Credencial recusada: conta na trava exponencial e responde com o mesmo erro
- * de credencial errada, sem ecoar o valor digitado. Devolve `undefined` quando a
- * falha da senha mestra cruzou o limite de autodestruição: na cadeia, `null`
- * significa "passe adiante" e `undefined` significa "pare", então o corte
- * interrompe a sequência antes do Argon2id em vez de deixá-la seguir e contar a
- * mesma tentativa duas vezes.
- */
+/** Credencial recusada: conta na trava e não ecoa o valor digitado. */
 function credentialFailure(context: UnlockContext): HandlerOutcome {
   const { state, crossed } = registerFailedAttempt(context.input.kind, context.container.nukeLimit);
   if (crossed) {
@@ -131,10 +109,7 @@ class KdfDerivationHandler extends UnlockHandler {
   }
 }
 
-/**
- * 4. Integridade: o payload do container precisa abrir em uma chave de 32
- * bytes; qualquer forma estranha é o mesmo erro único de credencial errada.
- */
+/** Chave derivada precisa abrir em 32 bytes; forma estranha é credencial errada. */
 class VaultIntegrityHandler extends UnlockHandler {
   protected process(context: UnlockContext): HandlerOutcome {
     const { kind } = context.input;
@@ -158,10 +133,7 @@ class VaultIntegrityHandler extends UnlockHandler {
   }
 }
 
-/**
- * Cadeia de desbloqueio na ordem em que o custo cresce: trava barata corta
- * antes da validação de formato, que corta antes do Argon2id.
- */
+/** Cadeia na ordem em que o custo cresce: trava, formato, Argon2id, integridade. */
 export function unlockPipeline(): UnlockHandler {
   const lockout = new ExponentialLockoutHandler();
   lockout

@@ -4,15 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-/**
- * `node.loader.ts` instala hooks de resolução que só fazem sentido no processo
- * que carrega o arquivo, então testá-lo importando-o dentro do Vitorr deixaria
- * os hooks escapes para o resto da suíte. O teste roda o Node de verdade, com o
- * mesmo `--import` que o `AGENTS.md` documenta, e olha o que ele resolve.
- *
- * É a única forma de provar a coisa que importa aqui: que `node --import
- * ./src/node.loader.ts arquivo.ts` consegue carregar um `@zero/*`.
- */
+/** Testa o loader rodando o Node de verdade; importá-lo no Vitest vazaria os hooks. */
 
 const LOADER = path.resolve(import.meta.dirname, '../../src/node.loader.ts');
 const ROOT = path.resolve(import.meta.dirname, '../..');

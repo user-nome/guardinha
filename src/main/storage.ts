@@ -20,15 +20,7 @@ import type { ManifestContent, ManifestHashes, VaultContainerData } from '@zero/
 import type { SaltedPayload } from '@zero/types/crypto';
 import type { PersistedAuthState } from '@zero/types';
 
-/**
- * Container do cofre (`vault.zkv`): chaves embrulhadas, trava exponencial e
- * manifesto cifrado. Os arquivos das credenciais ficam em `entries-store.ts` e a
- * estrutura de pastas em `structure.ts`; aqui é só o arquivo do container.
- *
- * A forma do estado da trava (`PersistedAuthState`) mora em `@zero/types`: quem
- * calcula a trava é `auth.ts`, não este arquivo, então declará-la aqui só
- * obrigaria o resto do main a depender do módulo de disco para nomear um tipo.
- */
+/** Container do cofre (`vault.zkv`): chaves, trava exponencial e manifesto cifrado. */
 
 /** Estado neutro: cofre ausente ou ilegível não pode parecer "tentou 0 vezes". */
 const EMPTY_AUTH_STATE: PersistedAuthState = {
@@ -42,17 +34,10 @@ function tampered(): Error {
   return new Error(currentMessages().errors.vaultTampered);
 }
 
-/**
- * Cofre gravado por outra versão do app. Não é adulteração: o arquivo está
- * inteiro, cifrado e legível por quem o gravou. A mensagem diz isso e oferece
- * os dois caminhos reais, porque só dizer "erro" deixava o usuário sem saber
- * se os dados foram perdidos.
- */
+/** Cofre de outra versão: não é adulteração, e a mensagem oferece os caminhos reais. */
 function unsupportedVersion(version?: number): Error {
   return new Error(currentMessages().errors.vaultUnsupportedVersion(version));
 }
-
-// ---------- Container do cofre (vault.zkv) ----------
 
 export function vaultExists(): boolean {
   return fs.existsSync(containerFile());
@@ -75,40 +60,22 @@ export function readVaultContainer(): VaultContainerData | null {
 }
 
 export function writeVaultContainer(data: VaultContainerData): void {
-  // Depois de um Cryptographic Erase o cofre não volta a existir por conta
-  // própria: um `writeAuthState`, um `initManifest` ou qualquer `VaultContainerData`
-  // ainda em memória parariam aqui, em vez de recriar um `vault.zkv` sem chave
-  // e transformar "cofre destruído" em "cofre adulterado". Só `createVault`
-  // libera de novo, e só porque o usuário pediu um cofre novo.
+  // Depois do erase nada recria o container: só `createVault` libera de novo.
   if (isVaultDestroyed()) return;
   ensureVaultStructure();
   writeSecretFile(containerFile(), packVaultContainer(data));
 }
 
-/**
- * Guarda uma cópia do container **antes** da primeira migração daquela versão.
- *
- * O snapshot é o caminho de downgrade: se a versão nova tiver um defeito, o
- * usuário restaura `vault.zkv.v<versão>.bak` por cima do `vault.zkv` e volta a
- * abrir o cofre com o app antigo. O arquivo é 0600 e entra na varredura do
- * Cryptographic Erase como qualquer outro arquivo de `.vault/`.
- *
- * Nunca sobrescreve um snapshot existente: o primeiro (a versão mais antiga)
- * é o que preserva o caminho de volta. Falha de escrita é propagada para que
- * a migração seja abortada antes de o container original ser substituído.
- */
+/** Cópia do container antes da primeira migração daquela versão: é o caminho de downgrade. */
 export function backupContainer(version: number): void {
   const target = containerBackupFile(version);
   if (fs.existsSync(target)) return;
   const raw = fs.readFileSync(containerFile());
   const unpacked = unpackVaultContainer(raw);
-  // o arquivo mudou entre a leitura do container e a cópia: melhor abortar a
-  // migração do que guardar um snapshot que não corresponde à versão lida
+  // arquivo mudou entre a leitura e a cópia: abortar a migração em vez de guardar outro
   if (!unpacked.ok || unpacked.data.version !== version) throw tampered();
   writeSecretFile(target, raw);
 }
-
-// ---------- Estado da trava exponencial (dentro do container) ----------
 
 export function readAuthState(): PersistedAuthState {
   try {
@@ -136,8 +103,6 @@ export function writeAuthState(state: PersistedAuthState): void {
   writeVaultContainer(data);
 }
 
-// ---------- Manifesto de integridade (cifrado com a chave do cofre) ----------
-
 /** Hashes de conteúdo de todos os arquivos cobertos pelo manifesto. */
 function contentHashes(ids: string[], authIds: string[]): ManifestHashes {
   const entries: Record<string, string> = {};
@@ -152,11 +117,7 @@ function manifestVersionFor(containerVersion: number): number {
   return containerVersion === VAULT_VERSION ? MANIFEST_VERSION : LEGACY_MANIFEST_VERSION;
 }
 
-/**
- * Sela o estado atual do diretório na versão pedida. A v2 (container v5) não
- * carrega hashes, então nem lê os arquivos: uma credencial removida no meio
- * da operação não pode derrubar o selo de um cofre que ainda não migrou.
- */
+/** Sela o estado do diretório na versão pedida; a v2 não carrega hashes e nem lê os arquivos. */
 export function manifestFromDirectory(
   vaultKey: Buffer,
   version: number = MANIFEST_VERSION,
@@ -176,19 +137,7 @@ export function updateManifest(vaultKey: Buffer): void {
   writeVaultContainer(data);
 }
 
-/**
- * Confere manifesto × diretório: arquivo removido/injetado de fora do app
- * derruba a lista com o erro único de adulteração (fail-closed).
- *
- * Um container sem manifesto **não** é um cofre novo: o selo inicial é feito
- * por `createVault`, antes de o arquivo existir. Se o campo chegou aqui nulo, o
- * manifesto foi removido de fora ou a gravação falhou, e re-selar o diretório
- * atual aceitaria exclusões silenciosas como estado legítimo.
- *
- * Os tokens de 2FA entram na mesma conferência. Sem isso, apagar um `.zka` ou
- * plantar o seu próprio passaria despercebido: o segredo TOTP trocado em
- * silêncio é exatamente o ataque que o manifesto existe para fechar.
- */
+/** Confere manifesto × diretório e falha fechado; manifesto nulo não é cofre novo. */
 export function verifyManifestData(data: VaultContainerData, vaultKey: Buffer): ManifestContent {
   if (data.manifest === null) throw tampered();
 
@@ -209,10 +158,8 @@ export function verifyManifestData(data: VaultContainerData, vaultKey: Buffer): 
     throw tampered();
   }
   // a v2 não tem hashes: o conjunto de ids é toda a garantia que ela oferece.
-  // A migração re-sela na v3 assim que a chave está na mão.
   if (expected.version < MANIFEST_VERSION) return expected;
-  // o conjunto de nomes igual não prova conteúdo: trocar `.zke` de A por B
-  // mantém a lista e só o SHA-256 gravado no manifesto denuncia (P6)
+  // conjunto igual não prova conteúdo: só o SHA-256 do manifesto denuncia a troca
   try {
     for (const id of entryIds) {
       if (expected.entries[id] !== hashEntry(id)) throw tampered();

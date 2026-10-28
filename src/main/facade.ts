@@ -36,6 +36,8 @@ import type { ManifestContent, VaultContainerData } from '@zero/main/container';
 import type { SaltedPayload } from '@zero/types/crypto';
 import type { Credential, EraseResult, PersistedAuthState, TempCleanupResult } from '@zero/types';
 
+/** Fachada única de persistência do cofre: `fs-extra`, AES-256-GCM e manifesto. */
+
 function tampered(): Error {
   return new Error(currentMessages().errors.vaultTampered);
 }
@@ -68,10 +70,7 @@ function asCredential(value: unknown): Credential | null {
   };
 }
 
-/**
- * Registro decifrado de um token de 2FA. Fica no main: o segredo é o que
- * precisa de proteção e o renderer nunca o recebe (só os metadados e o código).
- */
+/** Registro decifrado de 2FA: o segredo fica no main e nunca vai ao renderer. */
 export interface AuthSecret {
   id: string;
   issuer: string;
@@ -115,15 +114,8 @@ function asAuthSecret(value: unknown): AuthSecret | null {
   };
 }
 
-/**
- * Fachada única do cofre sobre `fs-extra`, AES-256-GCM e o manifesto
- * (`.zke`, `.zka` e `.zkv`): `vault.ts`, `entries.ts`, `auth.ts` e
- * `authenticator.ts` pedem operações de alto nível aqui e nunca tocam sistema
- * de arquivos, cifra ou pacote binário direto.
- */
+/** Operações de alto nível do cofre; `vault.ts`, `entries.ts` e `auth.ts` só falam com ela. */
 export class VaultStorageFacade {
-  // ---------- Estrutura e localização ----------
-
   public exists(): boolean {
     return vaultExists();
   }
@@ -142,8 +134,6 @@ export class VaultStorageFacade {
     return vaultPath();
   }
 
-  // ---------- Chaves e identificadores ----------
-
   public createKey(): Buffer {
     return createVaultKey();
   }
@@ -152,8 +142,6 @@ export class VaultStorageFacade {
   public newId(): string {
     return randomUuid();
   }
-
-  // ---------- Container (`vault.zkv`) ----------
 
   public readContainer(): VaultContainerData | null {
     return readVaultContainer();
@@ -168,25 +156,15 @@ export class VaultStorageFacade {
     backupContainer(version);
   }
 
-  // ---------- Trava exponencial (campos do container) ----------
-
-  /**
-   * Estado de tentativas e trava. Nunca lança: cofre ausente ou ilegível
-   * devolve o estado neutro, para o `getStatus` não virar erro.
-   */
+  /** Estado de tentativas e trava; nunca lança, devolve o neutro se o cofre falta. */
   public readAuthState(): PersistedAuthState {
     return readAuthState();
   }
 
-  /**
-   * Grava tentativas, trava e limite no container. É read-modify-write, então
-   * passa por `writeVaultContainer`, que recusa escrever depois de um erase.
-   */
+  /** Grava no container via read-modify-write, que recusa escrever depois do erase. */
   public writeAuthState(state: PersistedAuthState): void {
     writeAuthState(state);
   }
-
-  // ---------- Manifesto de integridade ----------
 
   public updateManifest(vaultKey: Buffer): void {
     updateManifest(vaultKey);
@@ -207,20 +185,11 @@ export class VaultStorageFacade {
     return verifyManifestData(data, vaultKey);
   }
 
-  // ---------- Credenciais (arquivos `.zke`) ----------
-
   public listIds(): string[] {
     return listEntryIds();
   }
 
-  /**
-   * Decifra o arquivo da credencial e confere a forma: payload inválido ou
-   * registro fora do contrato vira o erro único de adulteração (fail-closed).
-   *
-   * O id decifrado precisa ser o id do arquivo. Sem isso, copiar o `.zke` de A
-   * sobre o de B mantém o conjunto de nomes que o manifesto confere e a lista
-   * mostraria A duas vezes.
-   */
+  /** Decifra e confere forma e id; `.zke` copiado de outro id vira adulteração. */
   public readRecord(id: string, vaultKey: Buffer): Credential {
     let record: Credential | null;
     try {
@@ -244,17 +213,11 @@ export class VaultStorageFacade {
     updateManifest(vaultKey);
   }
 
-  // ---------- Tokens de 2FA (arquivos `.zka`) ----------
-
   public listAuthIds(): string[] {
     return listAuthIds();
   }
 
-  /**
-   * Decifra o token e confere a forma. O segredo sai daqui apenas para o
-   * cálculo do código, dentro do main. O id decifrado também precisa ser o do
-   * arquivo, pela mesma razão do `readRecord`.
-   */
+  /** Decifra o token e confere forma e id; o segredo só sai para o cálculo no main. */
   public readAuthSecret(id: string, vaultKey: Buffer): AuthSecret {
     let record: AuthSecret | null;
     try {
@@ -278,22 +241,12 @@ export class VaultStorageFacade {
     updateManifest(vaultKey);
   }
 
-  // ---------- Destruição do cofre ----------
-
-  /**
-   * Cryptographic Erase: apaga o container (que guarda a chave embrulhada) e
-   * todas as entradas, com sobrescrita antes do `unlink`. Só quem chama isto
-   * decide se o cofre morre (botão de pânico, PIN de coação, limite de
-   * tentativas); aqui é a operação crua.
-   */
+  /** Cryptographic Erase cru: apaga o container e as entradas, quem chama decide. */
   public erase(): EraseResult {
     return eraseVault();
   }
 
-  /**
-   * Temporários órfãos de um crash, que o manifesto não cobre. Roda uma vez na
-   * inicialização, antes do primeiro `getStatus` responder.
-   */
+  /** Temporários órfãos de um crash, que o manifesto não cobre; roda na inicialização. */
   public cleanTempFiles(maxAgeMs: number): TempCleanupResult {
     return cleanStaleTempFiles(maxAgeMs);
   }

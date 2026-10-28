@@ -2,17 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { SensitivitySlider } from '@zero/renderer/components/SensitivitySlider';
 
-/**
- * O slider implementa `role="slider"` com arraste relativo (o clique não pula
- * o cursor para o ponto clicado) e passo em pixels com piso de 10 px. Os testes
- * abaixo travam o comportamento acessível por teclado, que é o caminho de quem
- * não usa mouse, e as bordas de clamping.
- *
- * O jsdom não implementa a Pointer Capture API, que o componente usa para
- * continuar recebendo o arraste fora da barra. Sem o stub, `setPointerCapture`
- * lança e o arraste nunca começa, então os testes de ponteiro medem o erro do
- * ambiente em vez do componente.
- */
+/** Trava o slider acessível e o clamping; o jsdom não tem Pointer Capture, daí o stub. */
 
 const CAPTURE = {
   setPointerCapture: vi.fn(),
@@ -66,9 +56,7 @@ describe('SensitivitySlider: teclado', () => {
   });
 
   it('cada seta vertical move exatamente um passo', () => {
-    // Cada tecla é medida sozinha: o espião acumula chamadas, e sem separar
-    // ArrowUp de ArrowRight um passo de dois passaria na asserção só porque o
-    // ArrowRight anterior devolveu o valor certo.
+    // cada tecla é medida sozinha: o espião acumula e um passo de dois passaria
     const { onChange } = setup(10);
     fireEvent.keyDown(slider(), { key: 'ArrowUp' });
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -89,9 +77,7 @@ describe('SensitivitySlider: teclado', () => {
   });
 
   it('PageUp e PageDown movem dez longe das pontas, sem o clamp esconder o passo', () => {
-    // Com a faixa estreita dos testes acima, um passo de onze seria cortado no
-    // máximo e a asserção passaria de qualquer jeito. A faixa larga mede o passo
-    // de verdade.
+    // faixa larga: na estreita o clamp esconderia o passo e a asserção passaria
     const { onChange } = setup(50, 0, 100);
     fireEvent.keyDown(slider(), { key: 'PageUp' });
     expect(onChange).toHaveBeenLastCalledWith(60);
@@ -176,9 +162,7 @@ describe('SensitivitySlider: arraste', () => {
   });
 
   it('calcula o passo pela largura real da faixa', () => {
-    // 480 px para 48 unidades dão 10 px por unidade: o arraste de 100 px anda
-    // 10. Com a multiplicação no lugar da divisão o passo seria 23040 px e o
-    // arraste não moveria nada.
+    // 480 px para 48 unidades dão 10 px por unidade; com multiplicação nada moveria
     const { onChange } = setup(0, 0, 48);
     Object.defineProperty(slider(), 'clientWidth', { value: 480, configurable: true });
     fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
@@ -188,8 +172,7 @@ describe('SensitivitySlider: arraste', () => {
   });
 
   it('o passo usa a distância entre mínimo e máximo, não a soma', () => {
-    // Faixa 10..20 em 300 px: 30 px por unidade. Somar as pontas daria 10 px
-    // por unidade e o mesmo arraste andaria três vezes mais.
+    // faixa 10..20 em 300 px: 30 px por unidade; somar as pontas daria 10
     const { onChange } = setup(10, 10, 20);
     Object.defineProperty(slider(), 'clientWidth', { value: 300, configurable: true });
     fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
@@ -229,10 +212,7 @@ describe('SensitivitySlider: arraste', () => {
   });
 
   it('na faixa de uma unidade, o passo é a largura inteira da faixa', () => {
-    // Com `max - min` igual a 1, o passo natural é a largura toda: arrastar um
-    // quarto da faixa não move nada, e a faixa inteira move 1. O piso do
-    // `Math.max(1, ...)` existe para a faixa degenerada, e um piso maior
-    // mudaria o passo de uma faixa de duas posições.
+    // com `max - min` 1 o passo é a largura toda; o piso do `Math.max` é para a degenerada
     const { onChange } = setup(0, 0, 1);
     Object.defineProperty(slider(), 'clientWidth', { value: 200, configurable: true });
     fireEvent.pointerDown(slider(), { clientX: 0, pointerId: 1 });
@@ -263,9 +243,7 @@ describe('SensitivitySlider: arraste', () => {
   });
 
   it('termina o arraste sem soltar captura que o elemento não tem', () => {
-    // `hasPointerCapture` falso é o caso do ponteiro que já saiu (ou de um
-    // ambiente que nega a captura): soltar captura inexistente lança
-    // `NotFoundError`, e o erro subiria no fim do arraste.
+    // soltar captura inexistente lança `NotFoundError`, que subiria no fim do arraste
     CAPTURE.hasPointerCapture.mockReturnValueOnce(false);
     CAPTURE.releasePointerCapture.mockClear();
     setup(10, 0, 20);

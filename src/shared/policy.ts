@@ -1,13 +1,4 @@
-/**
- * Política de credencial do cofre: o formato que o app aceita do usuário.
- *
- * São regras puras, sem Node e sem DOM, e moram aqui, e não em `main/crypto.ts`,
- * porque o renderer precisa das mesmas para validar o que está sendo digitado
- * enquanto o main valida de novo antes de gravar. Divergir as duas cópias era o
- * risco real: o main aceitaria e a tela não, ou o inverso, sem erro nenhum.
- *
- * Nenhuma delas guarda segredo. São comprimentos e formatos públicos.
- */
+/** Política de credencial: formato aceito, regra pura usada pelo renderer e pelo main. */
 
 /** Comprimento fixo da senha mestra (24 caracteres gerados no primeiro uso). */
 export const MASTER_PASSWORD_LENGTH = 24;

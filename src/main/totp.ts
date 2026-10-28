@@ -3,16 +3,8 @@ import { currentMessages } from '@zero/main/i18n';
 import type { OtpAlgorithm } from '@zero/shared';
 
 /**
- * HOTP (RFC 4226) e TOTP (RFC 6238): o cálculo do código de dois fatores.
- *
- * Mora no main porque precisa de HMAC, que é do Node, e porque é o único lugar
- * onde o segredo TOTP existe em memória. O renderer recebe o número pronto.
- *
- * O algoritmo **não é escolha nossa**: quem define é o serviço que emite o
- * segredo. SHA-1 continua sendo o correto aqui não por herança técnica, mas
- * porque GitHub, Discord, Google, AWS, Coinbase e a maioria dos serviços ainda
- * verificam HMAC-SHA1, e um código "mais forte" que o servidor rejeita vale
- * exatamente zero. SHA-256 e SHA-512 existem para os poucos serviços que pedem.
+ * HOTP (RFC 4226) e TOTP (RFC 6238) no main, onde o segredo existe em memória;
+ * o renderer recebe o código pronto.
  */
 
 /** Lê um byte do digest sem espalhar `!` pelo código (o corte é sempre válido). */
@@ -22,11 +14,7 @@ function byteAt(data: Buffer, index: number): number {
   return value;
 }
 
-/**
- * HMAC do segredo sobre o contador, depois do corte dinâmico da RFC 4226: o
- * último nibble do digest escolhe a posição da sequência de 4 bytes, e o bit
- * mais alto deles é zerado antes do módulo.
- */
+/** HMAC sobre o contador com o corte dinâmico da RFC 4226. */
 export function hotp(
   secret: Uint8Array,
   counter: number,
@@ -68,10 +56,7 @@ export function totp(
   return hotp(secret, totpStep(timeMs, period), digits, algorithm);
 }
 
-/**
- * Milissegundos até o próximo código. É o que a barra regressiva da tela
- * desenha, então nunca negativo e nunca maior que o período inteiro.
- */
+/** Milissegundos até o próximo código, para a barra regressiva. */
 export function totpRemainingMs(timeMs: number, period: number): number {
   const stepMs = Math.max(1, Math.floor(period)) * 1000;
   const remainder = stepMs - (timeMs % stepMs);

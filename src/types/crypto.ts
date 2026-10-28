@@ -1,7 +1,4 @@
-/**
- * Tipos compartilhados pela cifra e pelo formato do container; `SaltedPayload`
- * também é usado pelos stores de entradas e tokens.
- */
+/** Parâmetros do Argon2id usados pela cifra e pelo container. */
 export interface Argon2Params {
   memoryKiB: number;
   iterations: number;

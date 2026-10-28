@@ -14,26 +14,7 @@ import { currentMessages } from '@zero/main/i18n';
 import type { BackupSegment } from '@zero/main/backup/backup-container';
 import type { BackupResult, RestoreResult } from '@zero/types';
 
-/**
- * Backup integral do cofre em arquivo único (`.gbk`) e a restauração dele.
- *
- * O que vai para o pendrive é **o que já está cifrado no cofre**, sem decifrar
- * nada: o `vault.zkv` (com os embrulhos da chave) e cada `.zke`/`.zka`. Quem
- * achar o pendrive não lê nada sem o PIN ou a senha mestra, e o app não precisa
- * da chave para copiar bytes opacos de um lado para o outro.
- *
- * A exportação lê a estrutura direto (contêiner, `.entries`, `.auth`), ignora
- * temporários `.tmp` e empacota com manifesto e SHA-256 por arquivo. A
- * restauração valida o pacote **inteiro antes de tocar no disco**; só depois
- * apaga o cofre atual (pelo mesmo Cryptographic Erase) e grava o cofre novo, com
- * o contêiner por último para que um crash no meio não deixe um cofre "aberto"
- * sem as credenciais.
- *
- * Não exige sessão desbloqueada de propósito: o caso de uso principal é a
- * máquina formatada, onde o app acabou de ser instalado e ainda não tem cofre
- * nenhum. Depois de restaurar, a sessão é zerada e o cofre só abre com as
- * credenciais do backup.
- */
+/** Backup integral do cofre em `.gbk` e a restauração: só bytes já cifrados, sem sessão aberta. */
 
 function readBackup(source: string): Buffer {
   try {
@@ -44,8 +25,7 @@ function readBackup(source: string): Buffer {
 }
 
 function writeBackupFile(destination: string, data: Buffer): void {
-  // nome aleatório + `wx`: o pendrive é território hostil, e um `.tmp` fixo
-  // plantado como symlink levava a escrita para o `vault.zkv`
+  // nome aleatório + `wx`: um `.tmp` fixo plantado como symlink levaria a escrita ao `vault.zkv`
   const tmp = tempPathFor(destination);
   try {
     fs.writeFileSync(tmp, data, { mode: 0o600, flag: 'wx' });
@@ -57,8 +37,7 @@ function writeBackupFile(destination: string, data: Buffer): void {
       // sem permissão de mode no sistema de arquivos: o conteúdo continua cifrado
     }
   } catch (error) {
-    // o temporário é nosso (o `wx` recusou qualquer coisa pré-existente);
-    // limpar evita deixar lixo no pendrive quando o rename falha
+    // o temporário é nosso (o `wx` recusou o que existia); limpar evita lixo no pendrive
     try {
       fs.rmSync(tmp, { force: true });
     } catch {

@@ -6,18 +6,14 @@ import type { SelectOption } from '@zero/renderer/components/SelectField';
 import type { Language } from '@zero/types';
 
 /**
- * Seletor de idioma da barra lateral: o mesmo campo de escolha do formulário,
- * na versão compacta, com o rótulo "Idioma" e os nomes traduzidos.
+ * Seletor de idioma da barra lateral: o campo de escolha do formulário em
+ * versão compacta, com os nomes traduzidos.
  */
 
 interface LanguageSelectProps {
   language: Language;
   onLanguageChange: (language: Language) => void;
-  /**
-   * Coluna estreita (a barra lateral recolhida): o gatilho passa a mostrar o
-   * código do idioma, porque "Português (Brasil)" não cabe. O menu segue com os
-   * nomes completos.
-   */
+  /** Barra recolhida: o gatilho mostra o código, o menu segue com o nome completo. */
   compact?: boolean;
 }
 

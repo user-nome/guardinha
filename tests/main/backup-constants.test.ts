@@ -9,11 +9,7 @@ import {
   BACKUP_APP_NAME,
 } from '@zero/main/backup-constants';
 
-/**
- * As constantes do formato de backup são usadas pelo `backup-container.ts` e
- * pelo `backup.ts`. Este teste garante que os valores exportados existem e
- * têm o formato esperado.
- */
+/** Constantes do formato de backup: os valores exportados existem e têm o formato esperado. */
 
 describe('backup-constants', () => {
   it('BACKUP_MAGIC é o buffer esperado', () => {
@@ -42,8 +38,7 @@ describe('backup-constants', () => {
 
   it('BACKUP_FILE_PATH rejeita caminhos inválidos', () => {
     expect(BACKUP_FILE_PATH.test('vault.zkv.tmp')).toBe(false);
-    // O padrão aceita UUIDs (com hífens), então `.entries/abc.zke` passa.
-    // Para rejeitar, precisamos de um caminho com caractere inválido ou estrutura errada.
+    // O padrão aceita UUID com hífen: para rejeitar, é preciso caractere inválido ou estrutura errada.
     expect(BACKUP_FILE_PATH.test('.entries/abc!.zke')).toBe(false);
     expect(BACKUP_FILE_PATH.test('.auth/def!.zka')).toBe(false);
     expect(BACKUP_FILE_PATH.test('../etc/passwd')).toBe(false);

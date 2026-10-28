@@ -1,4 +1,5 @@
 // @vitest-environment node
+/** A fachada concentra `fs`, cifra e manifesto; o teste cobre o contrato de alto nível. */
 import { beforeAll, describe, expect, it } from 'vitest';
 import { encryptAuthRecord, encryptRecord } from '@zero/main/crypto';
 import { vaultStorage } from '@zero/main/facade';
@@ -149,10 +150,7 @@ describe('VaultStorageFacade (fachada de persistência)', () => {
 
 describe('forma do registro confere campo a campo', () => {
   it('recusa quando só o id está errado', () => {
-    // Cada campo é conferido com `||`. Um teste que só quebra o `title` ainda
-    // pegaria o resto, porque os outros campos também estariam fora do contrato.
-    // Aqui o defeito fica em um campo só: é o que prova que a checagem é campo a
-    // campo, e não "algum campo está errado".
+    // Defeito em um campo só prova que a checagem é campo a campo, e não "algum errado".
     const key = requireSessionKey();
     const id = vaultStorage.newId();
     writeEntryPayload(id, encryptRecord({ ...record(id), id: 42 }, key));

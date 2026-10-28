@@ -17,12 +17,7 @@ import { vaultSession } from '@zero/main/session';
 import { readVaultContainer, writeVaultContainer } from '@zero/main/storage';
 import type { Argon2Params } from '@zero/types/crypto';
 
-/**
- * Custo mínimo aceito pelo formato do container. Os testes de ataque não
- * precisam pagar o Argon2id de produção para provar que uma credencial errada
- * não abre a chave: o que está sob teste é a cadeia, não o custo. O perfil real
- * tem um teste de tempo próprio em `crypto.kat.test.ts`.
- */
+/** Custo mínimo aceito: os testes de ataque provam a cadeia, não o Argon2id de produção. */
 export const CHEAP_KDF: Argon2Params = { memoryKiB: 16_384, iterations: 1, parallelism: 1 };
 
 /** Tipos de credencial que o container sabe embrulhar. */
@@ -30,12 +25,7 @@ export const KINDS = ['master', 'pin', 'recovery', 'panic'] as const;
 
 export type WrappedKind = (typeof KINDS)[number];
 
-/**
- * Embrulha a chave com um custo barato, no mesmo formato de
- * `keyUnwrapperFor(kind).wrap`. Reimplementado aqui de propósito: o fixture não
- * deve depender do código que ele vai atacar (se o embrulhador real regredir, o
- * teste ainda monta um container válido e falha na asserção certa).
- */
+/** Embrulho barato reimplementado de propósito, para o fixture não depender do código atacado. */
 export async function wrapCheap(
   vaultKey: Buffer,
   credential: string,
@@ -75,11 +65,7 @@ export interface SeedOptions {
   manifest?: boolean;
 }
 
-/**
- * Semeia um cofre completo e barato: métodos embrulhados com `CHEAP_KDF`,
- * arquivos `.zke`/`.zka` de conteúdo descartável e manifesto selado com a chave
- * de verdade. Devolve a forma que ficou no disco.
- */
+/** Semeia um cofre barato no disco e devolve a forma que ficou gravada. */
 export async function seedVault(options: SeedOptions): Promise<VaultContainerData> {
   resetVaultDir();
   const methods: VaultMethods = {};

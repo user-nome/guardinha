@@ -38,7 +38,6 @@ export function AuthModal({ status, onRefresh }: AuthModalProps): JSX.Element {
   const m = useMessages();
   const isCreate = !status.exists;
 
-  // ----- criação -----
   const [step, setStep] = useState<AuthStep>('credentials');
   const [master, setMaster] = useState('');
   const [masterConfirm, setMasterConfirm] = useState('');
@@ -46,7 +45,6 @@ export function AuthModal({ status, onRefresh }: AuthModalProps): JSX.Element {
   const [phrase, setPhrase] = useState('');
   const [phraseConfirm, setPhraseConfirm] = useState('');
 
-  // ----- desbloqueio -----
   const [mode, setMode] = useState<AuthMode>('pin');
   const [credential, setCredential] = useState('');
   const [resetPhrase, setResetPhrase] = useState('');
@@ -145,11 +143,7 @@ export function AuthModal({ status, onRefresh }: AuthModalProps): JSX.Element {
     }
   };
 
-  /**
-   * Restaura um cofre a partir de um backup, sem exigir cofre existente: é o
-   * caminho de quem acabou de instalar o app depois de formatar a máquina. O
-   * diálogo nativo e a validação do pacote correm no main.
-   */
+  /** Restaura um backup sem exigir cofre existente: o caminho de quem formatou a máquina. */
   const handleRestore = async (): Promise<void> => {
     setRestoreError(null);
     setRestoreBusy(true);
@@ -234,10 +228,7 @@ export function AuthModal({ status, onRefresh }: AuthModalProps): JSX.Element {
       }
     };
 
-  // `min-h-screen` com `items-center` centraliza o cartão, mas numa janela
-  // baixa o conteúdo cresce para os dois lados e o topo some fora do alcance.
-  // `items-start` + `my-auto` no cartão resolve os dois casos: centrado quando
-  // cabe, encostado no topo e rolável quando não cabe.
+  // `items-start` + `my-auto`: centrado quando cabe, encostado no topo e rolável quando não.
   const shell = (title: string, subtitle: ReactNode, body: ReactNode): JSX.Element => (
     <div className="min-h-screen w-full bg-slate-950 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
       <div className="my-auto w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-7 shadow-2xl space-y-5">

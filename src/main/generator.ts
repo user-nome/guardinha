@@ -5,22 +5,13 @@ import { MAX_GENERATOR_LENGTH } from '@zero/shared/generator-constants';
 import type { GeneratorOptions } from '@zero/types';
 
 /**
- * Gerador de senha aleatória criptograficamente segura.
- *
- * Mora no main e não em `crypto.ts` porque não tem nada a ver com o cofre: não
- * cifra nada, não deriva chave e nunca vê a chave do cofre. O segredo sai do
- * `crypto` do Node (hardware), nunca do `Math.random` do renderer, e o
- * resultado é texto simples devolvido pelo IPC.
+ * Gerador de senha aleatória: só usa o `crypto` do Node (hardware), nunca o
+ * `Math.random` do renderer, e devolve texto simples pelo IPC.
  */
 
 /** Teto de tamanho, o mesmo que a tela permite marcar. */
 export { MAX_GENERATOR_LENGTH };
-/**
- * Conjunto de caracteres da senha: só as categorias marcadas na tela. Só
- * "Maiúsculas" sai só maiúsculas, só "Números" sai só números, e assim por
- * diante. Sem nenhuma categoria marcada não há o que sortear, então devolve
- * vazio (a tela não deixa chegar aqui: a última categoria ligada não desliga).
- */
+/** Só as categorias marcadas; vazio quando nenhuma está ligada. */
 export function passwordCharSet(options: GeneratorOptions): string {
   let charSet = '';
   if (options.useLower) charSet += PASSWORD_CHARACTER_SETS.lower;
@@ -30,10 +21,7 @@ export function passwordCharSet(options: GeneratorOptions): string {
   return charSet;
 }
 
-/**
- * Confere a forma do pedido do gerador e lança o erro localizado se algo não
- * fechar. É regra de domínio: o handler IPC não valida payload, só repassa.
- */
+/** Valida a forma do pedido aqui: o handler IPC só repassa o payload. */
 export function assertGeneratorOptions(options: GeneratorOptions): void {
   const m = currentMessages();
   const { length } = options;
@@ -82,8 +70,7 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
   ) {
     throw new Error(m.errors.invalidGenerator);
   }
-  // Categorias desmarcadas saem do conjunto; sem nenhuma marcada não há o que
-  // sortear, e devolver vazio seria fingir que gerou uma senha.
+  // Sem categoria marcada, devolver vazio fingiria que gerou uma senha.
   if (passwordCharSet(options) === '') {
     throw new Error(m.errors.invalidGenerator);
   }
@@ -98,8 +85,8 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
 }
 
 /**
- * Gera a senha respeitando as quantidades reservadas por categoria e as
- * palavras pessoais cuja inclusão literal foi explicitamente autorizada.
+ * Gera a senha com as quantidades reservadas por categoria e as palavras
+ * pessoais autorizadas.
  */
 export function generateHighEntropyPassword(options: GeneratorOptions): string {
   const { length } = options;
@@ -115,13 +102,11 @@ export function generateHighEntropyPassword(options: GeneratorOptions): string {
 
   let digestIndex = 0;
   const pickCharacter = (characters: string): string => {
-    // `readUInt8` devolve um byte do Buffer (tipado `number`, sem o
-    // `number | undefined` do índice) e o módulo garante o deslocamento dentro
-    // do digest, então o ciclo não precisa de valor de reserva.
+    // `readUInt8` tipa `number`, ao contrário do índice; o módulo fica no digest.
     const personalByte = personalDigest.readUInt8(digestIndex % personalDigest.length);
     digestIndex += 1;
     const roll = (personalByte + crypto.randomInt(characters.length)) % characters.length;
-    // `charAt` já devolve `string` para qualquer índice, ao contrário de `[roll]`.
+    // `charAt` devolve `string` para qualquer índice, ao contrário de `[roll]`.
     return characters.charAt(roll);
   };
   const literalCharacters = options.includeCustomEntropyWords

@@ -4,12 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { MessagesProvider } from '@zero/renderer/i18n';
 import { Page } from '@zero/renderer/components/Page';
 
-/**
- * O `Page` é o esqueleto que todas as abas compartilham. O teste trava as três
- * decisões que fazem a interface se adaptar à janela: a coluna tem largura
- * máxima por tipo de tela, o cabeçalho encolhe (a ação pode quebrar linha) e o
- * subtítulo é opcional.
- */
+/** O `Page` é o esqueleto comum das abas: largura por tipo de tela, cabeçalho e subtítulo opcional. */
 
 function mount(ui: ReactElement): HTMLElement {
   const { container } = render(<MessagesProvider language="pt-BR">{ui}</MessagesProvider>);
@@ -28,8 +23,7 @@ describe('Page: coluna de conteúdo', () => {
 
     expect(root.className).toContain('mx-auto');
     expect(root.className).toContain('max-w-4xl');
-    // a contagem de colunas dos cartões não mora aqui, e sim em `card-grid.ts`,
-    // que decide pela largura da janela; esta coluna só põe o teto de largura
+    // a contagem de colunas dos cartões mora em `card-grid.ts`; aqui só o teto de largura
     expect(root.className).not.toContain('@container');
   });
 

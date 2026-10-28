@@ -11,11 +11,7 @@ const SECRET = 'guardinha-shred-prova-de-conteudo-original';
 let root: string;
 let target: string;
 
-/**
- * Grava no vetor e deixa a escrita passar para o disco de verdade, para que os
- * testes continuem medindo um arquivo real. `zeros` diz se o bloco era só
- * zeros, que é como se distingue a passada de sorteio da passada de limpeza.
- */
+/** Grava no vetor e deixa a escrita passar ao disco; `zeros` marca a passada de limpeza. */
 interface WriteCall {
   position: number | null;
   length: number;
@@ -224,9 +220,7 @@ describe('shredDirectory', () => {
   });
 
   it('devolve false quando há subdiretório, mesmo se o rmdir passar', () => {
-    // O `rmdir` de verdade falharia com a pasta não vazia; ele é neutralizado
-    // para que o valor devolvido meça a agregação do laço (a entrada que não é
-    // arquivo conta como incompleta) e não só o erro do `rmdir`.
+    // neutraliza o `rmdir` para medir a agregação do laço, não o erro dele
     const dir = path.join(root, '.entries');
     fs.mkdirSync(path.join(dir, 'sub'), { recursive: true });
     const rmdir = vi.spyOn(fs, 'rmdirSync').mockImplementation(() => undefined);
@@ -238,8 +232,7 @@ describe('shredDirectory', () => {
   });
 
   it('devolve false quando um arquivo não pôde ser sobrescrito, mesmo se o rmdir passar', () => {
-    // Sem o `&&` da agregação, uma sobrescrita bem-sucedida (true) mais adiante
-    // no laço apagaria o false da que falhou e o diretório passaria por inteiro.
+    // sem o `&&`, uma sobrescrita posterior apagaria o false da que falhou
     const dir = path.join(root, '.entries');
     fs.mkdirSync(dir);
     fs.writeFileSync(path.join(dir, 'a.zke'), SECRET, { mode: 0o600 });
@@ -257,8 +250,7 @@ describe('shredDirectory', () => {
 
 describe('parâmetros da sobrescrita', () => {
   it('usa 3 passadas por padrão, como manda o shred(1)', () => {
-    // O número de passadas é o que a sobrescrita realmente entrega. Um teste que
-    // só chama `shredFile` continua verde se alguém baixar o custo aqui.
+    // o número de passadas é o que a sobrescrita entrega; chamar sem medir não prova
     expect(SHRED_PASSES).toBe(3);
   });
 
@@ -269,8 +261,7 @@ describe('parâmetros da sobrescrita', () => {
   });
 
   it('sobrescreve arquivo maior que um bloco de escrita antes de apagar', () => {
-    // Arquivo de vários blocos exercita o laço de escrita; o de tamanho pequeno
-    // passaria mesmo com o laço quebrado.
+    // arquivo de vários blocos exercita o laço de escrita; o pequeno passaria quebrado
     const big = 'x'.repeat(300_000);
     fs.writeFileSync(target, big, { mode: 0o600 });
 
@@ -281,9 +272,7 @@ describe('parâmetros da sobrescrita', () => {
 
 describe('geometria da escrita', () => {
   it('grava em blocos de 64 KiB e nunca passa do fim do arquivo', () => {
-    // 200.000 = 3 × 65.536 + 3.392. Cada bloco começa exatamente onde o anterior
-    // acabou, e o último é o resto. É o que garante que a sobrescrita cobre o
-    // arquivo inteiro sem escrever além dele.
+    // 200.000 = 3 × 65.536 + 3.392: blocos contíguos cobrem tudo sem passar do fim
     const big = crypto.randomBytes(200_000);
     fs.writeFileSync(target, big, { mode: 0o600 });
     const calls = spyWrite();
@@ -297,8 +286,7 @@ describe('geometria da escrita', () => {
   });
 
   it('o tamanho do arquivo menor que um bloco vira uma única escrita', () => {
-    // Sem isto, um laço que calculasse o resto errado ainda passaria nos arquivos
-    // grandes (o bloco sempre corta) e só cresceria o arquivo aqui.
+    // sem isto, um resto errado ainda passaria nos arquivos grandes
     fs.writeFileSync(target, 'conteudo-pequeno', { mode: 0o600 });
     const calls = spyWrite();
 
@@ -310,12 +298,9 @@ describe('geometria da escrita', () => {
 });
 
 describe('quantas passadas cada pedido gera', () => {
-  // Toda passada recomeça na posição 0, então uma escrita em `position === 0` é
-  // o começo de uma passada. Arquivo de um bloco só tem uma escrita por
-  // passada, o que deixa a contagem exata.
+  // toda passada recomeça em 0; um arquivo de um bloco tem uma escrita por passada
   const passesOf = (requested: number): boolean[] => {
-    // restaura antes de espionar: senão o espião da chamada anterior continua
-    // embaixo do novo e os dois gravam no mesmo `writeSync`
+    // restaura antes de espionar: senão o espião anterior grava junto no mesmo `writeSync`
     vi.restoreAllMocks();
     fs.writeFileSync(target, 'conteudo', { mode: 0o600 });
     const calls = spyWrite();
@@ -340,31 +325,24 @@ describe('quantas passadas cada pedido gera', () => {
   });
 
   it('trata número fracionário como se não tivesse sido pedido', () => {
-    // 5.5 não é inteiro: o pedido não vale nada e vale o padrão. Se a guarda
-    // sumir, 5.5 vira seis passadas em vez de três.
+    // 5.5 não é inteiro: sem a guarda, viraria seis passadas em vez de três
     expect(passesOf(5.5).length).toBe(SHRED_PASSES);
   });
 
   it('alterna aleatório e zero, terminando sempre em zero', () => {
-    // Passada ímpar é de zeros e a última é de zeros, para o arquivo não
-    // terminar com bytes que parecem conteúdo válido.
+    // passada ímpar é de zeros e a última é de zeros, para não sobrar conteúdo válido
     expect(passesOf(4)).toEqual([false, true, false, true]);
-    // com número ímpar a última passada cai no índice par, e é a regra
-    // "última é de zeros" que tem de segurar o resultado
+    // com número ímpar a última cai no índice par; a regra da última é que segura
     expect(passesOf(3)).toEqual([false, true, true]);
     expect(passesOf(1)).toEqual([true]);
-    // seis passadas separam o "índice ímpar" de "índice 1 mod 3": na quinta
-    // passada (índice 4) as duas regras discordam, e é o que fixa que a
-    // periodicidade é 2
+    // seis passadas separam "índice ímpar" de "índice 1 mod 3": fixa a periodicidade 2
     expect(passesOf(6)).toEqual([false, true, false, true, false, true]);
   });
 });
 
 describe('o descarte do descritor', () => {
   it('não tenta fechar descritor que nunca foi aberto', () => {
-    // `fd` nasce nulo e o `finally` só fecha o que existe. Fechar `null` seria
-    // exceção dentro da exceção, engolida pelo `catch` e invisível: o único
-    // sinal é a chamada.
+    // `fd` nasce nulo e o `finally` só fecha o que existe; fechar `null` seria exceção
     const close = vi.spyOn(fs, 'closeSync');
 
     expect(shredFile(path.join(root, 'nao-existe.zke'), 3)).toBe(false);
@@ -374,11 +352,9 @@ describe('o descarte do descritor', () => {
   });
 
   it('não tenta sincronizar o diretório pai que não pode abrir', () => {
-    // o arquivo primeiro: `writeFileSync` também passa por `openSync`, e aqui
-    // só interessa a abertura do shred
+    // o arquivo primeiro: `writeFileSync` também passa por `openSync`
     fs.writeFileSync(target, SECRET, { mode: 0o600 });
-    // `shredFile` abre o arquivo antes do diretório, então a falha precisa
-    // mirar só a abertura do diretório (a de `O_RDONLY`).
+    // `shredFile` abre o arquivo antes do diretório; a falha mira só o `O_RDONLY`
     const real = fs.openSync.bind(fs);
     const open = vi
       .spyOn(fs, 'openSync')
@@ -388,12 +364,10 @@ describe('o descarte do descritor', () => {
       });
     const close = vi.spyOn(fs, 'closeSync');
 
-    // o arquivo já foi sobrescrito e apagado; só a sincronização do diretório
-    // falhou, e o shred ainda devolve `true` porque o nome saiu
+    // o arquivo já foi apagado; só a sincronização do diretório falhou
     expect(shredFile(target, 1)).toBe(true);
     expect(open).toHaveBeenCalledTimes(2);
-    // uma vez só, pelo arquivo. A segunda viria do `finally` de
-    // `fsyncDirectory`, que tentou fechar um descritor que nunca existiu.
+    // uma vez só, pelo arquivo; a segunda viria de um descritor que nunca existiu
     expect(close).toHaveBeenCalledTimes(1);
 
     open.mockRestore();

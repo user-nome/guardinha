@@ -11,11 +11,7 @@ import {
 } from '../mocks/api.ts';
 import type { AppSettings, AuthToken } from '@zero/types';
 
-/**
- * O `App` é o roteador das telas e o dono de duas decisões que valem teste:
- * cofre bloqueado ou inexistente leva ao `AuthModal`, e o evento de auto-lock
- * do main devolve o renderer para a autenticação sem esperar o polling.
- */
+/** O `App` roteia as telas e decide entre `AuthModal` e o auto-lock vindo do main. */
 
 const TOKEN: AuthToken = {
   id: 'aaaaaaaa-1111-4111-8111-111111111111',
@@ -34,10 +30,7 @@ describe('App: navegação entre abas', () => {
     installApi({ status: UNLOCKED });
 
     render(<App />);
-    // `Home` começa em "abrendo o cofre" e só mostra o heading depois da
-    // lista; sob a suíte inteira rodando em paralelo esse IPC passa do segundo
-    // padrão do Testing Library. O limite alto só custa tempo no caminho da
-    // falha: enquanto o heading não aparece, a espera continua.
+    // `Home` demora a mostrar o heading, e o limite alto só custa tempo no caminho da falha
     await screen.findByRole('heading', { name: 'Senhas' }, { timeout: 15_000 });
 
     await user.click(screen.getByRole('button', { name: 'Gerador de Senhas' }));
@@ -91,9 +84,7 @@ describe('App: estados do cofre e da tela', () => {
   });
 
   it('o status recarregado não devolve a tela para o Início', async () => {
-    // O efeito só volta ao Início quando o cofre some ou trava. Recarregar o
-    // status enquanto o cofre continua aberto não pode arrancar o usuário da
-    // aba em que ele está.
+    // só volta ao Início quando o cofre some ou trava: recarregar o status não tira o usuário da aba
     const user = userEvent.setup();
     const api = installApi({ status: UNLOCKED });
     api.vault.status = () => Promise.resolve({ ...UNLOCKED });
@@ -103,8 +94,7 @@ describe('App: estados do cofre e da tela', () => {
 
     await act(async () => {
       autoLockedListeners[0]?.({ ...UNLOCKED });
-      // o `act` assíncrono é o que dá tempo da recarga do status terminar: sem
-      // ele, a asserção roda antes da consulta e passa por qualquer motivo
+      // `act` assíncrono dá tempo da recarga do status terminar antes da asserção
       await Promise.resolve();
     });
 
@@ -128,11 +118,7 @@ describe('App: estados do cofre e da tela', () => {
 
 describe('App: aba de backup', () => {
   it('leva à tela de backup pelo menu, que é onde o pendrive entra', async () => {
-    // A aba de backup é a única cujas ações não dependem da chave do cofre
-    // (exportar e restaurar works em máquina formatada), então ela precisa
-    // estar alcançável pelo roteiro do `App`, e não só testada como componente
-    // solto: um item de menu fora de ordem ou com o rótulo errado só aparece
-    // aqui.
+    // a aba de backup é a única que funciona sem a chave do cofre, e o item de menu só aparece aqui
     const user = userEvent.setup();
     installApi({ status: UNLOCKED });
 
@@ -147,8 +133,7 @@ describe('App: aba de backup', () => {
   });
 
   it('avisa o que foi salvo quando a exportação termina', async () => {
-    // o `onToast` é o que dá retorno da aba: um clique que não avisa deixa o
-    // usuário sem saber se o pendrive recebeu o cofre
+    // o `onToast` é o retorno da aba: clique sem aviso deixa o usuário sem saber do pendrive
     const user = userEvent.setup();
     installApi({
       status: UNLOCKED,
@@ -169,9 +154,7 @@ describe('App: aba de backup', () => {
   });
 
   it('trata diálogo cancelado como operação encerrada, sem toast de sucesso', async () => {
-    // o `{ canceled: true }` que volta do main quando o usuário fecha o diálogo
-    // nativo não pode virar "backup salvo": mentir sobre o que foi gravado no
-    // pendrive seria o pior erro possível numa tela de backup.
+    // `{ canceled: true }` não pode virar "backup salvo": mentir sobre o pendrive é o pior erro aqui
     const user = userEvent.setup();
     installApi({
       status: UNLOCKED,
@@ -206,8 +189,7 @@ describe('App: aba de backup', () => {
     await user.click(await screen.findByRole('button', { name: 'Backup' }));
     await user.click(await screen.findByRole('button', { name: 'Restaurar de um backup' }));
 
-    // o primeiro clique só abre a confirmação: o canal do main não é chamado
-    // antes da segunda etapa
+    // o primeiro clique só abre a confirmação: o canal do main espera a segunda etapa
     expect(await screen.findByRole('button', { name: 'Restaurar agora' })).toBeInTheDocument();
     expect(restore).not.toHaveBeenCalled();
   });
@@ -231,10 +213,7 @@ describe('App: bloqueio do cofre', () => {
   });
 
   it('volta para o Início quando o cofre é bloqueado', async () => {
-    // O bloqueio devolve a tela para o Início, e não para a aba em que o
-    // usuário estava. Aqui o status continua aberto de propósito: é o que
-    // torna a volta para o Início observável, porque com o cofre bloqueado a
-    // tela inteira é substituída pelo `AuthModal`.
+    // o status segue aberto de propósito: é o que torna a volta ao Início observável
     const user = userEvent.setup();
     const api = installApi({ status: UNLOCKED });
     api.vault.lock = vi.fn(() => Promise.resolve(LOCKED));
@@ -253,8 +232,7 @@ describe('App: bloqueio do cofre', () => {
 
   it('volta para a autenticação quando o main avisa o auto-lock', async () => {
     const api = installApi({ status: UNLOCKED });
-    // o evento não traz o estado pronto: o App reconsulta o status, como faz
-    // com o polling de segurança
+    // o evento não traz o estado pronto: o App reconsulta o status, como no polling
     api.vault.status = vi.fn().mockResolvedValueOnce(UNLOCKED).mockResolvedValue(LOCKED);
     render(<App />);
     await screen.findByRole('heading', { name: 'Senhas' });

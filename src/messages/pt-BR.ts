@@ -1,11 +1,4 @@
-/**
- * Mensagens em português (Brasil): canônico de todas as chaves e assinaturas.
- *
- * Cada idioma é um objeto com a mesma forma (`Messages = typeof ptBR`); o
- * TypeScript aponta qualquer chave ou parâmetro faltando no `en.ts`. Strings
- * com parâmetro são funções. Marcadores de formatação rica (só na UI):
- * `**negrito**` e `` `código` ``. Regras: `docs/messages.md`.
- */
+/** Mensagens em português (Brasil): o canônico de todas as chaves e assinaturas. */
 export const ptBR = {
   common: {
     close: 'Fechar',
@@ -366,7 +359,7 @@ export const ptBR = {
     invalidAuthSecret:
       'A chave precisa ser Base32 válido (A-Z e 2-7) e ter pelo menos 80 bits (10 bytes).',
     authTokenNotFound: 'Token de 2FA não encontrado.',
-    // ---- backup integral do cofre ----
+    // backup integral do cofre
     backupInvalid: 'Arquivo de backup inválido.',
     backupCorrupted: 'O backup está corrompido ou foi alterado. Nada foi restaurado.',
     backupUnsupportedVersion: (version?: number): string =>

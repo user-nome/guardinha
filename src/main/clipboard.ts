@@ -2,11 +2,8 @@ import { clipboard } from 'electron';
 import { CLEAR_CLIPBOARD_MS } from '@zero/shared/auth-constants';
 
 /**
- * Proxy do clipboard nativo: o processo main é o único a tocar
- * `electron.clipboard`, com temporizador de expiração e limpeza automática.
- * Antes de limpar, lê o clipboard atual; se o usuário já tiver copiado outra
- * coisa, o valor alheio é preservado. Sem leitura disponível, limpa mesmo
- * assim (no cofre, senha esquecida pesa mais que conveniência).
+ * Proxy do clipboard nativo: o main é o único a tocar `electron.clipboard`,
+ * com expiração e limpeza automática.
  */
 export class SecureClipboardProxy {
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -23,15 +20,7 @@ export class SecureClipboardProxy {
     }, CLEAR_CLIPBOARD_MS);
   }
 
-  /**
-   * Encerra a vida do proxy: cancela o temporizador e **limpa agora** o que
-   * ainda for nosso.
-   *
-   * Cancelar o temporizador sozinho deixava a senha no clipboard do sistema
-   * para sempre, porque o temporizador morre com o processo: nos dois
-   * encerramentos (destruição do cofre e saída do app) nada mais dispararia a
-   * limpeza de 30 s.
-   */
+  /** Cancela o temporizador e limpa agora: o timer morre com o processo. */
   public async dispose(): Promise<void> {
     if (this.timer !== null) {
       clearTimeout(this.timer);

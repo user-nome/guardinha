@@ -8,12 +8,7 @@ import {
   RECOVERY_MIN_WORDS,
 } from '@zero/shared/policy';
 
-/**
- * Política de credencial: é a mesma instância que o renderer valida na tela e
- * que o main valida antes de gravar. Os números são fixados aqui à mão, pelo
- * mesmo motivo dos custos de KDF em `crypto.test.ts`: um teste que compara o
- * perfil com ele mesmo continua verde se alguém encurtar o PIN ou a frase.
- */
+/** Política de credencial, a mesma nos dois lados; os números ficam fixados à mão de propósito. */
 describe('constantes de produção', () => {
   it('mantém o formato da senha mestra e do PIN conforme a especificação', () => {
     expect(MASTER_PASSWORD_LENGTH).toBe(24);

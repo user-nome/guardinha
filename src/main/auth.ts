@@ -1,3 +1,4 @@
+/** Trava exponencial e validação de domínio do cofre; não toca `fs` nem cifra. */
 import { vaultStorage } from '@zero/main/facade';
 import { currentMessages } from '@zero/main/i18n';
 import type { FailedAttemptResult, PersistedAuthState, UnlockKind, VaultStatus } from '@zero/types';
@@ -31,13 +32,7 @@ export function calculateLockout(attemptCount: number): number {
 /** Maior espera legítima: o último degrau da trava exponencial (24 h). */
 const MAX_LOCKOUT_MS = Math.max(...PENALTY_DELAYS_SECONDS) * 1000;
 
-/**
- * Espera restante em milissegundos. Um `lockUntil` além da maior penalidade
- * (`MAX_LOCKOUT_MS`) só aparece com o estado adulterado ou com o relógio
- * recuado; não é uma espera legítima e, se fosse respeitado, prenderia o cofre
- * para sempre. Nesse caso a trava é considerada vencida. O valor gravado não é
- * reescrito aqui: quem lê só decide se ainda precisa esperar.
- */
+/** Espera restante em ms; `lockUntil` acima do teto conta como vencido (estado adulterado). */
 export function getLockRemainingMs(state: PersistedAuthState): number {
   if (state.lockUntil === null) return 0;
   const remaining = state.lockUntil - Date.now();
@@ -45,18 +40,7 @@ export function getLockRemainingMs(state: PersistedAuthState): number {
   return Math.max(0, remaining);
 }
 
-/**
- * Registra tentativa fallhada e aplica trava exponencial.
- *
- * `kind` separa o que é erro de digitação do que é ataque: só a falha da
- * **senha mestra** soma em `attemptsMaster`, que é o contador do limite de
- * autodestruição. Falha de PIN não soma lá, porque o PIN é o método do dia a
- * dia e o valor padrão do limite fica bem acima de erro de digitação.
- *
- * Devolve o estado novo junto do limite estrito, para quem chama decidir se
- * crossed e precisa destruir. O retorno existe porque o corte da autodestruição
- * mora em `vault.ts` (único lugar que pode apagar o cofre), e não aqui.
- */
+/** Soma a falha e aplica a trava; só a senha mestra conta para a autodestruição. */
 export function registerFailedAttempt(kind: UnlockKind, nukeLimit = 0): FailedAttemptResult {
   const current = vaultStorage.readAuthState();
   const attempts = current.attempts + 1;
@@ -94,14 +78,7 @@ export function validateDomainFormat(domain: string): boolean {
   return /^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(domain) || /^https:\/\//i.test(domain);
 }
 
-/**
- * URL a abrir no navegador padrão, já normalizada com o esquema. Lança o erro
- * localizado quando o texto não é um domínio aceitável. É regra de domínio,
- * não transporte: o handler IPC só repassa o resultado para o `shell`.
- *
- * Só `https://`: um domínio guardado como `http://` abriria a credencial em
- * claro e contradiria a promessa de que a janela só entrega https ao sistema.
- */
+/** URL com esquema; recusa domínio inválido e nunca rebaixa https para http. */
 export function openableUrl(domain: string): string {
   if (domain === '' || !validateDomainFormat(domain)) {
     throw new Error(currentMessages().errors.invalidDomain);

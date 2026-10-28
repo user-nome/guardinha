@@ -29,19 +29,10 @@ const MASTER = 'senha-mestra-guardinha24';
 const WRONG_MASTER = 'senha-mestra-errada-0000';
 const PIN = '49201733';
 const PANIC_PIN = '73910456';
-/** Frase de 12 palavras escrita pelo usuário (o app não gera frase nenhuma). */
+/** Frase de 12 palavras escrita pelo usuário (o app não gera). */
 const PHRASE = 'Na feira de hoje o cavalo branco comeu exatamente doze cenouras gigantes';
 
-/**
- * Um cofre de verdade só pode ser criado por `createVault`, e isso custa três
- * derivações Argon2id (128 + 256 + 128 MB, cerca de 45 s). Em vez de pagar isso
- * em cada cenário, o cofre é criado uma vez e o `vault.zkv` resultante é
- * fotografado; cada teste restaura a foto antes de começar.
- *
- * A restauração também libera a guarda de destruição e devolve a chave à
- * sessão, senão o próprio mecanismo que estes testes exercitam (o erase marcar
- * o cofre como destruído) deixaria o cofre impossível de recriar.
- */
+/** Cofre criado uma vez e fotografado; cada teste restaura a foto antes de começar. */
 let snapshot: Buffer;
 let vaultKey: Buffer;
 

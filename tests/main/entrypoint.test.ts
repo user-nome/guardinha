@@ -16,11 +16,7 @@ import { currentMessages } from '@zero/main/i18n';
 import { vaultSession } from '@zero/main/session';
 import '@zero/main/index';
 
-/**
- * Cópias do que o mock registrou no boot. `resetElectronMock` limpa os históricos
- * a cada teste, e os canais são registrados uma vez só, quando o entrypoint é
- * avaliado, então o mapa precisa ser tirado antes do primeiro reset.
- */
+/** Cópias do que o mock registrou no boot, tiradas antes do primeiro reset. */
 const REGISTERED_SCHEMES = protocol.registerSchemesAsPrivileged.mock.calls.map((call) => call[0]);
 const REGISTERED_PROTOCOLS = protocol.handle.mock.calls.map((call) => [
   call[0],
@@ -33,27 +29,14 @@ const MENU_ARGUMENT = Menu.setApplicationMenu.mock.calls[0]?.[0];
 /** Janela criada no boot, antes do primeiro reset. */
 const BOOT_WINDOW = BrowserWindow.instances[0];
 
-/**
- * Raiz que o protocolo serve: `__dirname` do entrypoint é `src/main`, então o
- * renderer fica em `src/renderer` durante o teste.
- */
+/** Raiz que o protocolo serve: `__dirname` do entrypoint é `src/main`. */
 const RENDERER_ROOT = path.resolve(import.meta.dirname, '../../src/renderer');
 
-/**
- * O entrypoint do main é a fronteira de segurança do app: registra os canais de
- * IPC (cada um atrás de `assertAppFrame`), serve a SPA pelo scheme
- * `guardinha://` e decide o MIME do que é servido. Aqui os testes atacam
- * exatamente as pontas que podem dar trabalho a alguém de fora: URL de
- * protocolo, path traversal, frame forasteiro e payload fora do contrato.
- */
+/** Fronteira de segurança: canais de IPC atrás de `assertAppFrame` e a SPA no scheme. */
 
 type Handlers = Map<string, IpcHandler>;
 
-/**
- * Registro de handlers tirado do mock **na hora do import**, antes de qualquer
- * `resetElectronMock`: os canais são registrados uma vez, quando o entrypoint
- * é avaliado, e o reset limpa justamente esse histórico.
- */
+/** Registro de handlers tirado do mock no import, antes de qualquer `resetElectronMock`. */
 const HANDLERS: Handlers = new Map(ipcMain.handle.mock.calls);
 
 /** Evento de IPC com frame apontando para a página oficial do app. */
@@ -479,8 +462,7 @@ describe('encerramento ao fechar todas as janelas', () => {
   });
 
   it('não encerra no macOS, onde o app continua vivo sem janela', () => {
-    // No macOS fechar a última janela não fecha o app: encerrar ali mataria o
-    // processo inteiro (e o menu, a bandeja) por causa de uma janela.
+    // No macOS fechar a última janela não encerra o app; mataria o processo inteiro.
     const original = Object.getOwnPropertyDescriptor(process, 'platform');
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
     app.quit.mockClear();
@@ -496,8 +478,7 @@ describe('encerramento ao fechar todas as janelas', () => {
 
 describe('cofre inexistente', () => {
   it('o status responde sem quebrar quando o cofre ainda não foi criado', () => {
-    // o primeiro `vault:status` do App vem antes de qualquer criação; a tela
-    // de criação depende de ele responder em vez de lançar
+    // O primeiro `vault:status` vem antes de qualquer criação; a tela depende dele responder.
     const status = call('vault:status', appFrame()) as { exists: boolean };
     expect(typeof status.exists).toBe('boolean');
   });
@@ -505,10 +486,7 @@ describe('cofre inexistente', () => {
 
 describe('aviso de sessão perdida', () => {
   it('empurra vault:auto-locked quando o cofre trava no meio de uma operação', () => {
-    // Os canais que exigem a chave (`entries:list`) estouram com "cofre
-    // travado" se o auto-lock disparar entre a tela pedir os dados e o main
-    // responder. O renderer precisa saber pelo mesmo canal do auto-lock, senão
-    // fica chamando um cofre que não existe mais e a tela trava sem dizer nada.
+    // Auto-lock entre o pedido e a resposta: o renderer precisa do aviso, senão a tela trava.
     if (BOOT_WINDOW === undefined) throw new Error('nenhuma janela criada no boot');
     vaultSession().wipe();
 
@@ -521,9 +499,7 @@ describe('aviso de sessão perdida', () => {
   });
 
   it('operação sem chave não empurra o aviso de sessão', () => {
-    // `settings:get` não passa por `withSessionNotice`: um erro dele não tem
-    // nada a ver com o cofre ter travado, e mandar o aviso ali faria a tela
-    // pular para a autenticação sem necessidade.
+    // `settings:get` não passa por `withSessionNotice`: erro dele não é sessão perdida.
     if (BOOT_WINDOW === undefined) throw new Error('nenhuma janela criada no boot');
     vaultSession().wipe();
     BOOT_WINDOW.webContents.send.mockClear();
@@ -534,9 +510,7 @@ describe('aviso de sessão perdida', () => {
   });
 
   it('erro de domínio também não empurra o aviso de sessão', () => {
-    // `entries:save` passa por `withSessionNotice`, mas o erro é de credencial
-    // inválida, não de sessão perdida. Sem o filtro do `isVaultLockedError`, a
-    // tela saltaria para a autenticação por causa de um título em branco.
+    // `entries:save` falha por credencial inválida, não por sessão; sem o filtro a tela pularia.
     if (BOOT_WINDOW === undefined) throw new Error('nenhuma janela criada no boot');
     vaultSession().adopt(Buffer.alloc(32, 1));
     BOOT_WINDOW.webContents.send.mockClear();

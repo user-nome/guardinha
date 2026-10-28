@@ -11,17 +11,7 @@ import { useLatest } from '@zero/renderer/hooks';
 import { TICK_MS } from '@zero/shared/auth-constants';
 import type { AuthCode, AuthToken } from '@zero/types';
 
-/**
- * Tela do verificador de dois fatores.
- *
- * O código chega pronto do processo main e é só isso que existe aqui: nem o
- * segredo TOTP, nem a chave do cofre. O papel da tela é mostrar o número,
- * copiar com expiração e avisar quando está prestes a vencer.
- *
- * O relógio é do renderer (um tique por segundo, para a contagem andar), mas
- * quem decide o código é o main: quando o período vira, o renderer pede de novo
- * em vez de recalcular com o segredo que ele não tem.
- */
+/** Tela do verificador de dois fatores: o código chega pronto do main, nunca o segredo. */
 
 interface AuthenticatorProps {
   onToast: (message: string) => void;
@@ -42,8 +32,7 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
   const [confirmRemove, setConfirmRemove] = useState<AuthToken | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  // fora das dependências: recarregar tokens e códigos a cada troca de idioma
-  // seria buscar de novo por causa de um texto de toast que talvez nem apareça
+  // fora das dependências: um texto de toast não deve recarregar tokens e códigos
   const loadError = useLatest(m.authenticator.loadError);
 
   const loadCodes = useCallback(async (): Promise<void> => {
@@ -78,8 +67,7 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
     });
   }, [reload, onToast, loadError]);
 
-  // Tique de 1 s para a contagem; quando algum código vence, pede os novos.
-  // Um tique por token resolveria o mesmo problema com muito mais temporizador.
+  // Tique de 1 s para a contagem; quando um código vence, pede os novos.
   useEffect(() => {
     const timer = setInterval(() => {
       const current = Date.now();
@@ -150,10 +138,7 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
           </p>
         </div>
       ) : (
-        /*
-         O cartão do token é o mais largo da casa (código, contagem e cópia na
-         mesma linha), então ele usa a regra `wide`: uma coluna até 768 px, duas
-         dali até 1536 px e três acima disso. Ver `card-grid.ts`. */
+        /* Cartão mais largo da casa: usa a regra `wide` do grid (ver `card-grid.ts`). */
         <ul className={CARD_GRID.wide}>
           {tokens.map((token) => {
             const shown = codes[token.id];

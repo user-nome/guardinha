@@ -22,17 +22,8 @@ import type { OtpAlgorithm } from '@zero/shared';
 import type { AuthToken, AuthTokenDraft } from '@zero/types';
 
 /**
- * Formulário de token de 2FA, com duas entradas para o mesmo segredo:
- *
- * - `otpauth://`, que é o que o serviço entrega quando você escolhe "não posso
- *   escanear agora"; o endereço já traz emissor, conta e parâmetros certos;
- * - a chave em Base32 e os campos à mão, para quem copiou os 32 caracteres de
- *   um serviço que não oferece link.
- *
- * Criar começa na aba do endereço (é o caminho mais comum); editar começa na
- * aba dos campos, que já vêm preenchidos com o que o cofre guardou. A
- * validação do endereço roda com o mesmo `parseOtpAuthUri` do processo main,
- * então a tela não oferece algo que o cofre recusaria depois.
+ * Formulário de token de 2FA por `otpauth://` ou por campos manuais, validado
+ * com o mesmo `parseOtpAuthUri` do main.
  */
 
 interface AuthTokenModalProps {
@@ -80,8 +71,7 @@ export function AuthTokenModal({
 
   const handleSave = (): void => {
     setError(null);
-    // A URI carrega todos os campos, então na aba dela o save inteiro passa
-    // pelo main sem a tela remontar nada. Na aba dos campos, cada um viaja.
+    // A URI carrega todos os campos; na aba manual cada um viaja separado.
     if (tab === 'uri') {
       setBusy(true);
       void window.api.authenticator
@@ -122,12 +112,7 @@ export function AuthTokenModal({
   /** Prévia do que o endereço colado resolve, antes de salvar. */
   const preview = tab === 'uri' ? parseOtpAuthUri(uri) : null;
 
-  /**
-   * Aviso de chave curta: o piso aceito é 80 bits, que é o tamanho que parte
-   * dos serviços ainda emite, mas a OWASP recomenda 128 bits como mínimo e 160
-   * como ideal. O aviso não bloqueia o salvamento: o tamanho da chave é
-   * escolhido pelo serviço, não pelo usuário.
-   */
+  /** Piso aceito é 80 bits e o ideal é 160; o aviso não bloqueia, quem escolhe é o serviço. */
   const secretForAssessment = tab === 'uri' ? (preview?.secret ?? '') : secret;
   const secretBits = secretForAssessment === '' ? null : otpSecretBits(secretForAssessment);
   let secretWarning: string | null = null;

@@ -8,14 +8,8 @@ import { installApi } from '../mocks/api.ts';
 import type { AuthToken, Credential } from '@zero/types';
 
 /**
- * Quantas colunas de cartão cada tela desenha, e a partir de que largura de
- * janela.
- *
- * O jsdom não calcula layout, então o que dá para travar aqui é a decisão, e a
- * decisão mora nas classes: uma coluna antes do primeiro ponto de virada, duas no
- * meio e três no fim, nunca quatro. Início e Verificador 2FA entram no teste
- * porque são as telas que aplicam a regra, cada uma com a régua que o cartão
- * dela pede (o token é mais largo que a credencial).
+ * Colunas de cartão por tela e por largura de janela: o jsdom não calcula
+ * layout, então o teste trava a classe que decide.
  */
 
 const ENTRY: Credential = {
@@ -68,8 +62,7 @@ describe('CARD_GRID', () => {
   });
 
   it('puxa a terceira coluna do cartão largo para o fim', () => {
-    // o token tem código, contagem e cópia na mesma linha: ele só aceita a
-    // terceira coluna quando a janela é larga de verdade
+    // o token tem código, contagem e cópia na mesma linha: só aceita 3 colunas no fim
     expect(CARD_GRID.wide).toContain('2xl:grid-cols-3');
     expect(CARD_GRID.compact).toContain('xl:grid-cols-3');
     expect(CARD_GRID.compact).not.toContain('2xl:grid-cols-3');

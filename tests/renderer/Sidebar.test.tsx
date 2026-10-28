@@ -6,12 +6,7 @@ import { Sidebar } from '@zero/renderer/components/Sidebar';
 import type { TabType } from '@zero/renderer/components/Sidebar';
 import type { Language } from '@zero/types';
 
-/**
- * A barra lateral é a navegação do app. O teste trava a ordem das abas, o
- * destaque da ativa e o encaminhamento dos dois botões destrutivos: bloquear
- * (reversível) e autodestruir (irreversível), que precisam ficar longe um do
- * outro.
- */
+/** A barra lateral: o teste trava a ordem das abas, o destaque e os dois botões destrutivos. */
 
 const TABS: { tab: TabType; label: string }[] = [
   { tab: 'home', label: 'Início (Senhas)' },
@@ -88,8 +83,7 @@ describe('Sidebar: navegação', () => {
   it('mostra que os dados são locais', () => {
     mount();
     expect(screen.getByText('100% Local / Criptografado')).toBeInTheDocument();
-    // o rótulo e o valor ficam na mesma linha: sem o espaço entre eles a tela
-    // lê "Status:100%", que parece erro de formatação
+    // sem o espaço entre rótulo e valor a tela lê "Status:100%", que parece erro de formatação
     const status = screen.getByText('100% Local / Criptografado').parentElement;
     expect(status?.textContent).toBe('Status: 100% Local / Criptografado');
   });

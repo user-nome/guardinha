@@ -2,11 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-/**
- * Isola todas as escritas (cofre, configurações, estado de auth) em um
- * diretório temporário exclusivo deste processo de teste. Precisa rodar antes
- * do import dos módulos sob teste, por isso fica em `setupFiles`.
- */
+/** Isola cofre, configurações e auth num temporário próprio; roda em `setupFiles`. */
 const TEMP_PREFIX = 'guardinha-tests-';
 const STALE_MS = 24 * 60 * 60 * 1000;
 

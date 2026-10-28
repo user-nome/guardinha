@@ -1,10 +1,4 @@
-/**
- * Contratos do backup integral do cofre.
- *
- * Mora em `src/types/` porque atravessa o IPC: o renderer pede a operação e
- * recebe só contagens e o caminho, nunca o conteúdo (o pacote é cópia de bytes
- * já cifrados, montada e lida pelo processo main).
- */
+/** Contratos do backup integral; atravessam o IPC e nunca levam o conteúdo do pacote. */
 
 /** Resumo do backup do cofre gravado no pendrive. */
 export interface BackupResult {

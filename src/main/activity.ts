@@ -3,17 +3,12 @@ import { IDLE_LOCK_MS } from '@zero/shared/auth-constants';
 /** Trava automática após 5 minutos sem operação no cofre. */
 export { IDLE_LOCK_MS };
 
-/** O que a atividade do usuário acabou de significar para o app. */
+/** Evento emitido quando o cofre passa do tempo de ociosidade. */
 export type ActivityEvent = 'idle-timeout';
 
 export type ActivityListener = (event: ActivityEvent) => void;
 
-/**
- * Observer do ciclo de vida da sessão (padrão Observer): o temporizador de
- * ociosidade mora aqui e cada interessado se inscreve. Hoje há dois ouvintes:
- * o `VaultSessionManager`, que zera a chave, e o entrypoint, que avisa o
- * renderer pelo IPC. Adicionar um terceiro não toca em nenhum dos dois.
- */
+/** Observer da ociosidade: o temporizador mora aqui e cada interessado se inscreve. */
 export class ActivityMonitor {
   private readonly listeners = new Set<ActivityListener>();
   private timer: ReturnType<typeof setTimeout> | null = null;

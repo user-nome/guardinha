@@ -4,26 +4,11 @@ import path from 'node:path';
 import { SHRED_PASSES, MAX_SHRED_PASSES, SHRED_BLOCK_BYTES } from '@zero/shared/auth-constants';
 
 /**
- * Sobrescrita de arquivo antes da remoção (File Shredding). É a base física do
- * Cryptographic Erase e da remoção de credencial, então só faz o trabalho
- * braçal e não conhece o cofre: recebe sempre um caminho já validado por quem
- * o compôs (`storage.ts`, via `assertSafeEntryId`), nunca um id cru, e não
- * decide o que é segredo.
- *
- * O roteiro é o mesmo do `shred(1)` e do `srm` do pacote `secure-delete`:
- * sobrescreve o conteúdo em blocos, alternando bytes aleatórios e zeros,
- * termina com a passada de zeros, sincroniza, apaga o nome e sincroniza o
- * diretório pai para a remoção ficar durável.
- *
- * Honestidade sobre o alcance: em disco rotacional (HDD) a sobrescrita em
- * blocos é a defesa; em SSD, com wear leveling e over-provisioning, a escrita
- * pode acabar em outro bloco físico e o original sobrar no controle do
- * controlador. Por isso o Cryptographic Erase (apagar a chave embrulhada) é a
- * estratégia primária, e o shred aqui é higiene. O detalhamento está em
- * `SECURITY.md` e `docs/cofre.md`.
+ * Sobrescrita de arquivo antes do `unlink`; recebe caminho já validado e não conhece o cofre.
+ * Detalhes em docs/cofre.md.
  */
 
-/** Passadas por padrão: 3 é o padrão do `shred(1)` e o suficiente aqui. */
+/** Passadas por padrão: 3, o mesmo padrão do `shred(1)`. */
 export { SHRED_PASSES };
 
 /** Teto aceito do chamador; acima disso a sobrescrita só gasta I/O. */
@@ -32,7 +17,7 @@ const MAX_PASSES = MAX_SHRED_PASSES;
 /** Bloco de escrita: 64 KiB equilibra cache de página e número de syscalls. */
 const BLOCK_BYTES = SHRED_BLOCK_BYTES;
 
-/** Tenta abrir o diretório pai em leitura, para sincronizar a remoção. */
+/** Sincroniza o diretório pai para a remoção ficar durável. */
 function fsyncDirectory(dir: string): void {
   let fd: number | null = null;
   try {
@@ -57,11 +42,7 @@ function normalizePasses(passes: number): number {
   return Math.min(Math.max(passes, 1), MAX_PASSES);
 }
 
-/**
- * Escreve uma passada inteira sobre o arquivo. Passadas ímpares recebem bytes
- * aleatórios de hardware e as pares recebem zeros; a última é sempre de zeros,
- * para o arquivo não terminar com conteúdo aparentemente válido.
- */
+/** Alterna aleatório e zero, e fecha com zeros para não deixar conteúdo válido. */
 function writePass(fd: number, size: number, zeros: boolean): void {
   const block = zeros ? Buffer.alloc(BLOCK_BYTES, 0) : crypto.randomBytes(BLOCK_BYTES);
   let written = 0;
@@ -72,13 +53,7 @@ function writePass(fd: number, size: number, zeros: boolean): void {
   }
 }
 
-/**
- * Sobrescreve e apaga um arquivo. Devolve `true` só quando o arquivo deixou de
- * existir, e `false` em qualquer outra situação: não existia, era symlink ou
- * diretório, não deu para abrir ou apagar. Nunca lança: falha de shred não
- * pode impedir a autodestruição de acontecer logicamente, quem chama decide o
- * que fazer com o `false`.
- */
+/** Sobrescreve e apaga; devolve `true` só se o arquivo sumiu, e nunca lança. */
 export function shredFile(file: string, passes: number = SHRED_PASSES): boolean {
   let fd: number | null = null;
   try {
@@ -91,8 +66,7 @@ export function shredFile(file: string, passes: number = SHRED_PASSES): boolean 
     for (let pass = 0; pass < total; pass++) {
       writePass(fd, size, pass === total - 1 || pass % 2 === 1);
     }
-    // sem o fsync a sobrescrita pode ficar só no cache de página e o unlink
-    // seguinte publica um arquivo cujo conteúdo antigo continua no platter
+    // sem o fsync, a sobrescrita pode ficar no cache e o unlink publicar o conteúdo antigo
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fd = null;
@@ -113,11 +87,7 @@ export function shredFile(file: string, passes: number = SHRED_PASSES): boolean 
   }
 }
 
-/**
- * Sobrescreve e apaga todos os arquivos regulares de um diretório, e remove o
- * diretório vazio. Subdiretórios e nomes inesperados fazem a operação devolver
- * `false` sem apagar nada fora do que já foi shreddado: quem chama decide.
- */
+/** Sobrescreve os arquivos regulares do diretório e remove o diretório vazio. */
 export function shredDirectory(dir: string): boolean {
   let entries: fs.Dirent[];
   try {

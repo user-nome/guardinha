@@ -3,22 +3,8 @@ import { currentMessages } from '@zero/main/i18n';
 import { isRecord } from '@zero/shared/record';
 
 /**
- * Formato do arquivo de backup do cofre (`.gbk`).
- *
- * O pacote é um bloco binário único, sem compressão e sem dependência nova:
- *
- * ```
- * magic(8) "ZKBACKUP" | version(4) | manifestLen(4) | manifesto JSON
- * | payload (os arquivos, concatenados) | sha256(32)
- * ```
- *
- * O SHA-256 cobre tudo o que vem antes dele, manifesto incluído, então um byte
- * trocado em qualquer ponto (inclusive no próprio manifesto) derruba a leitura
- * antes de o disco ser tocado.
- *
- * O conteúdo é **exatamente o que já está cifrado no cofre**: este módulo não
- * tem a chave e não decifra nada. O que protege o pendrive perdido é o mesmo
- * Argon2id que protege o cofre; o manifesto só organiza e confere.
+ * Formato binário do backup (`.gbk`): cabeçalho, manifesto JSON, payload já
+ * cifrado e SHA-256 no fim. Não tem a chave e não decifra nada.
  */
 
 const BACKUP_MAGIC = Buffer.from('ZKBACKUP', 'ascii');
@@ -28,10 +14,7 @@ const BACKUP_VERSION = 1;
 const HEADER_BYTES = 16;
 const DIGEST_BYTES = 32;
 
-/**
- * Caminhos aceitos dentro do pacote. É lista fechada de propósito: o nome nunca
- * é montado a partir do conteúdo, então nem `../` nem caminho absoluto entram.
- */
+/** Lista fechada: o nome nunca vem do conteúdo, então `../` não entra. */
 const FILE_PATH = /^(?:vault\.zkv|\.entries\/[A-Za-z0-9-]+\.zke|\.auth\/[A-Za-z0-9-]+\.zka)$/;
 
 /** Aplicativo que gerou o backup (nome de marca, não se traduz). */
@@ -107,11 +90,7 @@ function readManifest(value: unknown): BackupManifest | null {
   return { app: record.app, version: record.version, createdAt: record.createdAt, files };
 }
 
-/**
- * Empacota os arquivos do cofre com o manifesto e o digest. Os caminhos são
- * validados na entrada para que um pacote gerado pelo app nunca carregue um
- * nome que a própria leitura recusaria.
- */
+/** Empacota manifesto e digest; valida os caminhos para não gerar pacote irrecuperável. */
 export function packBackup(files: readonly BackupSegment[], appVersion: string): Buffer {
   const entries: BackupFileEntry[] = [];
   for (const file of files) {
@@ -134,11 +113,7 @@ export function packBackup(files: readonly BackupSegment[], appVersion: string):
   return Buffer.concat([body, crypto.createHash('sha256').update(body).digest()]);
 }
 
-/**
- * Abre o pacote e confere a integridade **inteira** antes de devolver qualquer
- * byte: magic, versão, digest global e o SHA-256 de cada arquivo do manifesto.
- * Quem chama só escreve no disco depois que isto responde.
- */
+/** Confere tudo (magic, versão, digest, cada arquivo) antes de devolver qualquer byte. */
 export function unpackBackup(raw: Buffer): OpenedBackup {
   if (raw.length < HEADER_BYTES + DIGEST_BYTES) throw invalid();
   if (!raw.subarray(0, 8).equals(BACKUP_MAGIC)) throw invalid();

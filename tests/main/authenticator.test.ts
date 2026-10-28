@@ -19,11 +19,7 @@ import { vaultStorage } from '@zero/main/facade';
 import { createVault, requireSessionKey } from '@zero/main/vault';
 import { vaultSession } from '@zero/main/session';
 
-/**
- * `base32Decode` é um binding ESM e não aceita `vi.spyOn`, então o módulo de
- * `@zero/shared` é substituído por uma casca que delega e registra os Buffers
- * devolvidos. O registro é o que permite ver o segredo depois do `fill(0)`.
- */
+/** `base32Decode` é ESM e não aceita `vi.spyOn`: o módulo é mockado para registrar os Buffers. */
 const decodificados = vi.hoisted(() => ({ buffers: [] as Uint8Array[] }));
 
 vi.mock('@zero/shared', async (importOriginal) => {

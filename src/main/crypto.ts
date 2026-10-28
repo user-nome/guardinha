@@ -1,3 +1,4 @@
+/** Criptografia do cofre: Argon2id, HKDF e AES-256-GCM por registro. */
 import crypto from 'node:crypto';
 import v8 from 'node:v8';
 import vm from 'node:vm';
@@ -19,10 +20,10 @@ export const KDF_LIMITS = {
   parallelism: [1, 8] as const,
 };
 
-/** Senha mestra e frase de recuperação (segredos longos): 128 MiB, t=3, p=4. */
+/** Senha mestra e frase de recuperação: 128 MiB, t=3, p=4. */
 export const KDF_CREDENTIAL: Argon2Params = { memoryKiB: 131_072, iterations: 3, parallelism: 4 };
 
-/** PIN de 8 dígitos (segredo fraco, 10^8 candidatas): 256 MiB, t=4, p=4. */
+/** PIN de 8 dígitos (10^8 candidatas): 256 MiB, t=4, p=4. */
 export const KDF_PIN: Argon2Params = { memoryKiB: 262_144, iterations: 4, parallelism: 4 };
 
 /** Perfil alvo por método de desbloqueio (escrita e migração incremental). */
@@ -50,16 +51,7 @@ export function isValidKdfParams(value: unknown): value is Argon2Params {
   );
 }
 
-/**
- * O `hash-wasm` monta uma instância WebAssembly nova por derivação, e o perfil
- * do PIN pede 256 MiB só para ela. Essa memória é externa ao heap do V8, então
- * o coletor não a enxerga como pressão e o processo cresceria cerca de 256 MB a
- * cada desbloqueio até o OOM da máquina. Coletar ao fim de cada derivação
- * devolve a instância ao sistema (o RSS fica estável perto de 100 MB) e custa
- * dezenas de milissegundos, que somem ao lado dos segundos do Argon2id. Se o
- * runtime não expuser `gc`, a derivação segue sem a coleta: o pior caso é o
- * vazamento, nunca um desbloqueio que falha.
- */
+// O WASM do Argon2id usa memória externa ao heap: coletar no fim devolve os 256 MiB ao sistema.
 const collectGarbage = createGarbageCollector();
 
 function createGarbageCollector(): (() => void) | null {
@@ -75,12 +67,7 @@ function createGarbageCollector(): (() => void) | null {
   }
 }
 
-/**
- * Derivação de chave primária via Argon2id com os parâmetros do chamador.
- * A saída é binária para que a chave exista só em memória apagável: com
- * `outputType: 'hex'` ela também ficaria numa string imutável no heap, que o
- * `fill(0)` dos chamadores não alcança.
- */
+/** Argon2id binário: a chave só existe em memória apagável, nunca numa string imutável. */
 export async function deriveKey(
   password: string,
   salt: Buffer,
@@ -113,12 +100,7 @@ async function deriveWithWasm(
   }
 }
 
-/**
- * Rótulos de domínio do HKDF. Cada tipo de arquivo tem um, então uma credencial
- * e um token de 2FA com o mesmo salt nunca produzem a mesma chave, mesmo
- * acidentalmente. Trocar um rótulo invalida os arquivos já gravados.
- */
-
+// Cada tipo de arquivo tem rótulo HKDF próprio: trocar um rótulo invalida os arquivos gravados.
 function deriveRecordKey(vaultKey: Buffer, salt: Buffer, info: string): Buffer {
   return Buffer.from(crypto.hkdfSync(HKDF_ALGORITHM, vaultKey, salt, info, KEY_BYTES));
 }
@@ -141,20 +123,7 @@ export function randomUuid(): string {
   return crypto.randomUUID();
 }
 
-/**
- * Criptografia por arquivo individual com AES-256-GCM.
- * Salt (128-bits) e IV (128-bits) gerados por hardware para cada arquivo.
- * O `info` separa os domínios do HKDF (ver `KEY_INFO_*` acima).
- *
- * Por que 128 bits bastam: salt não é segredo, precisa ser único, e a
- * recomendação do NIST (SP 800-132) é 128 bits, colisão só aparece perto de
- * 2^64 arquivos. No IV, o risco do GCM não é o tamanho, é o reuso (repetir IV
- * com a mesma chave quebra a autenticação); sortear um nonce novo a cada
- * gravação já torna o reuso improvável. Aqui cada registro ainda deriva uma
- * chave própria pelo HKDF, então IV repetido entre arquivos nem se encontra.
- * Aperto que realmente conta contra força bruta é o custo do Argon2id, não o
- * tamanho destes dois.
- */
+/** AES-256-GCM por arquivo, com salt e IV sorteados e chave própria por registro. */
 export function encryptRecord(
   data: object,
   key: Buffer,
@@ -179,8 +148,7 @@ export function encryptRecord(
       encryptedData: encrypted,
     };
   } finally {
-    // o `finally` cobre também a falha no meio da cifragem: sem ele, a chave
-    // derivada do registro ficaria legível na memória até o coletor passar
+    // o `finally` zera a chave do registro mesmo se a cifragem falhar no meio
     entryKey.fill(0);
   }
 }
@@ -207,8 +175,7 @@ export function decryptRecord(
     decrypted += decipher.final('utf8');
     return JSON.parse(decrypted) as unknown;
   } finally {
-    // credencial errada, tag adulterada ou payload truncado saem por exceção;
-    // a chave de trabalho tem de sair zerada por qualquer um dos caminhos
+    // a chave de trabalho sai zerada por qualquer caminho, inclusive na exceção
     entryKey.fill(0);
   }
 }

@@ -83,7 +83,6 @@ describe('bundles de mensagens', () => {
   it('todo idioma listado resolve para um bundle, e cada bundle é único', () => {
     const bundles = LANGUAGES.map((idioma) => messages(idioma));
     // dois idiomas apontando para o mesmo objeto significaria tradução faltando
-    // (o `Record<Language, Messages>` do barrel já garante que existe bundle)
     expect(new Set(bundles).size).toBe(LANGUAGES.length);
   });
 });

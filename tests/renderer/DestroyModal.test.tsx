@@ -6,18 +6,9 @@ import { DestroyModal } from '@zero/renderer/components/DestroyModal';
 import { UNLOCKED, installApi } from '../mocks/api.ts';
 import type { VaultStatus } from '@zero/types';
 
-/**
- * O diálogo de autodestruição é a única barreira de clique antes de apagar o
- * cofre. O teste trava os quatro estados dele: fechado, palavra errada, palavra
- * certa e falha do cofre. O caso do `catch` importa: o PIN de coação pode ter
- * destruído o cofre por outro caminho, e esse erro não pode virar tela vermelha
- * de "algo deu errado" sobre um cofre que já não existe.
- */
+/** Diálogo de autodestruição: os quatro estados, inclusive o erro de cofre já destruído. */
 
-/**
- * O modal não recebe o destroy por prop: ele chama `window.api.vault.destroy()`
- * direto. O mock é o lugar de controlar esse canal.
- */
+/** O modal chama `window.api.vault.destroy()` direto; o mock controla esse canal. */
 function open(destroy: () => Promise<VaultStatus>): {
   destroy: ReturnType<typeof vi.fn>;
   onDestroyed: ReturnType<typeof vi.fn>;
@@ -54,8 +45,7 @@ describe('DestroyModal', () => {
   });
 
   it('desliga o corretor ortográfico no campo de confirmação', () => {
-    // A palavra de confirmação é um identificador, não texto: sublinhado
-    // vermelho de corretor aqui só atrapalha quem está no momento mais tenso.
+    // A palavra de confirmação é identificador, não texto: corretor aqui só atrapalha.
     open(() => Promise.resolve({ ...UNLOCKED, exists: false }));
     expect(screen.getByLabelText(FIELD)).toHaveAttribute('spellcheck', 'false');
   });
@@ -131,8 +121,7 @@ describe('DestroyModal', () => {
   });
 
   it('fecha sem erro quando o cofre já foi destruído por outro caminho', async () => {
-    // o PIN de coação pode ter apagado tudo antes: o mesmo `destroy` devolve
-    // "não existe mais" e o diálogo não pode virar tela de erro
+    // o PIN de coação pode ter apagado tudo antes: o mesmo `destroy` devolve "não existe mais"
     const user = userEvent.setup();
     const { destroy, onDestroyed, onClose } = open(() =>
       Promise.reject(new Error('Cofre não encontrado')),

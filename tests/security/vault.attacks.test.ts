@@ -24,11 +24,7 @@ const PANIC_PIN = '73910456';
 const ENTRY_ID = '11111111-1111-4111-8111-111111111111';
 const AUTH_ID = '22222222-2222-4222-8222-222222222222';
 
-/**
- * Ataques contra o desbloqueio e a integridade do container. O cofre é semeado
- * com custo mínimo de Argon2id, porque o alvo aqui é a cadeia (trava, formato,
- * KDF, GCM) e não o tempo de derivação. O perfil de produção tem teste próprio.
- */
+/** Ataques ao desbloqueio e à integridade do container, com Argon2id de custo mínimo. */
 
 afterAll(() => {
   resetVaultDir();
@@ -44,12 +40,7 @@ async function attempt(
   return { result, context };
 }
 
-/**
- * Adultera um campo em hex trocando o primeiro byte pelo seu complemento.
- * Prefixar `'00'` não serve: quando o byte já é `0x00` (1 chance em 256 por
- * campo), a "adulteração" não muda nada e o teste falha por sorteio, não por
- * regressão. O XOR com `0xFF` sempre produz outro valor.
- */
+/** Adultera um campo em hex com XOR `0xFF`: prefixar `'00'` falharia quando o byte já é zero. */
 function tamperHex(hex: string): string {
   const first = (Number.parseInt(hex.slice(0, 2), 16) ^ 0xff).toString(16).padStart(2, '0');
   return `${first}${hex.slice(2)}`;

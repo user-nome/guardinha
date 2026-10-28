@@ -14,10 +14,7 @@ import type {
   VaultStatus,
 } from '@zero/types/vault';
 
-/**
- * Contrato único da ponte renderer ↔ main. O preload monta este objeto e o
- * registra no contextBridge como `window.api`; o renderer só enxerga isto.
- */
+/** Contrato único da ponte renderer ↔ main, exposto pelo preload como `window.api`. */
 export interface ElectronApi {
   vault: {
     status: () => Promise<VaultStatus>;
@@ -26,11 +23,7 @@ export interface ElectronApi {
     /** Prova posse da frase de recuperação e instala um novo PIN. */
     resetPin: (input: ResetPinInput) => Promise<VaultResult>;
     lock: () => Promise<VaultStatus>;
-    /**
-     * Cryptographic Erase sob comando explícito do usuário (botão de pânico).
-     * Destruir sem confirmação é um clique de engano longe demais de ser
-     * irreversível, então a confirmação mora no renderer.
-     */
+    /** Cryptographic Erase sob comando explícito; a confirmação mora no renderer. */
     destroy: () => Promise<VaultStatus>;
     /** Instala o PIN de coação (exige cofre desbloqueado). */
     setPanicPin: (input: PanicPinInput) => Promise<VaultResult>;
@@ -40,10 +33,7 @@ export interface ElectronApi {
     setNukeLimit: (limit: number) => Promise<VaultResult>;
     /** Estado das proteções de pânico, para a interface montar o formulário. */
     panicStatus: () => Promise<PanicStatus>;
-    /**
-     * Ouvinte do auto-lock (Observer): o main empurra o status novo quando o
-     * cofre trava sozinho por ociosidade. Devolve a função que cancela.
-     */
+    /** Ouvinte do auto-lock (Observer); devolve a função que cancela. */
     onAutoLocked: (listener: (status: VaultStatus) => void) => () => void;
   };
   /** Abre o domínio da credencial no navegador padrão do sistema. */
@@ -57,13 +47,7 @@ export interface ElectronApi {
     save: (entry: CredentialInput) => Promise<Credential[]>;
     remove: (id: string) => Promise<Credential[]>;
   };
-  /**
-   * Gerador de códigos de 2FA (TOTP, RFC 6238).
-   *
-   * O segredo do token **não faz parte de nenhum retorno**. `list` devolve só
-   * metadados e `codes` devolve o número já calculado: quem pede o código nunca
-   * vê o segredo, e o processo da interface nunca o tem em memória.
-   */
+  /** Gerador TOTP: devolve metadados e o código pronto, nunca o segredo. */
   authenticator: {
     list: () => Promise<AuthToken[]>;
     /** Salva a URI `otpauth://` que o serviço exibiu. */
@@ -77,14 +61,7 @@ export interface ElectronApi {
   generator: {
     generate: (options: GeneratorOptions) => Promise<string>;
   };
-  /**
-   * Backup integral e cifrado do cofre no pendrive.
-   *
-   * O renderer dispara a operação e recebe só contagem e caminho; o pacote
-   * (`.gbk`) é cópia de bytes já cifrados, montada e lida pelo processo main, e
-   * todo caminho vem do diálogo nativo do sistema, nunca da página. Nenhuma
-   * credencial ou segredo cruza este contrato.
-   */
+  /** Backup cifrado no pendrive; o caminho vem do diálogo nativo, nunca da página. */
   backup: {
     /** Empacota o cofre e grava no destino escolhido no diálogo. */
     export: () => Promise<BackupOutcome>;

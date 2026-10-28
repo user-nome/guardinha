@@ -13,10 +13,7 @@ import {
 } from '@zero/shared/otp-constants';
 import type { OtpAlgorithm } from '@zero/shared/otp-constants';
 
-/**
- * As constantes do TOTP são usadas pelo `otpauth.ts`, `totp.ts` e pela UI.
- * Este teste garante que os valores exportados existem e têm o formato esperado.
- */
+/** As constantes do TOTP são usadas por `otpauth.ts`, `totp.ts` e pela UI; aqui só forma e valor. */
 
 describe('otp-constants', () => {
   it('OTP_ALGORITHMS contém os três algoritmos suportados', () => {

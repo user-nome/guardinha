@@ -1,12 +1,8 @@
 import { IV_BYTES, SALT_BYTES, TAG_BYTES } from '@zero/main/crypto-constants';
 
 /**
- * Layout binário do container (`vault.zkv`) e do payload de credencial (`.zke`).
- *
- * Os números moram aqui, e não espalhados pelos `readUInt32BE`, para que a
- * documentação do formato e o código de leitura falem a mesma língua. Qualquer
- * mudança nestes valores muda o arquivo em disco; a versão do container é a
- * única que pode acompanhar a mudança.
+ * Layout binário do `vault.zkv` e do `.zke`; mudar um valor muda o arquivo em disco.
+ * Detalhes em docs/cofre.md.
  */
 
 /** Magic do container: `ZKVAULT1`. */
@@ -18,11 +14,7 @@ export const ENTRY_MAGIC = Buffer.from('ZENTRY01', 'ascii');
 /** Versão atual do container, a única que este app grava. */
 export const VAULT_VERSION = 6;
 
-/**
- * Versões antigas que este app ainda lê **para migrar**. A v5 tem o mesmo
- * layout binário da v6; o que muda é o embrulho de cada método (sem papel
- * autenticado) e o manifesto (v2, sem hashes de conteúdo).
- */
+/** Versões antigas ainda lidas para migrar; a v5 tem o mesmo layout binário da v6. */
 export const LEGACY_VAULT_VERSIONS = [5] as const;
 
 /** Toda versão que `unpackVaultContainer` aceita: a atual e as migráveis. */
@@ -46,7 +38,7 @@ export const METHOD_KDF_BYTES = 3 * UINT32_BYTES;
 /** `salt(16) + iv(16) + tag(16) + ctLen(4)` antes do texto cifrado. */
 export const BLOB_HEADER_BYTES = SALT_BYTES + IV_BYTES + TAG_BYTES + UINT32_BYTES;
 
-/** `magic(8) + version(4) + createdAt(8) + attempts(4) + lockUntil(8) + flags(1) + attemptsMaster(4) + nukeLimit(4)`. */
+/** `magic(8) + version(4) + createdAt(8) + attempts(4) + lockUntil(8) + flags(1) + rest(8)`. */
 export const VAULT_HEADER_BYTES =
   MAGIC_BYTES +
   UINT32_BYTES +
@@ -87,7 +79,7 @@ export const FLAG_MASTER = 0x01;
 export const FLAG_PIN = 0x02;
 export const FLAG_RECOVERY = 0x04;
 export const FLAG_MANIFEST = 0x08;
-/** Embrulho de uma chave *decoy*, controlado pelo PIN de coação. */
+/** Embrulho de uma chave decoy, controlado pelo PIN de pânico. */
 export const FLAG_PANIC = 0x10;
 export const FLAGS_ALL = FLAG_MASTER | FLAG_PIN | FLAG_RECOVERY | FLAG_MANIFEST | FLAG_PANIC;
 

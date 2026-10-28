@@ -1,12 +1,8 @@
 import type { Messages } from '@zero/messages/pt-BR';
 
 /**
- * 日本語。`pt-BR` é o canônico: a forma deste objeto é conferida pelo
- * TypeScript. Glossário alinhado ao app irmão (Biblioteca): 金庫 é o cofre,
- * マスターパスワード é a senha mestra.
- *
- * Nomes de marca (`Guardinha`, `otpauth://`, `Base32`, `SHA1`…), caminhos e
- * identificadores técnicos não se traduzem.
+ * 日本語; `pt-BR` é o canônico e o TypeScript confere a forma do objeto.
+ * Nomes de marca, caminhos e identificadores técnicos não se traduzem.
  */
 export const ja: Messages = {
   common: {
@@ -370,7 +366,6 @@ export const ja: Messages = {
     invalidAuthSecret:
       '設定キーは有効な Base32（A-Z と 2-7）で、80 ビット（10 バイト）以上である必要があります。',
     authTokenNotFound: '2FA トークンが見つかりません。',
-    // ---- 金庫全体のバックアップ ----
     backupInvalid: 'バックアップファイルが無効です。',
     backupCorrupted: 'バックアップが破損しているか改変されています。何も復元されませんでした。',
     backupUnsupportedVersion: (version?: number): string =>

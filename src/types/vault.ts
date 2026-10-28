@@ -15,10 +15,7 @@ export type CredentialInput = Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>
   id?: string;
 };
 
-/**
- * Como o usuário está tentando desbloquear o cofre. A frase de recuperação
- * **não é forma de login**: ela só serve para redefinir o PIN (`ResetPinInput`).
- */
+/** Como o usuário desbloqueia o cofre; a frase de recuperação só redefine o PIN. */
 export type UnlockKind = 'master' | 'pin';
 
 /** Estado do cofre exposto ao renderer. */
@@ -53,15 +50,7 @@ export interface PanicPinInput {
   pin: string;
 }
 
-/**
- * Estado da trava exponencial como ele fica gravado no `vault.zkv`.
- *
- * Mora aqui, e não em `src/main/storage.ts`, porque não é detalhe do arquivo:
- * `auth.ts` (que calcula a trava), `vault.ts`, `unlock.ts` e a fachada
- * repartem esse estado, e `FailedAttemptResult` abaixo o expõe. Declarar aqui
- * mantém `src/types/` sem depender de `src/main/`, que é a direção correta da
- * dependência.
- */
+/** Estado da trava exponencial gravado no `vault.zkv`, repartido por `auth.ts` e `vault.ts`. */
 export interface PersistedAuthState {
   attempts: number;
   lockUntil: number | null;
@@ -77,11 +66,7 @@ export interface FailedAttemptResult {
   crossed: boolean;
 }
 
-/**
- * Estado das proteções de pânico do cofre. `hasPanicPin` diz se existe um
- * caminho de coação instalado; `nukeLimit` é o teto de tentativas da senha
- * mestra, com `0` significando desligado (que é o padrão).
- */
+/** Proteções de pânico: PIN de coação instalado e teto de tentativas (`0` = desligado). */
 export interface PanicStatus {
   hasPanicPin: boolean;
   nukeLimit: number;
@@ -95,21 +80,13 @@ export interface VaultResult {
   status: VaultStatus;
 }
 
-/**
- * Resultado do Cryptographic Erase: quantos arquivos foram sobrescritos e
- * apagados, e quantos resistiram. Só serve para diagnóstico; a autodestruição
- * é lógica mesmo quando algum arquivo não pôde ser tocado.
- */
+/** Resultado do erase: arquivos sobrescritos e quantos resistiram (só diagnóstico). */
 export interface EraseResult {
   shredded: number;
   failed: number;
 }
 
-/**
- * Varredura de temporários órfãos: quantos `.tmp` foram sobrescritos e apagados,
- * e quantos foram deixados intactos por ainda poderem ser de uma escrita em
- * curso. Irmão de `EraseResult`, e pelo mesmo motivo mora aqui.
- */
+/** Varredura de `.tmp` órfãos: apagados e os mantidos por escrita em curso. */
 export interface TempCleanupResult {
   removed: number;
   kept: number;

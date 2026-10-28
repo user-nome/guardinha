@@ -1,4 +1,5 @@
 // @vitest-environment node
+/** Embrulho e desembrulho da chave por método, cada um com o custo de Argon2id devido. */
 import nodeCrypto from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { KDF_CREDENTIAL, KDF_PIN, decryptRecord, encryptRecord } from '@zero/main/crypto';
@@ -37,7 +38,7 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
   });
 
   it('cada tipo recebe o custo do Argon2id adequado ao segredo', () => {
-    // o PIN de 8 dígitos é o mais fraco: perfil mais caro
+    // O PIN de 8 dígitos é o mais fraco: perfil mais caro.
     expect(keyUnwrapperFor('pin').kdf).toMatchObject(KDF_PIN);
     expect(keyUnwrapperFor('master').kdf).toMatchObject(KDF_CREDENTIAL);
     expect(keyUnwrapperFor('recovery').kdf).toMatchObject(KDF_CREDENTIAL);

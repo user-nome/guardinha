@@ -1,3 +1,4 @@
+/** Slider acessível com arraste relativo e teclado, sem dependência externa. */
 import { useRef } from 'react';
 import type {
   JSX,
@@ -13,11 +14,7 @@ interface SensitivitySliderProps {
   onChange: (value: number) => void;
 }
 
-/**
- * O clique inicia um arraste relativo (não pula o cursor para o ponto
- * clicado) e o passo em pixels acompanha a faixa de valores, com piso de
- * 10 px. Teclado move 1 por seta e 10 por Page.
- */
+/** Piso do passo em pixels; o clique inicia arraste relativo, sem pular o cursor. */
 const MIN_STEP_PX = 10;
 
 const KEY_DELTAS: Record<string, number> = {
@@ -47,8 +44,7 @@ export function SensitivitySlider({
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
     event.currentTarget.setPointerCapture(event.pointerId);
-    // O passo segue a largura da faixa no momento do toque: `currentTarget` é o
-    // próprio trilho, então não há ref a consultar nem largura de reserva.
+    // `currentTarget` é o trilho: a largura vem dele, sem ref nem valor de reserva.
     const natural = event.currentTarget.clientWidth / Math.max(1, max - min);
     dragRef.current = {
       startX: event.clientX,

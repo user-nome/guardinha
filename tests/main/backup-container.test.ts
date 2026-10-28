@@ -5,13 +5,7 @@ import { currentMessages } from '@zero/main/i18n';
 import { packBackup, unpackBackup } from '@zero/main/backup/backup-container';
 import type { BackupSegment } from '@zero/main/backup/backup-container';
 
-/**
- * O pacote `.gbk` é a única coisa entre o pendrive perdido e o cofre, então o
- * que a leitura precisa provar é que **nada** passa antes da validação inteira:
- * magic, versão, digest global e o SHA-256 de cada arquivo. Um byte trocado no
- * manifesto, no payload ou no próprio digest tem que derrubar aqui, com o cofre
- * no disco ainda intacto.
- */
+/** Pacote `.gbk`: a leitura valida magic, versão, digest global e SHA-256 por arquivo. */
 
 const M = currentMessages();
 
@@ -64,8 +58,7 @@ describe('pacote de backup: ida e volta', () => {
   });
 
   it('aceita arquivo de tamanho zero, que é o piso do manifesto', () => {
-    // `size < 0` é o corte: zero é um arquivo vazio legítimo. Com `<= 0` o
-    // manifesto recusaria o próprio pacote que o app acabou de gerar.
+    // `size < 0` é o corte: zero é arquivo vazio legítimo, e `<= 0` recusaria o pacote do app
     const opened = unpackBackup(packBackup([{ path: 'vault.zkv', data: Buffer.alloc(0) }], '1'));
     expect(opened.files).toEqual([{ path: 'vault.zkv', data: Buffer.alloc(0) }]);
   });
@@ -85,9 +78,7 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
   });
 
   it('recusa cabeçalho com magic certo mas sem espaço para o digest', () => {
-    // O magic passa, então a guarda de tamanho é a única coisa entre o buffer e
-    // a comparação do digest: sem ela o `timingSafeEqual` vê lados de tamanhos
-    // diferentes e o erro que sobe é do Node, não o do backup.
+    // o magic passou: sem a guarda de tamanho o `timingSafeEqual` estoura antes do erro do backup
     const header = Buffer.alloc(16);
     Buffer.from('ZKBACKUP', 'ascii').copy(header, 0);
     header.writeUInt32BE(1, 8);
@@ -114,8 +105,7 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
   });
 
   it('recusa arquivo cujo SHA-256 não bate, mesmo com o digest global refeito', () => {
-    // ataque real: reescrever o payload e recalcular o digest global. Só o
-    // SHA-256 por arquivo pega esta troca.
+    // ataque real: payload reescrito com o digest global refeito; só o SHA-256 por arquivo pega
     const manifest = {
       app: 'Guardinha',
       version: '1.0.0',
@@ -153,9 +143,7 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
   });
 
   it('recusa manifesto de tamanho zero', () => {
-    // comprimento zero **com digest em dia**: é o pacote que passa pela
-    // integridade global e só morre na conferência do cabeçalho, que é o ponto
-    // deste teste (mudar o campo depois de empacotar cairia no digest global).
+    // comprimento zero com digest em dia: só a conferência do cabeçalho recusa este pacote
     const header = Buffer.alloc(16);
     Buffer.from('ZKBACKUP', 'ascii').copy(header, 0);
     header.writeUInt32BE(1, 8);
@@ -175,17 +163,14 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
   });
 
   it('recusa manifesto que declara mais bytes do que o pacote tem', () => {
-    // o comprimento do manifesto vem do cabeçalho, não do próprio JSON: um
-    // valor maior que o corpo faria o `JSON.parse` ler bytes do payload, e é
-    // por isso que o pacote é recusado antes de qualquer parse
+    // o comprimento vem do cabeçalho: um valor maior faria o `JSON.parse` ler bytes do payload
     const packed = packBackup([FILE], '1.0.0');
     packed.writeUInt32BE(4096, 12);
     expect(() => unpackBackup(packed)).toThrow(M.errors.backupCorrupted);
   });
 
   it('recusa arquivo que o manifesto diz ser maior que o payload inteiro', () => {
-    // manifesto coerente por dentro, mas o `size` do arquivo aponta para além do
-    // fim do pacote: o `subarray` devolveria menos bytes do que o SHA-256 exige
+    // `size` além do fim do pacote: o `subarray` devolveria menos bytes do que o SHA-256 exige
     const manifest = {
       app: 'Guardinha',
       version: '1.0.0',
@@ -211,8 +196,7 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
       { app: 'Guardinha', version: 1, createdAt: 1, files: [] },
       { app: 'Guardinha', version: '1', createdAt: 'hoje', files: [] },
       { app: 'Guardinha', version: '1', createdAt: 1, files: 'x' },
-      // item da lista que não é registro: o manifesto é dado de fora, então
-      // cada elemento precisa ser conferido antes de virar segmento
+      // item da lista que não é registro: o manifesto é dado de fora e cada item é conferido
       { app: 'Guardinha', version: '1', createdAt: 1, files: ['vault.zkv'] },
       { app: 'Guardinha', version: '1', createdAt: 1, files: [null] },
       {
@@ -239,9 +223,7 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
         createdAt: 1,
         files: [{ path: 'vault.zkv', size: 1, sha256: 'curto' }],
       },
-      // Tipos que o `||` de cada guarda não pode deixar passar: o `&&` só
-      // recusaria se todas as condições fossem verdadeiras, e um array com o
-      // texto certo engana o `test` da expressão regular.
+      // o `&&` só recusaria com todas as condições verdadeiras; um array com o texto certo engana
       {
         app: 'Guardinha',
         version: '1',
@@ -262,8 +244,7 @@ describe('pacote de backup: recusa antes de tocar no disco', () => {
       },
     ];
     for (const manifest of casos) {
-      // Sem payload: com um byte sobrando o pacote morreria na conferência de
-      // "bytes a mais" e o manifesto inválido nunca chegaria a ser lido.
+      // sem payload: com um byte sobrando o manifesto inválido nunca chegaria a ser lido
       expect(
         () => unpackBackup(rawPack(manifest, Buffer.alloc(0))),
         JSON.stringify(manifest),

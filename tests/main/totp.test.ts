@@ -4,11 +4,7 @@ import crypto from 'node:crypto';
 import { vi } from 'vitest';
 import { hotp, totp, totpRemainingMs, totpStep } from '@zero/main/totp';
 
-/**
- * Vetores oficiais das RFCs. Se algum destes falhar, o app não gera um código
- * que GitHub, Discord, Google ou qualquer outro serviço aceite: é o serviço que
- * define o algoritmo, então a conformidade aqui não é opinião.
- */
+/** Vetores oficiais das RFCs: o serviço define o algoritmo, então a conformidade é requisito. */
 
 /** Segredos do Anexo B da RFC 6238: 20, 32 e 64 bytes, todos "1234…". */
 const SEED_SHA1 = Buffer.from('12345678901234567890', 'ascii');
@@ -55,9 +51,7 @@ function seedFor(algorithm: 'SHA1' | 'SHA256' | 'SHA512'): Buffer {
 }
 
 describe('HOTP (RFC 4226)', () => {
-  // forma `[contador, código]`: o `each` de array de array espalha os campos,
-  // ao contrário da forma de array simples, em que o índice não é o segundo
-  // argumento
+  // forma `[contador, código]`: o `each` de array de array espalha os campos
   it.each(RFC4226_CODES.map((code, counter): [number, string] => [counter, code]))(
     'gera %s para o contador %i',
     (_counter, expected) => {
@@ -72,9 +66,7 @@ describe('HOTP (RFC 4226)', () => {
 
   it('falha explicitamente se a implementação HMAC devolver digest truncado', () => {
     const hmac = crypto.createHmac('sha1', SEED_SHA1);
-    // `Hmac.digest` é sobrecarregado (Buffer sem argumento, texto com encoding) e
-    // o `mockReturnValue` adota a última sobrecarga, que devolve string. O que o
-    // `totp.ts` chama é a forma sem argumento, que devolve o Buffer.
+    // o mock adota a sobrecarga que devolve string; o `totp.ts` usa a sem argumento
     vi.spyOn(hmac, 'digest').mockReturnValue(Buffer.alloc(0) as unknown as string);
     vi.spyOn(crypto, 'createHmac').mockReturnValue(hmac);
 
@@ -88,8 +80,7 @@ describe('TOTP (RFC 6238)', () => {
   });
 
   it('com 6 dígitos, que é o padrão da maioria dos serviços', () => {
-    // GitHub e Discord: 6 dígitos, SHA-1, 30 s. O código de 8 dígitos da RFC no
-    // mesmo instante é 07081804, então os 6 últimos são 081804.
+    // serviços comuns usam 6 dígitos, SHA-1 e 30 s; os 6 últimos do código da RFC são 081804
     expect(totp(SEED_SHA1, 1111111109 * 1000, 30, 6, 'SHA1')).toBe('081804');
   });
 
@@ -117,15 +108,13 @@ describe('tempo restante', () => {
 
 describe('passo de tempo do TOTP', () => {
   it('usa um passo mínimo de 1 s quando o período não faz sentido', () => {
-    // Período zero ou fracionário viraria divisão por zero (ou passo fracionário)
-    // e o código sairia errado. O piso de 1 s é o que segura isso.
+    // período zero ou fracionário viraria divisão por zero e o código sairia errado
     expect(totpStep(1_000_000, 0)).toBe(1_000);
     expect(totpStep(1_000_000, 0.4)).toBe(1_000);
   });
 
   it('mantém a contagem regressiva entre 0 e o período inteiro', () => {
-    // A barra do renderer desenha esse número: negativo faz a barra estourar,
-    // maior que o período faz o código parecer que ainda não virou.
+    // a barra do renderer desenha esse número: fora da faixa ela estoura ou mente
     for (const period of [15, 30, 90]) {
       for (const offset of [0, 1, period * 500 - 1, period * 1000 - 1]) {
         const remaining = totpRemainingMs(offset, period);
@@ -141,9 +130,7 @@ describe('passo de tempo do TOTP', () => {
   });
 
   it('o período de 1 s tem um segundo de janela, não dois', () => {
-    // O piso de `Math.max(1, Math.floor(period))` é o que segura período zero,
-    // fracionário e menor que um. Com o piso em 2, o período de 1 s passaria a
-    // valer 2 s e a barra de contagem regressiva mentiria.
+    // o piso de 1 s em `Math.max(1, Math.floor(period))` segura período zero ou fracionário
     expect(totpRemainingMs(0, 1)).toBe(1_000);
     expect(totpRemainingMs(1_000, 1)).toBe(1_000);
   });

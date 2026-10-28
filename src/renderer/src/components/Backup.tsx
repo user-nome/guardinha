@@ -9,14 +9,7 @@ interface BackupProps {
   onToast: (message: string) => void;
 }
 
-/**
- * Tela de backup e restauração do cofre.
- *
- * A tela só dispara os canais `window.api.backup`: quem lê o cofre, monta o
- * pacote `.gbk` e abre o diálogo nativo é o processo main. O pacote é cópia de
- * bytes já cifrados, então nenhuma senha ou segredo passa por aqui; o que volta
- * é a contagem de arquivos e o caminho, que viram confirmação no toast.
- */
+/** Tela de backup: só dispara `window.api.backup`, quem lê o cofre é o main. */
 export function Backup({ onToast }: BackupProps): JSX.Element {
   const m = useMessages();
 

@@ -25,10 +25,7 @@ import {
 } from '@zero/main/storage';
 import type { VaultContainerData } from '@zero/main/container';
 
-/**
- * Container e arquivos de credencial no layout atual. O formato do cofre não
- * tem mais caminho de leitura legado: o que o app grava é o que ele lê.
- */
+/** Container e arquivos de credencial no layout atual; o app lê o que ele mesmo grava. */
 
 const ENTRY_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const ENTRY_PAYLOAD = {

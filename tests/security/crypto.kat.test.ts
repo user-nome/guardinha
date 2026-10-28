@@ -13,12 +13,7 @@ import {
 } from '@zero/main/crypto';
 import { KEY_INFO_AUTH, KEY_INFO_ENTRY } from '@zero/main/crypto-constants';
 
-/**
- * Testes de conhecimento zero sobre a cifra: vetor de referência do Argon2id,
- * oráculo de decifragem independente (Node puro), matriz de adulteração e
- * zeragem das chaves de trabalho. Nada aqui confia na função que está sendo
- * testada para provar que ela acertou.
- */
+/** Vetor de referência, oráculo independente, adulteração e zeragem das chaves. */
 
 const ARGON2_VECTOR = {
   password: 'password',
@@ -49,9 +44,7 @@ describe('Argon2id: vetor de referência', () => {
   });
 
   it('o custo de produção é o anunciado e nunca menor que o piso do formato', () => {
-    // O PIN é o segredo fraco e precisa custar mais que a senha mestra. Se
-    // alguém trocar os perfis por engano, o vetor acima continua passando; esta
-    // asserção é o que prende os números de produção.
+    // O PIN precisa custar mais que a senha mestra; esta asserção prende os números.
     expect(KDF_PIN.memoryKiB).toBeGreaterThan(KDF_CREDENTIAL.memoryKiB);
     expect(KDF_PIN.iterations).toBeGreaterThan(KDF_CREDENTIAL.iterations);
     expect(KDF_PIN.memoryKiB).toBeGreaterThanOrEqual(16_384);
@@ -62,8 +55,7 @@ describe('Argon2id: vetor de referência', () => {
     const key = await deriveKey('12345678', randomBytes(16), KDF_PIN);
     const elapsed = performance.now() - started;
 
-    // Piso generoso de propósito: o teste pega a regressão grosseira (KDF
-    // virando função barata), não a diferença entre máquinas.
+    // Piso generoso: pega a regressão grosseira, não a diferença entre máquinas.
     expect(elapsed).toBeGreaterThan(250);
     expect(key).toHaveLength(32);
     key.fill(0);
@@ -97,8 +89,7 @@ describe('oráculo independente do formato', () => {
     const token = { issuer: 'GitHub', secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP' };
     const authPayload = encryptAuthRecord(token, vaultKey);
 
-    // Com o rótulo da credencial o GCM tem de recusar o mesmo arquivo: é o que
-    // separa os domínios e impede que um payload valha no lugar do outro.
+    // Com o rótulo da credencial o GCM recusa o arquivo: é o que separa os domínios.
     expect(() => decryptRecord(authPayload, vaultKey, KEY_INFO_ENTRY)).toThrow();
     expect(decryptAuthRecord(authPayload, vaultKey)).toEqual(token);
 

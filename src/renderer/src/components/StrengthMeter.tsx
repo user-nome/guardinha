@@ -24,7 +24,7 @@ const TEXT_CLASSES = [
   'text-emerald-500',
 ];
 
-/** Barra de força com a nota e os motivos; só informativa (quem bloqueia é quem chama). */
+/** Barra de força com nota e motivos; só informativa, quem bloqueia é quem chama. */
 export function StrengthMeter({ result, hint }: StrengthMeterProps): JSX.Element {
   const m = useMessages();
   const score = Math.max(0, Math.min(result.score, 4));

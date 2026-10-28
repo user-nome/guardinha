@@ -12,11 +12,7 @@ import {
 } from '@zero/main/structure';
 import { currentMessages } from '@zero/main/i18n';
 
-/**
- * Utilitários de caminho e de pasta. São a base de toda a segurança de arquivo:
- * se `vaultDir()` ou `authDir()` apontassem para o lugar errado por causa de uma
- * variável de ambiente, o app passaria a cifrar ou apagar no lugar errado.
- */
+/** Caminhos e pastas do cofre: um erro aqui cifra ou apaga no lugar errado. */
 
 const ENV_KEYS = ['GUARDINHA_VAULT_DIR', 'GUARDINHA_VAR_LIB', 'XDG_DATA_HOME', 'XDG_CONFIG_HOME'];
 const saved = new Map<string, string | undefined>();
@@ -28,8 +24,7 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const [key, value] of saved) {
-    // `undefined` significa "não estava definido"; atribuir string vazia
-    // mudaria a leitura de quem checa `!== ''` no `layout.ts`
+    // `undefined` quer dizer "não estava definido"; string vazia mudaria a leitura de `!== ''`
     if (value === undefined) Reflect.deleteProperty(process.env, key);
     else process.env[key] = value;
   }
@@ -62,8 +57,7 @@ describe('layout:GUARDINHA_VAULT_DIR sobrepõe o caminho completo', () => {
 
 describe('structure:layout do cofre', () => {
   it('as credenciais só existem em .entries/, nunca em entries/', () => {
-    // não há mais renomeio de layout: um `entries/` visível é de uma versão que
-    // não existe, e o Cryptographic Erase não o apagaria
+    // não há renomeio de layout: `entries/` visível é de versão que não existe e o erase não apaga
     process.env.GUARDINHA_VAULT_DIR = fs.mkdtempSync(path.join(process.env.HOME ?? '/tmp', 'gv-'));
     ensureVaultStructure();
 
@@ -104,8 +98,7 @@ describe('structure:erro de permissão', () => {
 
 describe('structure:varredura de arquivos', () => {
   it('vê o container, as entradas e os tokens na mesma lista', () => {
-    // o Cryptographic Erase usa esta lista: um diretório esquecido aqui é um
-    // segredo que sobra depois da autodestruição
+    // o erase usa esta lista: diretório esquecido aqui é segredo que sobra depois da destruição
     process.env.GUARDINHA_VAULT_DIR = fs.mkdtempSync(path.join(process.env.HOME ?? '/tmp', 'gv-'));
     fs.ensureDirSync(vaultDir());
     fs.ensureDirSync(entriesDir());
@@ -137,9 +130,7 @@ describe('structure:varredura de arquivos', () => {
 
 describe('modo das pastas do cofre', () => {
   it('cria e reaplica 0700 em vaultDir, entriesDir e authDir', () => {
-    // `ensureVaultStructure` também chama `chmodSync`, para corrigar uma pasta
-    // que já existia com modo frouxo. Sem conferir o modo, a pasta passaria a
-    // listar os `.zke` de qualquer usuário da máquina.
+    // `chmodSync` corrige pasta frouxa; sem isso qualquer usuário listaria os `.zke`
     ensureVaultStructure();
 
     for (const dir of [vaultDir(), entriesDir(), authDir()]) {

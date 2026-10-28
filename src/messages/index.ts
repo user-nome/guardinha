@@ -8,9 +8,7 @@ import type { Messages } from '@zero/messages/pt-BR';
 
 export type { Messages };
 
-/**
- * Idiomas suportados, na ordem de exibição: o português (canônico).
- */
+/** Idiomas suportados, na ordem de exibição, com o português canônico primeiro. */
 export const LANGUAGES: readonly Language[] = ['pt-BR', 'zh-CN', 'ko', 'ja', 'en'];
 
 /** Nome nativo de cada idioma (não se traduz: aparece assim em qualquer idioma). */

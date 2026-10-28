@@ -4,23 +4,12 @@ import { protocol } from 'electron';
 import { currentMessages } from '@zero/main/i18n';
 import { isRecord } from '@zero/shared/record';
 
-/**
- * Scheme `guardinha://` e a guarda de origem do IPC.
- *
- * Fica fora do `index.ts` porque é o único lugar do `main` que serve arquivo
- * estático, e essa é uma responsabilidade com superfície de segurança própria:
- * barreira contra *path traversal*, tabela de MIME e a checagem de origem que
- * todo handler IPC precisa. Misturado com o registro dos canais, o arquivo
- * ficaria grande demais e essa parte ficaria escondida entre `ipcMain.handle`.
- */
+/** Scheme `guardinha://` e guarda de origem do IPC; único ponto do main que serve asset. */
 
 export const APP_SCHEME = 'guardinha';
 export const APP_ORIGIN = `${APP_SCHEME}://app`;
 
-/**
- * Declara o scheme antes do app ficar pronto (o Electron exige isso no topo do
- * módulo, ainda em fase de import).
- */
+/** Declara o scheme antes do app ficar pronto; o Electron exige no topo do módulo. */
 export function registerAppSchemePrivileges(): void {
   protocol.registerSchemesAsPrivileged([
     {
@@ -65,16 +54,7 @@ function rendererMime(file: string): string {
   }
 }
 
-/**
- * Serve a SPA empacotada sob o scheme `guardinha://` (em vez de `file://`,
- * recomendado pela doc atual do Electron): todo `/assets/...` resolve dentro
- * de `out/renderer`, com path traversal rejeitado por `path.resolve` + prefix.
- *
- * Os corpos das respostas são frases de status do protocolo, em inglês e
- * literais de propósito: é transporte, não interface. A tela é servida de
- * `index.html` e quem chega aqui é o carregador de asset, não o usuário, então
- * localizá-los seria um `settings.json` lido por requisição sem ganho nenhum.
- */
+/** Serve a SPA empacotada, com path traversal rejeitado por `path.resolve` e prefixo. */
 export function registerAppProtocol(): void {
   const root = path.join(__dirname, '../renderer');
   protocol.handle(APP_SCHEME, (request) => {

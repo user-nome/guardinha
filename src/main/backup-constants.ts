@@ -1,6 +1,4 @@
-/**
- * Constantes do formato de backup (`.gbk`).
- */
+/** Constantes do formato de backup (`.gbk`); detalhes em docs/backup.md. */
 
 export const BACKUP_MAGIC = Buffer.from('ZKBACKUP', 'ascii');
 export const BACKUP_VERSION = 1;

@@ -1,9 +1,6 @@
 import { vi } from 'vitest';
 
-/**
- * Stub do módulo `electron` aplicado pelo alias em `vitest.config.mts`.
- * Mantém estado compartilhado entre o módulo sob teste e os asserts do teste.
- */
+/** Stub do módulo `electron` pelo alias em `vitest.config.mts`, com estado partilhado. */
 
 export type IpcHandler = (event: unknown, ...args: unknown[]) => unknown;
 export type WindowEventHandler = (...args: unknown[]) => unknown;

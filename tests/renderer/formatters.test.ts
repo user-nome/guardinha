@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { countWords, normalizePhrase } from '@zero/renderer/formatters';
 
-/**
- * Utilitários de texto usados por várias telas. `normalizePhrase` precisa
- * concordar com `normalizeRecoveryPhrase` do main: as duas implementações
- * calculam a mesma frase de recuperação e divergir entre elas abriria falha
- * no reset do PIN. `errorMessage` mora em `@zero/shared/format` e é testado
- * em `tests/shared/format.test.ts`.
- */
+/** `normalizePhrase` precisa concordar com a versão do main, senão o reset do PIN falha. */
 
 describe('countWords', () => {
   it('conta as palavras de uma frase', () => {

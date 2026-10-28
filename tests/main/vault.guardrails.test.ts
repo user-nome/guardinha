@@ -21,9 +21,8 @@ import { containerFile } from '@zero/main/layout';
 import type { PersistedAuthState } from '@zero/types';
 
 /**
- * Ramas de decisão do cofre que os testes de fluxo não alcançam: estados
- * ausentes, limites fora da faixa e a autodestruição por tentativas. São os
- * caminhos que decidem se o cofre sobrevive, então cada um ganha teste próprio.
+ * Caminhos de decisão que os testes de fluxo não alcançam: estados ausentes, limites fora da
+ * faixa e autodestruição por tentativas.
  */
 
 const MASTER = 'senha-mestra-guardinha24';
@@ -41,8 +40,7 @@ const NEUTRAL: PersistedAuthState = {
   nukeLimit: 0,
 };
 
-// um cofre só para os três blocos: `createVault` recusa a segunda vez, e
-// derivar Argon2id de novo a cada bloco tornaria a suíte lenta sem ganho
+// um cofre só: `createVault` recusa a segunda vez e derivar Argon2id de novo é lento
 beforeAll(async () => {
   const result = await createVault({
     masterPassword: MASTER,
@@ -64,8 +62,7 @@ describe('limite estrito de tentativas', () => {
     expect(await setNukeLimit(-1)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
-    // o campo é UInt32 no container: acima disso o `writeUInt32BE` estourava
-    // `RangeError` no meio da gravação, em vez de devolver erro de domínio
+    // acima de UInt32 o `writeUInt32BE` estourava `RangeError` no meio da gravação
     expect(await setNukeLimit(2 ** 32)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.invalidNukeLimit }),
     );
@@ -117,9 +114,7 @@ describe('PIN de coação', () => {
   });
 
   it('bloqueado, não muda nem revela as proteções de pânico', async () => {
-    // P2: `clearPanicPin` e `setNukeLimit` não exigiam sessão, e `panicStatus`
-    // anunciava a existência do segundo caminho sem credencial. O IPC bloqueado
-    // virava um jeito de desarmar a proteção.
+    // P2: sem sessão, o IPC bloqueado virava um jeito de desarmar as proteções de pânico
     const m = currentMessages();
     vaultSession().wipe();
 
@@ -193,10 +188,7 @@ describe('redefinição de PIN', () => {
   });
 
   it('recusa instalar o PIN de coação como novo PIN', async () => {
-    // P10: `tryPanicUnlock` roda antes da cadeia normal. Se a redefinição
-    // aceitasse o PIN de coação como novo PIN, o login seguinte destruiria o
-    // cofre em vez de abri-lo. A recusa só acontece depois da frase, para não
-    // virar oráculo de pânico para quem não provou a recuperação.
+    // P10: o PIN de coação aqui destruiria o cofre no login seguinte; a recusa vem depois da frase
     writeAuthState(NEUTRAL);
     const result = await resetPin({ phrase: PHRASE, newPin: OTHER_PIN });
 
@@ -235,8 +227,7 @@ describe('cofre ausente', () => {
   });
 
   it('o estado de trava devolve o neutro, sem estourar', () => {
-    // sem `vault.zkv`, ler o estado precisa dar zero em vez de lançar: é o
-    // que `vault:status` responde no primeiro start
+    // sem `vault.zkv`, ler o estado dá zero em vez de lançar: é o que `vault:status` responde
     expect(readAuthState()).toEqual(NEUTRAL);
   });
 
@@ -265,8 +256,7 @@ describe('cofre ausente', () => {
   });
 
   it('clearPanicPin não explode e devolve o estado neutro', async () => {
-    // Sem container não há PIN de coação para remover, e a função precisa
-    // devolver o status assim mesmo em vez de estourar em cima do chamador.
+    // sem container não há PIN de coação para remover, e a função devolve o status assim mesmo
     expect(await clearPanicPin()).toMatchObject({ exists: false, attempts: 0, lockUntil: null });
   });
 
@@ -279,9 +269,7 @@ describe('cofre ausente', () => {
 
 describe('piso do limite de autodestruição', () => {
   it('recusa 1 e aceita 0 como desligado', async () => {
-    // O `limit > 0` é o que separa "desligado" (0) de "abaixo do piso" (1..49).
-    // Com o `0` virando `1`, um limite de 1 passaria a ser aceito e a
-    // autodestruição dispararia na primeira senha mestra errada.
+    // `limit > 0` separa "desligado" (0) de "abaixo do piso"; com 0 virando 1, o limite 1 passaria
     expect(await setNukeLimit(1)).toEqual(
       expect.objectContaining({ ok: false, error: m.errors.nukeLimitTooLow }),
     );
@@ -290,18 +278,9 @@ describe('piso do limite de autodestruição', () => {
   });
 });
 
-/**
- * As operações do cofre com o arquivo ausente. Sem o cofre não há nada a
- *Protectir, e cada função tem que dizer "cofre inexistente" em vez de estourar
- * em cima do chamador ou, pior, gravar alguma coisa.
- */
+/** Com o arquivo ausente, cada função diz "cofre inexistente" em vez de estourar ou gravar. */
 
-/**
- * Os três casos abaixo precisam de um cofre **aberto** e depois sem container, o
- * que os blocos de cima não deixam: eles trocam o PIN e, no caminho, apagam o
- * arquivo. Aqui a pasta é própria e o cofre nasce com o PIN conhecido, para que
- * a ordem dos testes não mude o que está sendo coberto.
- */
+/** Os três casos abaixo precisam de um cofre aberto que depois perde o container, em pasta própria. */
 describe('cofre aberto que some no meio do caminho', () => {
   let previousDir: string | undefined;
   let dir: string;
@@ -323,8 +302,7 @@ describe('cofre aberto que some no meio do caminho', () => {
     writeAuthState(NEUTRAL);
   });
 
-  // Sem isto o `GUARDINHA_VAULT_DIR` apontando para a pasta temporária vazia
-  // vazaria para os outros arquivos de teste que rodarem no mesmo worker.
+  // sem isto, o `GUARDINHA_VAULT_DIR` vazaria para outros arquivos de teste do mesmo worker
   afterAll(() => {
     if (previousDir === undefined) delete process.env.GUARDINHA_VAULT_DIR;
     else process.env.GUARDINHA_VAULT_DIR = previousDir;
@@ -344,10 +322,7 @@ describe('cofre aberto que some no meio do caminho', () => {
   }
 
   it('setPanicPin diz que o cofre não existe em vez de gravar por cima', async () => {
-    // A ordem importa: primeiro o cofre abre (senão a função responde "travado"
-    // antes de olhar o arquivo), e só então o container some. É o estado em que
-    // um `read-modify-write` apagaria a credencial real e deixaria o cofre de
-    // coação apontando para nada.
+    // a ordem importa: abrir primeiro, senão a função responde "travado" antes de olhar o arquivo
     await abrir();
     const restaurar = semContainer();
     try {
@@ -360,9 +335,7 @@ describe('cofre aberto que some no meio do caminho', () => {
   });
 
   it('resetPin diz que a frase está errada quando o método sumiu', async () => {
-    // Um container sem `recovery` é um cofre cuja frase não existe mais. A
-    // resposta tem que ser a de frase errada, e não uma exceção: essa é a única
-    // porta que sobrou para quem tem o PIN e não tem a frase.
+    // container sem `recovery` é cofre sem frase: a resposta é de frase errada, nunca uma exceção
     await abrir();
     const arquivo = containerFile();
     const { readVaultContainer, writeVaultContainer } = await import('@zero/main/storage');
@@ -382,9 +355,7 @@ describe('cofre aberto que some no meio do caminho', () => {
   });
 
   it('erro sem mensagem cai no texto de fallback, e não na tela vazia', async () => {
-    // `errorMessage` só confia na mensagem do `Error` quando ela diz alguma
-    // coisa. Um erro sem texto viraria string vazia na interface, que o usuário
-    // lê como "o app não disse nada" em vez de "o cofre foi adulterado".
+    // `errorMessage` só confia em mensagem não vazia, senão a tela fica sem texto nenhum
     const { vaultStorage } = await import('@zero/main/facade');
     const leitura = vi.spyOn(vaultStorage, 'readContainer').mockImplementation(() => {
       throw new Error('');

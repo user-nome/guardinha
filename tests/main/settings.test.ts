@@ -5,12 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadSettings, saveSettings } from '@zero/main/settings';
 
-/**
- * `settings.json` guarda só o idioma, nada sensível, mas ainda assim é escrito
- * com 0600, pasta 0700 e `rename` atômico: um `SIGKILL` no meio da escrita não
- * pode deixar um JSON pela metade, que faria o app cair para o padrão a cada
- * abertura sem o usuário perceber por quê.
- */
+/** `settings.json` guarda só o idioma, mas é escrito com 0600, pasta 0700 e `rename` atômico. */
 
 const TEMP_PREFIX = 'guardinha-settings-';
 let temp: string;
@@ -36,8 +31,7 @@ describe('saveSettings', () => {
   });
 
   it('normaliza idioma inválido para pt-BR em vez de gravar lixo', () => {
-    // o arquivo é reescrito pela UI a cada troca; um valor corrompido não pode
-    // deixar o app sem idioma numa tela ilegível
+    // O arquivo é reescrito a cada troca; valor corrompido não pode deixar a tela ilegível.
     const saved = saveSettings({ language: 'fr' as unknown as 'en' });
     expect(saved).toEqual({ language: 'pt-BR' });
     expect(fs.readJsonSync(file())).toEqual({ language: 'pt-BR' });

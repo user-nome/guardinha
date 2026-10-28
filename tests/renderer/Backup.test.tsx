@@ -6,13 +6,7 @@ import { Backup } from '@zero/renderer/components/Backup';
 import { installApi } from '../mocks/api.ts';
 import type { ElectronApi } from '@zero/types';
 
-/**
- * A tela de backup é a única ponte para o pacote `.gbk`. Ela não cifra nem lê
- * nada: só dispara os canais `window.api.backup` (o main monta o arquivo e abre
- * o diálogo) e transforma a resposta em toast. O que os testes provam é esse
- * contrato, incluindo o cancelamento e a confirmação da restauração, que apaga
- * o cofre atual.
- */
+/** A tela de backup dispara `window.api.backup` e vira toast; o main monta arquivo e diálogo. */
 
 function open(onToast = vi.fn<(message: string) => void>()): {
   onToast: ReturnType<typeof vi.fn>;

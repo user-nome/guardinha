@@ -109,9 +109,7 @@ describe('evaluatePhrase', () => {
   });
 
   it('frase só de espaço é o mesmo que frase vazia: nada a medir', () => {
-    // Quem cola a frase Space dá de cara com o campo vazio; o medidor não pode
-    // tratar a barra como "muito fraca" nem acusar repetição de uma palavra que
-    // não existe.
+    // colar só espaço é o mesmo que vazio: não é "muito fraca" nem repetição
     for (const frase of ['', '   ', '\n\t ']) {
       const resultado = evaluatePhrase(frase);
       expect(resultado, JSON.stringify(frase)).toMatchObject({
@@ -124,23 +122,11 @@ describe('evaluatePhrase', () => {
   });
 });
 
-/**
- * A régua numérica do medidor é o código sob teste, e a suíte fixava só o
- * comportamento ("fraco", "forte", "bloqueado"). Os testes abaixo pinam a nota e
- * a lista de motivos de entradas escolhidas **para ficar em cima de cada
- * degrau**: cada senha, PIN ou frase abaixo cai de um lado exato de um
- * comparação, e é por isso que trocar um número ou um `<` por `<=` muda a
- * resposta em vez de passar em silêncio.
- *
- * São tabelas, não repetição do que já existe: o valor esperado é o contrato,
- * e mexer na heurística é uma decisão que tem que passar por aqui.
- */
+/** Tabelas que pinam nota e motivos em cima de cada degrau: trocar um número muda a resposta. */
 
 describe('as faixas de bits da senha', () => {
   it('cada degrau da régua cai no lado certo', () => {
-    // 6 minúsculas = 28,2 bits (primeiro degrau); 7 com dígito = 36,19 (segundo);
-    // 8 minúsculas = 37,6 (mesmo degrau, outro valor); 13 com maiúscula = 74,1
-    // (quarto). Cada um fica colado num degrau: mexer em 28, 36 ou 80 muda a nota.
+    // 6 minúsculas dão 28,2 bits e 13 com maiúscula 74,1: cada valor fica colado num degrau
     expect(evaluatePassword('xqzmvj').score).toBe(1);
     expect(evaluatePassword('qwe7xzm').score).toBe(2);
     expect(evaluatePassword('xqzmvjkw').score).toBe(2);
@@ -149,10 +135,7 @@ describe('as faixas de bits da senha', () => {
   });
 
   it('cada corte da régua deixa o valor exato do lado de cima', () => {
-    // A fórmula da frase é `12,9 × distintas − 4 × repetidas`. Com 40 palavras
-    // distintas, os totais 162, 160 e 149 caem exatamente em 28, 36 e 80 bits:
-    // o valor do degrau pertence à faixa de cima, e um `<=` no lugar do `<`
-    // rebaixaria a nota.
+    // 40 distintas põem 162, 160 e 149 exatamente em 28, 36 e 80 bits, no lado de cima
     const frase = (total: number): string =>
       Array.from({ length: total }, (_, i) => `xyz${String((i % 40) + 1).padStart(3, '0')}`).join(
         ' ',

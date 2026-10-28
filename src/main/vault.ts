@@ -1,3 +1,4 @@
+/** Fachada de operações do cofre: status, criação, desbloqueio, pânico e PIN. */
 import { normalizeRecoveryPhrase } from '@zero/main/crypto';
 import {
   getLockRemainingMs,
@@ -42,17 +43,7 @@ import type {
   VaultStatus,
 } from '@zero/types';
 
-/**
- * Fila de operações do cofre, curta e por processo: desbloqueio, redefinição de
- * PIN, criação e mutações do container fazem read-modify-write com `await` no
- * meio (Argon2id custa segundos). Sem a fila, duas chamadas leem o mesmo
- * container e a última gravação descarta a outra, o que pode perder uma
- * tentativa contada ou uma troca de PIN.
- *
- * Só as funções exportadas passam por aqui. Os helpers internos se chamam
- * direto, sem reentrar na fila, que é o que evita deadlock (`unlockNow` chama
- * `panicDestroyNow`, por exemplo).
- */
+// Fila curta por processo: o read-modify-write tem `await` no meio e perderia gravação.
 let vaultQueue: Promise<unknown> = Promise.resolve();
 
 function exclusive<T>(task: () => Promise<T> | T): Promise<T> {
@@ -64,8 +55,7 @@ function exclusive<T>(task: () => Promise<T> | T): Promise<T> {
 
 export function getStatus(): VaultStatus {
   const auth = loadAuthState();
-  // a sessão decoy é o único caso em que o cofre "existe" sem container: é o
-  // que a pessoa sob coação precisa ver na tela, um cofre aberto e vazio
+  // a sessão decoy é o único caso de cofre "existente" sem container: é o que a coação vê
   const exists = vaultStorage.exists() || vaultSession().isDecoy();
   return statusFrom(auth, exists, !vaultSession().isUnlocked());
 }
@@ -82,23 +72,12 @@ export function touch(): void {
 /** Bloqueia o cofre: a chave sai da memória e o auto-lock é cancelado. */
 export function lock(): VaultStatus {
   vaultSession().wipe();
-  // o lock existe para reduzir exposição: deixar a senha copiada no clipboard
-  // por até 30 s anularia parte do gesto. `dispose` é seguro sem cópia ativa.
+  // deixar a senha copiada no clipboard por 30 s anularia parte do gesto
   void secureClipboard.dispose();
   return getStatus();
 }
 
-/**
- * Autodestruição do cofre (Cryptographic Erase): a chave sai da RAM **antes**
- * de qualquer I/O, e só depois o disco é apagado. A ordem importa: se o disco
- * falhar, a memória já está limpa, que é o lado que o atacante com o mesmo
- * usuário alcança mais fácil.
- *
- * Usado pelo botão de pânico e pelo PIN de coação. O `EraseResult` é conferido:
- * o `eraseVault` só marca o cofre como destruído quando o `vault.zkv` sumiu,
- * e uma falha de I/O precisa aparecer no log em vez de virar "destruído" na
- * tela com a chave ainda no disco.
- */
+/** Zera a chave da RAM antes de tocar no disco; falha de erase vira log, não sucesso. */
 async function panicDestroyNow(): Promise<VaultStatus> {
   vaultSession().wipe();
   const erased = vaultStorage.erase();

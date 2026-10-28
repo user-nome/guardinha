@@ -1,20 +1,4 @@
-/**
- * Avaliação de força de credenciais, compartilhada pelo renderer (medidor ao
- * vivo, sem IPC) e pelo main (recusa na criação do cofre: não confia no
- * renderer). Pura e sem estado: só texto de entrada, então roda em qualquer
- * processo (não usa Node nem DOM).
- *
- * Duas decisões ficam separadas de propósito:
- *
- * - `blocked`: regra dura do que é **trivial** (só o degenerado é recusado:
- *   dígito repetido, sequência de ponta a ponta, mesmo bloco repetido, frase
- *   com palavras repetidas demais);
- * - `level` / `score` / `reasons`: heurística para orientar quem digita, mas
- *   nunca bloqueia por si só.
- *
- * Os "bits" são uma estimativa heurística (tamanho × alfabeto, com descontos
- * por padrão): servem para a nota, não para cálculo criptográfico.
- */
+/** Força de credenciais: regra pura, sem estado, usada pelo renderer e pelo main. */
 
 export type StrengthLevel = 'veryWeak' | 'weak' | 'fair' | 'strong' | 'veryStrong';
 
@@ -200,8 +184,7 @@ function emptyResult(): StrengthResult {
 }
 
 function grade(bits: number): Grade {
-  // `raw` é uma união de literais 0..4, então `LEVELS[raw]` existe sempre: sem
-  // este tipo, `noUncheckedIndexedAccess` obrigaria um fallback inalcançável.
+  // `raw` é união 0..4, então `LEVELS[raw]` existe: sem isso o índice pediria fallback.
   const raw: Score = bits < 28 ? 0 : bits < 36 ? 1 : bits < 60 ? 2 : bits < 80 ? 3 : 4;
   return { level: LEVELS[raw], score: raw };
 }
@@ -287,10 +270,7 @@ function containsDate(text: string): boolean {
   return run !== null && looksLikeDate(run[0]);
 }
 
-/**
- * Senha qualquer: usada para a senha mestra (24 caracteres), para a senha de
- * uma credencial salva e para a saída do gerador.
- */
+/** Senha qualquer: vale para a senha mestra, para a credencial salva e para o gerador. */
 export function evaluatePassword(password: string): StrengthResult {
   if (password === '') return emptyResult();
   const reasons: StrengthReason[] = [];
@@ -344,10 +324,7 @@ export function evaluateMaster(password: string): StrengthResult {
   return evaluatePassword(password);
 }
 
-/**
- * PIN de 8 dígitos: o segredo mais fraco do cofre (10^8 candidatas). A nota
- * nunca passa de "razoável" e o bloqueio cobre só o degenerado.
- */
+/** PIN de 8 dígitos: o segredo mais fraco do cofre; a nota nunca passa de "razoável". */
 export function evaluatePin(pin: string): StrengthResult {
   if (pin === '') return emptyResult();
   const reasons: StrengthReason[] = [];
@@ -386,10 +363,7 @@ export function evaluatePin(pin: string): StrengthResult {
   return { level, score, blocked, reasons };
 }
 
-/**
- * Frase de recuperação (12+ palavras, escrita pelo usuário): o que importa é
- * variedade, já que palavra repetida não acrescenta entropia.
- */
+/** Frase de recuperação (12+ palavras): o que importa é variedade, não repetição. */
 export function evaluatePhrase(phrase: string): StrengthResult {
   const words = phrase
     .trim()

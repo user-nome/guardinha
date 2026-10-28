@@ -10,13 +10,8 @@ function hasVaultOverride(): boolean {
 }
 
 /**
- * Pedas autenticação de administrador para criar/reparar a estrutura de
- * `/var/lib/.guardinha` via `pkexec`: a caixinha de senha é a do próprio
- * sistema (PolicyKit/Mint); o app nunca vê a senha. O alvo é o helper
- * `guardinha-setup` do pacote, que só cria diretórios fixos.
- *
- * Com override de teste/dev (`GUARDINHA_VAULT_DIR`/`GUARDINHA_VAR_LIB`) nunca dispara.
- * Retorna `true` se o helper terminou com exit 0.
+ * Pede autenticação de administrador via `pkexec` para criar a estrutura de `/var/lib/.guardinha`;
+ * a senha fica com o PolicyKit. Com override de teste/dev nunca dispara.
  */
 export function setupVaultDirectory(): boolean {
   if (hasVaultOverride()) return false;

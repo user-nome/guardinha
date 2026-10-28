@@ -14,23 +14,15 @@ export const LOCKED: VaultStatus = { ...UNLOCKED, locked: true };
 export const NO_PANIC: PanicStatus = { hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 };
 
 /**
- * Contrato completo de `window.api` para os testes de renderer. Tudo que o
- * arquivo não exercita vira `unused` (rejeita), então chamar um canal por
- * engano aparece como falha em vez de passar em silêncio.
- *
- * Os testes que precisam observar um canal sobrescrevem o campo depois de
- * chamar este helper.
- */
-/**
- * Ouvintes que o renderer registrou em `vault.onAutoLocked`. O mock precisa
- * guardá-los para que o teste consiga disparar o push que o main faria no auto
- * lock, que é o caminho que tira a tela do cofre antes do polling de 15 s.
+ * Ouvintes que o renderer registrou em `vault.onAutoLocked`, para o teste
+ * disparar o push que o main faria no auto lock.
  */
 export const autoLockedListeners: ((status: VaultStatus) => void)[] = [];
 
 /** Espia a chamada de cancelamento feita pelo renderer no cleanup do efeito. */
 export const unsubscribeAutoLock = vi.fn<() => void>();
 
+/** Contrato completo de `window.api` nos testes; canal não exercitado rejeita em vez de passar. */
 export function installApi(
   overrides: {
     status?: VaultStatus;

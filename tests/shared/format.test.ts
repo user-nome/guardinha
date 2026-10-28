@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { errorMessage, formatCountdown } from '@zero/shared/format';
 
-/**
- * A contagem regressiva é o que a tela mostra enquanto o cofre está na trava
- * exponencial. O teto tem 24 h, então os valores são fixados aqui: um teste que
- * só olha "tem um dois-pontos" continuaria verde com a divisão errada.
- */
+/** Contagem regressiva da trava: valores fixos provam a divisão, não só o formato. */
 describe('formatCountdown', () => {
   it('abaixo de um minuto mostra só os segundos', () => {
     expect(formatCountdown(0)).toBe('0s');

@@ -6,11 +6,7 @@ import { LanguageSelect } from '@zero/renderer/components/LanguageSelect';
 import { LANGUAGE_LABELS, LANGUAGES } from '@zero/messages';
 import type { Language } from '@zero/types';
 
-/**
- * O seletor de idioma é um listbox próprio: abre com clique ou seta, navega com
- * as setas, Home e End, fecha no Escape, no Tab e no clique fora. Tudo isso é
- * navegação por teclado, então o caminho do teclado é o que precisa de teste.
- */
+/** Seletor de idioma: listbox próprio, com o caminho do teclado como foco do teste. */
 
 function open(
   language: Language = 'pt-BR',
@@ -46,8 +42,7 @@ function items(): HTMLElement[] {
   return within(screen.getByRole('listbox')).getAllByRole('button');
 }
 
-/** Item do menu pelo nome. O campo repete o rótulo do idioma ativo, então a
- *  busca fica presa à lista para não pegar as duas cópias. */
+/** Item do menu pelo nome; a busca fica presa à lista para não pegar o gatilho. */
 function item(label: string): HTMLElement {
   return within(screen.getByRole('listbox')).getByText(label);
 }
@@ -62,9 +57,7 @@ describe('LanguageSelect: coluna estreita', () => {
       </MessagesProvider>,
     );
 
-    // o trilho estreito da barra lateral não comporta "Português (Brasil)", mas
-    // o menu continua mostrando os nomes: quem lê por tecnologia assistiva
-    // precisa do nome, não do código
+    // O trilho estreito não comporta o nome completo, mas o menu mostra os nomes.
     expect(trigger()).toHaveTextContent('pt-BR');
     await user.click(trigger());
     expect(screen.getByRole('listbox')).toHaveTextContent(LANGUAGE_LABELS['pt-BR']);
@@ -100,8 +93,7 @@ describe('LanguageSelect: estado fechado', () => {
 
     await user.click(trigger());
 
-    // a ordem de exibição é decisão de produto e muda; o teste pergunta pelo
-    // idioma, não pela posição
+    // A ordem de exibição muda; o teste pergunta pelo idioma, não pela posição.
     const active = LANGUAGES.indexOf('en');
     const options = screen.getAllByRole('option');
     expect(options[active - 1]).toHaveAttribute('aria-selected', 'false');

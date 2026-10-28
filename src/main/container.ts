@@ -40,18 +40,7 @@ import {
   NUKE_LIMIT_OFFSET,
 } from '@zero/main/container-format';
 
-/**
- * Formato binário do cofre. Nenhum arquivo legível de fora do app:
- *
- * - `vault.zkv` (magic `ZKVAULT1`): contagem da trava exponencial + blobs de
- *   chave embrulhados (cada um com o custo de Argon2id do seu método) + o
- *   limite de autodestruição + manifesto cifrado.
- * - `.entries/<uuid>.zke` (magic `ZENTRY01`): salt | IV | tag | texto cifrado.
- *
- * Toda leitura é fail-closed: forma inválida, truncamento, parâmetro KDF fora
- * da faixa ou byte adulterado devolvem `null` (ou lançam), nunca conteúdo em
- * claro.
- */
+/** Formato binário do cofre (`vault.zkv` e `.zke`): só `Buffer`, sem `fs`, leitura fail-closed. */
 
 export interface VaultKdfParams extends Argon2Params {
   algo: 'argon2id';
@@ -67,11 +56,7 @@ export interface WrappedMethod {
   payload: SaltedPayload;
 }
 
-/**
- * Chave do cofre embrulhada por cada credencial (blobs cifrados). Cada
- * entrada é opcional de propósito: um cofre novo não tem PIN de pânico, e um
- * cofre que perdeu a senha mestra pode ainda ter a frase de recuperação.
- */
+/** Chave embrulhada por cada credencial; cada uma é opcional de propósito. */
 export interface VaultMethods {
   master?: WrappedMethod;
   pin?: WrappedMethod;
@@ -81,23 +66,14 @@ export interface VaultMethods {
 }
 
 export interface VaultContainerData {
-  /**
-   * Versão lida do arquivo. `packVaultContainer` grava exatamente esta versão,
-   * e não a atual: uma gravação incidental (trava exponencial, troca de PIN)
-   * não pode promover o container sem a migração dos métodos e do manifesto,
-   * que é o que mantém o caminho de downgrade aberto.
-   */
+  /** Versão lida do arquivo, regravada como está: promover exige migração explícita. */
   version: number;
   createdAt: number;
   attempts: number;
   lockUntil: number | null;
   /** Falhas só da senha mestra; o PIN não soma aqui. */
   attemptsMaster: number;
-  /**
-   * Falhas consecutivas da senha mestra que disparam o Cryptographic Erase.
-   * `0` é desligado, e é o padrão: autodestruição por contagem
-   * é decisão do usuário, nunca surpresa. Ver `SECURITY.md`.
-   */
+  /** Falhas da senha mestra que disparam o erase; `0` é desligado e é o padrão. */
   nukeLimit: number;
   /** Chave do cofre embrulhada por cada credencial (blobs cifrados). */
   methods: VaultMethods;
@@ -237,13 +213,7 @@ export function packVaultContainer(data: VaultContainerData): Buffer {
   return buffer.subarray(0, cursor);
 }
 
-/**
- * Por que a leitura recusou. As duas razões pedem respostas diferentes na tela:
- * `unsupported-version` é um cofre inteiro e legível por outra versão do app
- * (nada foi corrompido), e `damaged` é o arquivo que não presta. Colapsar as
- * duas num `null` só fazia o usuário receber "alterado fora do app" para um
- * cofre que está perfeitamente intacto.
- */
+/** Por que a leitura recusou: cofre de outra versão (`unsupported-version`) ou arquivo inválido. */
 export type VaultUnpackFailure = 'unsupported-version' | 'damaged';
 
 export type VaultUnpackResult =
@@ -253,8 +223,7 @@ export type VaultUnpackResult =
 export function unpackVaultContainer(buffer: Buffer): VaultUnpackResult {
   if (buffer.length < VAULT_HEADER_BYTES) return { ok: false, reason: 'damaged' };
   if (!buffer.subarray(0, MAGIC_BYTES).equals(VAULT_MAGIC)) return { ok: false, reason: 'damaged' };
-  // versão diferente é arquivo de outra época (ou de futuro): fail-closed, mas
-  // com o número à mão para a tela explicar o que aconteceu
+  // versão de outra época (ou de futuro): fail-closed, mas com o número à mão
   const version = buffer.readUInt32BE(VERSION_OFFSET);
   if (!READABLE_VAULT_VERSIONS.includes(version)) {
     return { ok: false, reason: 'unsupported-version', version };
@@ -373,9 +342,8 @@ function hashMap(value: unknown): Record<string, string> | null {
 }
 
 /**
- * Sela ids, hashes de conteúdo e a chave do cofre (AES-256-GCM + HKDF). O hash
- * por arquivo é o que pega a troca de conteúdo entre dois nomes que já existem
- * (P6): o conjunto de ids continua igual, mas o SHA-256 não bate.
+ * Sela ids, hashes de conteúdo e a chave do cofre (AES-256-GCM + HKDF); o hash
+ * por arquivo pega a troca de conteúdo entre dois ids que já existem.
  */
 export function sealManifest(
   vaultKey: Buffer,
@@ -385,8 +353,7 @@ export function sealManifest(
   version: number = MANIFEST_VERSION,
 ): SaltedPayload {
   if (version === LEGACY_MANIFEST_VERSION) {
-    // a v2 não conhece os hashes: gravá-los aqui só criaria um campo que o
-    // leitor antigo ignora e que ninguém confere
+    // a v2 não conhece os hashes: gravá-los criaria campo que ninguém confere
     return encryptRecord({ v: version, ids, authIds }, vaultKey);
   }
   if (version !== MANIFEST_VERSION) {
@@ -400,8 +367,7 @@ export function sealManifest(
 
 /**
  * Abre o manifesto; qualquer forma inesperada lança (fail-closed). A v2 é a
- * única versão antiga aceita: ela não tem hashes, então a conferência de
- * conteúdo fica para depois da migração, que a re-sela na v3.
+ * única versão antiga aceita e é re-selada na v3 depois da migração.
  */
 export function openManifest(vaultKey: Buffer, payload: SaltedPayload): ManifestContent {
   const m = currentMessages();

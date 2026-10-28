@@ -14,12 +14,7 @@ import {
   resolveWindowIcon,
 } from '@zero/main/protocol';
 
-/**
- * O scheme `guardinha://` é a fronteira de segurança do app em produção: ele
- * substitui o `file://`, serve os assets da SPA e decide quais frames podem
- * falar no IPC. Um teste que só olha o status 200 dos assets passaria com a
- * barreira de *path traversal* removida.
- */
+/** O scheme é a fronteira de segurança em produção: serve assets e filtra frames do IPC. */
 
 type Handler = (request: unknown) => Response;
 
@@ -95,9 +90,7 @@ describe('a guarda de origem do IPC', () => {
   });
 
   it('recusa o evento de fora com o erro do app, não com um TypeError', () => {
-    // A guarda de forma roda antes de ler `senderFrame`: sem ela, `undefined`
-    // e `null` estouram no acesso à propriedade e o renderer recebe um erro
-    // cru em vez da mensagem traduzida.
+    // a guarda de forma roda antes de ler `senderFrame`: sem ela, o erro sai cru
     const m = currentMessages();
     for (const event of [undefined, null, 'evento', 42, []]) {
       expect(() => assertAppFrame(event)).toThrow(m.errors.foreignFrame);
@@ -105,8 +98,7 @@ describe('a guarda de origem do IPC', () => {
   });
 
   it('recusa frame que não é registro, mesmo com URL do app', () => {
-    // `senderFrame` vem de fora; um array não é frame. Sem a checagem de
-    // registro o array passaria e a URL seria lida de um objeto qualquer.
+    // `senderFrame` vem de fora; sem a checagem de registro, um array passaria
     const event = Object.assign([], { senderFrame: { url: `${APP_ORIGIN}/index.html` } });
     expect(() => assertAppFrame(event)).toThrow(currentMessages().errors.foreignFrame);
   });

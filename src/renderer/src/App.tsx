@@ -76,14 +76,7 @@ function Shell({ status, language, onLanguageChange, onRefresh }: ShellProps): J
         }}
         onDestroy={askDestroy}
       />
-      {/*
-        `min-w-0` deixa o conteúdo encolher dentro da linha: sem ele, um item
-        largo (senha gerada, endereço colado) empurra a barra lateral para fora
-        da janela em vez de quebrar dentro do cartão. A coluna wrapper é
-        centrada e com largura máxima, e o respiro acompanha o tamanho da
-        janela: curto numa janela pequena, largo numa grande. `h-full` é o que
-        dá ao `Credits` a altura toda disponível para a rolagem dos créditos.
-      */}
+      {/* `min-w-0` deixa o conteúdo encolher; sem ele, um item largo empurra a barra fora. */}
       <main className="min-w-0 flex-1 bg-slate-950 overflow-y-auto">
         <div className="mx-auto h-full w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           {activeTab === 'home' && <Home onToast={setToast} />}
@@ -123,8 +116,7 @@ export default function App(): JSX.Element {
 
   const unlocked = status !== null && status.exists && !status.locked;
 
-  // Observer: o main avisa no auto-lock. O polling fica como rede de segurança
-  // (rede, IPC e renderer podem falhar por conta própria).
+  // Observer: o main avisa no auto-lock; o polling fica como rede de segurança.
   useEffect(() => {
     if (!unlocked) return;
     const unsubscribe = window.api.vault.onAutoLocked(() => {

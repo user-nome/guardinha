@@ -10,11 +10,7 @@ import { currentMessages } from '@zero/main/i18n';
 import { createVault, requireSessionKey } from '@zero/main/vault';
 import type { SaltedPayload } from '@zero/types/crypto';
 
-/**
- * O `.auth/` é um diretório que o app monta a partir de um id. Cada ramo aqui
- * é uma barreira: id malformado não pode virar caminho de arquivo, arquivo
- * ausente não pode virar lista vazia e arquivo adulterado não pode virar token.
- */
+/** O `.auth/` é montado a partir de um id: cada ramo aqui é uma barreira contra caminho e lixo. */
 
 const MASTER = 'senha-mestra-guardinha24';
 const PIN = '49201733';
@@ -56,8 +52,7 @@ describe('auth-store: id de arquivo seguro', () => {
 
 describe('auth-store: leitura e escrita', () => {
   it('id ausente é erro explícito, não token vazio na lista', () => {
-    // devolver lista vazia aqui faria o app mostrar "nenhum token" como se
-    // tudo estivesse bem depois de um sumiço
+    // lista vazia aqui faria o app mostrar "nenhum token" como se tudo estivesse bem
     expect(() => readAuthPayload('bbbbbbbb-2222-4222-8222-222222222222')).toThrow(
       currentMessages().errors.authTokenNotFound,
     );

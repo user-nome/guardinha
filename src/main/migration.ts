@@ -7,20 +7,7 @@ import { errorMessage } from '@zero/shared';
 import type { VaultContainerData } from '@zero/main/container';
 import type { CredentialKind } from '@zero/main/unwrapping';
 
-/**
- * Migração do container para o formato atual, feita no desbloqueio.
- *
- * A v5 e a v6 têm o mesmo layout binário; o que mudou foi o embrulho de cada
- * método (HKDF e AAD com o papel do método) e o manifesto (hashes de conteúdo).
- * Reembrulhar um método exige a credencial que o protege, e o desbloqueio só
- * tem uma: por isso o método usado é migrado na hora e os outros ficam para o
- * desbloqueio de cada um. O container inteiro só é promovido depois que o
- * manifesto e o método em mãos estão no formato novo.
- *
- * A migração é best-effort: qualquer falha deixa o container antigo intacto e
- * o desbloqueio segue. Antes de sobrescrever, `migrateAndPersist` grava o
- * snapshot `vault.zkv.v<versão>.bak`, que é o caminho de downgrade.
- */
+/** Migração do container no desbloqueio: reembrulha só o método cuja credencial está em mãos. */
 
 /** O que a credencial em mãos permite migrar agora. */
 export interface MigrationOptions {
@@ -34,13 +21,7 @@ export interface MigrationOptions {
   readonly methodAlreadyWrapped?: boolean;
 }
 
-/**
- * Monta o container migrado ou devolve `null` quando não há nada a fazer.
- *
- * Lança quando o manifesto não abre ou não confere com o diretório: um cofre
- * adulterado não pode ser "consertado" pela migração, e o chamador decide se
- * isso derruba o desbloqueio (não derruba).
- */
+/** Monta o container migrado ou devolve `null` quando não há nada a fazer; adulteração lança. */
 export async function prepareMigration(
   container: VaultContainerData,
   vaultKey: Buffer,
@@ -61,10 +42,7 @@ export async function prepareMigration(
 
   let nextManifest = container.manifest;
   if (needsVersion || needsManifest) {
-    // antes de re-selar, o manifesto atual precisa bater com o diretório: a
-    // migração não pode transformar uma troca de arquivo em estado legítimo.
-    // Quando só o custo do Argon2id mudou, o manifesto fica intocado (e um
-    // manifesto adulterado continua sendo acusado na primeira leitura).
+    // antes de re-selar, o manifesto precisa bater com o diretório; custo de KDF sozinho não re-sela
     vaultStorage.verifyManifestData(container, vaultKey);
     nextManifest = vaultStorage.manifestFromDirectory(vaultKey, MANIFEST_VERSION);
   }

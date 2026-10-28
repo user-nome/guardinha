@@ -10,17 +10,9 @@ import {
 } from '@zero/shared/otp-constants';
 import type { OtpAlgorithm } from '@zero/shared/otp-constants';
 
-/**
- * Provisionamento de token OTP pelo formato `otpauth://` (o *Key Uri Format*,
- * que hoje está em rascunho no IETF). É regra pura: o renderer valida o que o
- * usuário cola e o main usa a mesma função, então os dois lados concordam
- * sobre o que é um token válido.
- *
- * O formato é `otpauth://totp/<rótulo>?secret=<Base32>&issuer=…&algorithm=…&digits=…&period=…`.
- */
+/** Provisionamento de token OTP pelo formato `otpauth://`: regra pura, sem Node nem DOM. */
 
-// As constantes moram em `otp-constants.ts`; a reexportação mantém o contrato
-// antigo de quem já importava tudo por `@zero/shared/otpauth`.
+// A reexportação mantém o contrato de quem já importava tudo por `@zero/shared/otpauth`.
 export {
   OTP_ALGORITHMS,
   OTP_DEFAULT_ALGORITHM,
@@ -36,13 +28,7 @@ export function isOtpAlgorithm(value: unknown): value is OtpAlgorithm {
   return OTP_ALGORITHMS.some((algorithm) => algorithm === value);
 }
 
-/**
- * Bits que o segredo Base32 carrega. `null` quando o texto não é Base32.
- *
- * O piso aceito é 80 bits; a OWASP recomenda 128 bits como mínimo e 160 como
- * ideal. A tela usa o número para avisar sem bloquear o cadastro, porque o
- * tamanho da chave é escolhido pelo serviço, não pelo usuário.
- */
+/** Bits que o segredo Base32 carrega; `null` quando o texto não é Base32. */
 export function otpSecretBits(secret: string): number | null {
   const bytes = base32Decode(secret);
   if (bytes === null) return null;
@@ -75,20 +61,7 @@ function safeDecode(value: string): string {
   }
 }
 
-/**
- * Lê o `otpauth://` colado pelo usuário. Devolve `null` em qualquer coisa fora
- * do contrato, sem dizer onde falhou: quem chama mostra uma mensagem só.
- *
- * O recorte é feito na string, e não com `new URL()`, por um motivo concreto:
- * nomes de usuário do Discord carregam `#` e o serviço entrega o `#` sem
- * codificar. Um parser de URL leria `#1234` como fragmento e jogaria fora todo o
- * `?secret=...`, então o token viraria "endereço inválido" num serviço que
- * estava certo.
- *
- * Rejeita `hotp` de propósito. HOTP (RFC 4226) é um contador, não um relógio,
- * e gerar um número para ele exigiria um estado de contagem que o app não tem:
- * melhor dizer que não suporta do que mostrar um código que nunca serve.
- */
+/** Lê o `otpauth://` colado; `null` fora do contrato, sem dizer onde falhou. */
 export function parseOtpAuthUri(uri: string): OtpUri | null {
   const trimmed = uri.trim();
   if (!/^otpauth:\/\//i.test(trimmed)) return null;
@@ -115,15 +88,10 @@ export function parseOtpAuthUri(uri: string): OtpUri | null {
   if (secretBytes === null || secretBytes.length < OTP_SECRET_MIN_BYTES) return null;
   secretBytes.fill(0);
 
-  // Rótulo `Emissor:conta` ou só `conta`. O separador pode chegar cru (`:`) ou
-  // escapado (`%3A`), que é o que a wiki do Google aceita; o corte é feito no
-  // texto antes de decodificar, senão um `%3A` viraria `:` e partiria o rótulo
-  // no lugar errado.
+  // Rótulo `Emissor:conta` ou só `conta`; o corte é feito no texto cru, antes de decodificar.
   const label = head.slice(slash + 1);
   const separator = /(?::|%3A)/i.exec(label);
-  // `separator[0]` é tipado `string` (só os grupos de captura seriam
-  // `string | undefined`): fatiar o rótulo pelo `index` do separador dá o
-  // mesmo corte, sem o fallback que nunca acontece.
+  // `separator[0]` é `string`, não `string | undefined`: fatiar pelo `index` dispensa fallback.
   const rawIssuer = separator === null ? '' : label.slice(0, separator.index);
   const rawAccount =
     separator === null ? label : label.slice(separator.index + separator[0].length);
@@ -169,18 +137,9 @@ export function parseOtpAuthUri(uri: string): OtpUri | null {
   return { issuer, account, algorithm, digits, period, secret };
 }
 
-/**
- * Monta o `otpauth://` do token. Usado na exportação e no segredo exibido ao
- * usuário, então precisa ser o inverso exato de `parseOtpAuthUri`.
- *
- * Emissor e conta são escapados separados e unidos por `:` cru, que é como o
- * Google Authenticator mostra e como a wiki do Google escreve. Escapar o
- * rótulo inteiro produziria `%3A` no lugar do separador.
- */
+/** Monta o `otpauth://` do token; precisa ser o inverso exato de `parseOtpAuthUri`. */
 export function buildOtpAuthUri(token: OtpUri): string {
-  // `@` volta cru de propósito: é permitido no caminho de uma URI e é como a
-  // wiki do Google escreve o rótulo, então o endereço fica legível para quem
-  // for conferir o segredo com o serviço.
+  // `@` volta cru de propósito: é permitido no caminho e deixa o rótulo legível.
   const encode = (value: string): string => encodeURIComponent(value).replace(/%40/g, '@');
   const label =
     token.issuer === ''

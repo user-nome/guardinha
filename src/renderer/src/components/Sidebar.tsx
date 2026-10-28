@@ -41,16 +41,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { tab: 'settings', icon: Settings },
 ];
 
-/**
- * Navegação, idioma, bloqueio e autodestruição.
- *
- * A barra tem duas formas, e o breakpoint é o mesmo da área de conteúdo: acima
- * de `lg` ela é a coluna larga de sempre; abaixo disso ela vira um trilho de
- * ícones, porque 256 px de menu fixos deixariam o conteúdo espremido numa
- * janela estreita. Os rótulos somem do desenho, nunca da árvore de
- * acessibilidade: cada botão mantém `aria-label` e `title`, então o nome
- * acessível é o mesmo nas duas formas.
- */
+/** Navegação, idioma, bloqueio e autodestruição; abaixo de `lg` vira trilho de ícones. */
 export function Sidebar({
   activeTab,
   onTabChange,
@@ -67,8 +58,7 @@ export function Sidebar({
         <div className="flex items-center justify-center lg:justify-start lg:gap-3 lg:px-2">
           <Shield className="w-7 h-7 shrink-0 text-emerald-400" />
           <div className="min-w-0">
-            {/* o nome do app some do trilho, mas continua como título da página
-                para quem navega por leitor de tela */}
+            {/* o nome do app some do trilho, mas continua como título da página */}
             <h1 className="sr-only font-bold text-lg leading-none text-slate-100 lg:not-sr-only">
               {m.app.name}
             </h1>

@@ -7,10 +7,7 @@ import { isVaultLockedError } from '@zero/main/vault';
 import { vaultSession } from '@zero/main/session';
 import '@zero/main/index';
 
-/**
- * Janela e política da sessão registradas pelo entrypoint: navegação presa na
- * SPA, sem `window.open` para dentro do app e sem permissão web sobrando.
- */
+/** Janela e política da sessão: navegação presa na SPA, sem permissão web sobrando. */
 async function waitForWindow(): Promise<BrowserWindow> {
   await vi.waitFor(() => {
     expect(BrowserWindow.instances.length).toBeGreaterThan(0);
@@ -31,11 +28,7 @@ describe('guardas de navegação e sessão', () => {
   });
 
   it('as demais bandeiras de webPreferences estão travadas no certo lado', async () => {
-    // Quatro flags de uma vez, e cada uma é uma linha de defesa do renderer
-    // contra o próprio app: `nodeIntegration` ligado daria ao renderer o `require`
-    // do Node, `webSecurity` desligado tiraria a SOP, e `preload` ausente
-    // deixaria a interface sem `window.api`. Nenhuma delas pode virar `true` por
-    // distração, então o teste fixa o valor literal em vez de derivar de outro.
+    // Cada flag é defesa do renderer: o teste fixa o valor literal, não deriva de outro.
     const win = await waitForWindow();
     const webPreferences = win.options.webPreferences as Record<string, unknown>;
     expect(webPreferences.nodeIntegration).toBe(false);
@@ -46,8 +39,7 @@ describe('guardas de navegação e sessão', () => {
   });
 
   it('a janela nasce escondida e só aparece quando o Electron diz que está pronta', async () => {
-    // `show: false` evita o flash de janela branca antes do primeiro paint, e o
-    // `ready-to-show` é o evento que libera a exibição.
+    // `show: false` evita o flash branco; `ready-to-show` é o evento que libera a exibição.
     const win = await waitForWindow();
     expect(win.options.show).toBe(false);
 
@@ -62,8 +54,7 @@ describe('guardas de navegação e sessão', () => {
     const win = await waitForWindow();
     expect(win.options.width).toBe(1200);
     expect(win.options.height).toBe(800);
-    // 400 px é a grade em uma coluna com a Sidebar já em trilho: estreitar mais
-    // só corta texto (ver `src/renderer/src/card-grid.ts`)
+    // 400 px é a grade em uma coluna com a Sidebar em trilho; estreitar mais só corta texto.
     expect(win.options.minWidth).toBe(400);
     expect(win.options.minHeight).toBe(360);
     expect(win.options.title).toBe('Guardinha');
@@ -71,9 +62,7 @@ describe('guardas de navegação e sessão', () => {
   });
 
   it('activate com janela aberta não cria uma segunda', async () => {
-    // O `activate` do macOS chega com a janela já viva quando o usuário clica no
-    // ícone do Dock com o app em segundo plano; criar outra ali deixaria duas
-    // janelas do mesmo cofre, com duas telas de autenticação.
+    // O `activate` chega com a janela viva; criar outra ali deixaria duas telas de autenticação.
     const win = await waitForWindow();
     const activate = app.on.mock.calls.find(([event]) => event === 'activate')?.[1];
     expect(activate).toBeTypeOf('function');
@@ -153,8 +142,7 @@ describe('guardas de navegação e sessão', () => {
   });
 
   it('a checagem síncrona de permissão também nega, sem diálogo', () => {
-    // sem `setPermissionCheckHandler` o Electron devolve "granted" para a
-    // consulta síncrona, mesmo com o request handler negando o diálogo
+    // Sem `setPermissionCheckHandler` o Electron devolve "granted" na consulta síncrona.
     expect(session.defaultSession.setPermissionCheckHandler).toHaveBeenCalledTimes(1);
     const check = session.defaultSession.setPermissionCheckHandler.mock.calls[0]?.[0];
     expect(check?.()).toBe(false);
@@ -233,28 +221,18 @@ describe('guardas de navegação e sessão', () => {
   });
 
   it('desliga a decodificação de vídeo, que o app não usa, ao subir', () => {
-    // sem isso, o Chromium imprime `libva error: iHD_drv_video.so init failed`
-    // ao iniciar em máquina com o driver VA-API do Intel quebrado
+    // Evita o `libva error` do driver VA-API quebrado ao iniciar.
     expect(app.commandLine.appendSwitch).toHaveBeenCalledWith('disable-accelerated-video-decode');
   });
 
   it('cala o log nativo do Chromium ao subir', () => {
-    // sem isso, cada cópia de credencial ou de código 2FA polui o terminal com
-    // `Add application/vnd.portal.filetransfer to kAtomsToCache`, que é bug
-    // upstream do Chromium e não erro do cofre
+    // Evita o aviso `Add application/vnd.portal.filetransfer`, bug do Chromium.
     expect(app.commandLine.appendSwitch).toHaveBeenCalledWith('log-level', '3');
   });
 });
 
 describe('sessão perdida durante uma operação do cofre', () => {
-  /**
-   * A chave pode sumir entre o status que o renderer recebeu e a chamada de
-   * dados que ele fez em seguida: é o auto-lock disparando com a tela montada,
-   * e é também o restart do processo main em `npm run dev`, que recria o
-   * Singleton vazio e deixa o renderer com a tela antiga. Sem o aviso, o app
-   * fica travado num erro que ninguém entende; com ele, o renderer reconsulta o
-   * status e volta para a autenticação.
-   */
+  /** A chave pode sumir entre o status e a chamada de dados; o renderer volta à autenticação. */
   function invoke(channel: string, ...args: unknown[]): unknown {
     const handler = ipcMain.handle.mock.calls.find(([name]) => name === channel)?.[1];
     expect(handler).toBeTypeOf('function');
@@ -278,8 +256,7 @@ describe('sessão perdida durante uma operação do cofre', () => {
   it('não devolve lista vazia quando a sessão se foi (fail-open seria pior)', () => {
     vaultSession().wipe();
 
-    // devolver [] faria o app parecer um cofre vazio, que é a pior leitura
-    // possível num app de credenciais; a resposta tem que ser erro
+    // Devolver [] faria o app parecer um cofre vazio; a resposta tem que ser erro.
     expect(() => invoke('entries:list')).toThrow();
   });
 
@@ -304,8 +281,7 @@ describe('sessão perdida durante uma operação do cofre', () => {
 
   it('não avisa quando o erro é outro (adulteração, id inválido)', () => {
     const m = currentMessages();
-    // o discriminador é a mensagem do Singleton: só ela dispara o aviso, para
-    // que uma falha de domínio comum não faça o renderer sair da tela à toa
+    // Só a mensagem do Singleton dispara o aviso; falha de domínio comum não tira a tela.
     expect(isVaultLockedError(new Error(m.errors.vaultLocked))).toBe(true);
     expect(isVaultLockedError(new Error(m.errors.invalidId))).toBe(false);
     expect(isVaultLockedError(new Error(m.errors.vaultTampered))).toBe(false);
@@ -341,13 +317,7 @@ describe('sessão perdida durante uma operação do cofre', () => {
   });
 });
 
-/**
- * Depois que a janela fecha, o `mainWindow` do módulo vira `null` e todo
- * caminho que fala com ele passa a ser opcional: mostrar a janela, empurrar o
- * aviso de auto-lock e avisar a sessão perdida. Sem o `?.`, o `TypeError`
- * apareceria no lugar da operação, dentro de um `once` do Electron que ninguém
- * está olhando.
- */
+/** Depois que a janela fecha, `mainWindow` é `null`: todo acesso precisa de `?.`. */
 describe('com a janela já fechada', () => {
   async function fecharJanela(): Promise<BrowserWindow> {
     const win = await waitForWindow();
@@ -390,8 +360,7 @@ describe('com a janela já fechada', () => {
   });
 
   it('a janela nasce sem a chave icon quando o build não deixou o arquivo', () => {
-    // `...(iconPath === undefined ? {} : { icon: iconPath })`: sem o ternário, a
-    // janela receberia `icon: undefined`, que o Electron tenta abrir e falha.
+    // Sem o ternário, a janela receberia `icon: undefined` e o Electron falharia ao abrir.
     const existe = vi.spyOn(fs, 'existsSync').mockReturnValue(false);
     const activate = app.on.mock.calls.find(([event]) => event === 'activate')?.[1];
     BrowserWindow.getAllWindows.mockReturnValue([]);

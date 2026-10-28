@@ -5,13 +5,7 @@ import { currentMessages } from '@zero/main/i18n';
 import { authDir, entriesDir, vaultDir } from '@zero/main/layout';
 import { isRecord } from '@zero/shared/record';
 
-/**
- * Estrutura de diretórios do cofre: garante as pastas com o modo certo, sabe
- * listar o que existe lá dentro e concentra a escrita atômica de arquivo.
- * Fica entre `layout.ts` (só caminhos) e os módulos que leem e escrevem
- * arquivo, para que nenhum deles precise repetir a árvore de pastas nem criar
- * ciclo de importação com quem escreve o container.
- */
+/** Pastas do cofre com o modo certo e a escrita atômica de arquivo, entre `layout` e os stores. */
 
 /** Modo de arquivo com segredo: só o dono lê e escreve. */
 const SECRET_FILE_MODE = 0o600;
@@ -19,12 +13,7 @@ const SECRET_FILE_MODE = 0o600;
 /** Sufixo do temporário da escrita atômica; o `erase` e a varredura olham ele. */
 export const TEMP_SUFFIX = '.tmp';
 
-/**
- * Nome do temporário da escrita atômica. O sufixo aleatório não é enfeite: o
- * nome fixo `${arquivo}.tmp` era previsível, e um symlink plantado nele levava
- * a escrita para outro arquivo (por exemplo o `vault.zkv`). O `wx` da abertura
- * recusa o que já existe, então nem symlink nem arquivo comum entram no lugar.
- */
+/** Nome do temporário: o sufixo aleatório e o `wx` impedem symlink plantado no caminho. */
 export function tempPathFor(file: string): string {
   return `${file}.${randomBytes(8).toString('hex')}${TEMP_SUFFIX}`;
 }

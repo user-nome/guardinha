@@ -31,9 +31,7 @@ describe('deriveKey (Argon2id)', () => {
   });
 
   it('mantém o vetor do Argon2id que os cofres já gravados usam', async () => {
-    // A chave do cofre depende só de senha, salt e parâmetros: se este valor
-    // mudar, todo `vault.zkv` existente deixa de abrir. É o teste que impede
-    // uma troca de implementação de KDF de passar verde e quebrar o cofre.
+    // se este vetor mudar, todo `vault.zkv` existente deixa de abrir: é o que barra troca de KDF
     const derived = await deriveKey(
       'senha-de-teste',
       Buffer.from('00112233445566778899aabbccddeeff', 'hex'),
@@ -65,8 +63,7 @@ describe('perfis de custo do Argon2id', () => {
   it('PIN é o perfil mais caro; mestra e frase ficam um nível abaixo', () => {
     expect(kdfProfileFor('pin')).toEqual(KDF_PIN);
     expect(kdfProfileFor('master')).toEqual(KDF_CREDENTIAL);
-    // a frase de recuperação não tem perfil próprio: `unwrapping.ts` a roteia
-    // para o perfil da senha mestra (segredo longo, PIN é que é o fraco)
+    // a frase não tem perfil próprio: `unwrapping.ts` a roteia para o da senha mestra
     expect(kdfProfileFor('master')).toEqual(KDF_CREDENTIAL);
     expect(KDF_PIN.memoryKiB).toBeGreaterThan(KDF_CREDENTIAL.memoryKiB);
     expect(KDF_PIN.iterations).toBeGreaterThanOrEqual(KDF_CREDENTIAL.iterations);

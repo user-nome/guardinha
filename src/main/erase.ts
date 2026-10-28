@@ -5,43 +5,14 @@ import { SHRED_PASSES, shredDirectory, shredFile } from '@zero/main/shred';
 import { vaultFiles } from '@zero/main/structure';
 import type { EraseResult } from '@zero/types';
 
-/**
- * Cryptographic Erase: a autodestruição do cofre.
- *
- * A chave do cofre é gerada uma vez e nunca mais gravada em claro. O que
- * existe em `vault.zkv` são *embrulhos* dela, cada um protegido por uma
- * credencial do usuário com Argon2id. Apagar esse arquivo não apaga os dados,
- * apaga a **chave**: os `.zke` viram ruído matemático e AES-256-GCM sem a
- * chave não tem caminho de volta. Por isso isto é mais rápido e mais
- * confiável do que sobrescrever gigabytes, e é a estratégia primária em SSD,
- * onde o wear leveling decide sozinho para qual bloco físico a escrita vai.
- *
- * A ordem é fixa e sem desvios:
- *
- * 1. `vault.zkv` e o seu `.tmp` (cópia temporária que **contém os mesmos
- *    blobs de chave**; um órfão de crash seria uma cópia completa do
- *    embrulho);
- * 2. todo arquivo de credencial (`.zke`, `.zke.tmp`), por shred;
- * 3. todo arquivo de token de 2FA (`.zka`, `.zka.tmp`), por shred;
- * 4. as pastas `.entries` e `.auth` em si;
- *
- * e nunca `vaultDir()` nem `.guardinha/`: a raiz é do sistema
- * (`root:root 0711`, criada no `postinst`) e o app não é dono dela.
- *
- * Os tokens de 2FA entram na mesma lista pelo motivo mais forte de todos: o
- * segredo TOTP de uma conta vale tanto quanto a senha dela. Deixar `.auth` de
- * pé num Cryptographic Erase seria apagar a fechadura e deixar a chave na
- * parede.
- */
+/** Cryptographic Erase: apaga a chave embrulhada e, com ela, entradas e tokens de 2FA. */
 
 /** O erase é idempotente: chamar de novo devolve zero sem erro. */
 export function eraseVault(): EraseResult {
   let shredded = 0;
   let failed = 0;
 
-  // o container entra primeiro e à mão: `vaultFiles()` pode não estar liberado
-  // para leitura se o shred anterior derrubou a pasta. Os temporários da escrita
-  // atômica têm nome aleatório e são cobertos pela listagem da pasta.
+  // o container entra primeiro: `vaultFiles()` pode falhar se o shred derrubou a pasta
   const targets = new Set<string>([containerFile()]);
   for (const file of vaultFiles()) targets.add(file);
 
@@ -57,10 +28,7 @@ export function eraseVault(): EraseResult {
     else failed++;
   }
 
-  // a marca de destruição é a condição criptográfica, não a intenção: só vale
-  // quando o `vault.zkv` deixou de existir. Se o shred falhou (I/O, modo 000),
-  // a chave continua no disco e marcar aqui deixaria o cofre somente leitura
-  // até reiniciar, com a tela dizendo "destruído" e o PIN ainda abrindo tudo.
+  // só marca a destruição quando o `vault.zkv` sumiu: senão a chave ainda abre o cofre
   if (!fs.existsSync(containerFile())) markVaultDestroyed();
   return { shredded, failed };
 }

@@ -9,11 +9,8 @@ import { MAX_NUKE_LIMIT_INPUT } from '@zero/shared/auth-constants';
 import type { PanicStatus } from '@zero/types';
 
 /**
- * Proteções de pânico: PIN de coação e autodestruição por tentativas.
- *
- * As duas ficam atrás do cofre desbloqueado (o main exige chave para gravar no
- * container), e por isso esta tela só é alcançável com o cofre aberto. O
- * formulário é conveniência: quem valida PIN, formato e piso do limite é o main.
+ * Proteções de pânico: PIN de coação e autodestruição por tentativas, só com o
+ * cofre aberto; quem valida formato e piso é o main.
  */
 export function Settings(): JSX.Element {
   const m = useMessages();
@@ -102,7 +99,7 @@ export function Settings(): JSX.Element {
         </p>
       )}
 
-      {/* ---- PIN de coação ---- */}
+      {/* PIN de coação */}
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 space-y-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
@@ -185,7 +182,7 @@ export function Settings(): JSX.Element {
         )}
       </section>
 
-      {/* ---- Autodestruição por tentativas ---- */}
+      {/* Autodestruição por tentativas */}
       <section className="bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-6 space-y-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">

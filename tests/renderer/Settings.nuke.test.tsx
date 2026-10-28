@@ -7,20 +7,15 @@ import { UNLOCKED, installApi } from '../mocks/api.ts';
 import type { PanicStatus, VaultResult } from '@zero/types';
 
 /**
- * A tela de Configurações tem duas proteções destrutivas, e os testes daqui
- * tratam cada falha de canal: uma rejeição que deixa a tela em branco é
- * justamente o caso em que o usuário não descobre que a mudança não valeu.
+ * Configurações: cada falha de canal das duas proteções destrutivas vira erro na
+ * tela, nunca tela em branco.
  */
 
 function installPanic(panic: PanicStatus): void {
   installApi({ status: UNLOCKED, panic });
 }
 
-/**
- * Promessa que o teste resolve quando quiser. O estado `busy` só existe
- * enquanto o canal está em voo, então sem segurar a resposta não há como
- * observar o botão travado.
- */
+/** Promessa resolvida pelo teste, para observar o estado `busy` do canal em voo. */
 function pending<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let settle: ((value: T) => void) | undefined;
   const promise = new Promise<T>((resolve) => {
@@ -42,22 +37,14 @@ function mount(): void {
   );
 }
 
-/**
- * Primeiro elemento de uma lista de `getAllBy*`. Os botões de ação aparecem
- * uma vez por credencial, então o primeiro é o da lista; o `undefined` é
- * impossible aqui, mas o TypeScript não sabe disso com `noUncheckedIndexedAccess`.
- */
+/** Primeiro item da lista; o `undefined` não acontece, mas o TS exige a guarda. */
 function first(elements: HTMLElement[]): HTMLElement {
   const element = elements[0];
   if (element === undefined) throw new Error('nenhum elemento encontrado');
   return element;
 }
 
-/**
- * O campo do limite é o único `input[type=text]` da tela (os de PIN são
- * `password`, que não têm papel de textbox). Agora ele também tem rótulo
- * visível, então os testes usam `getByLabelText` e o papel fica de reserva.
- */
+/** Campo do limite pelo rótulo visível; o papel textbox fica de reserva. */
 function limitField(): HTMLElement {
   return screen.getByLabelText('Digite o limite para confirmar');
 }
@@ -112,9 +99,7 @@ describe('Configurações: autodestruição por tentativas', () => {
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(setNuke).not.toHaveBeenCalled();
-    // o texto de confirmação some e o valor digitado é descartado, para a
-    // próxima tentativa não herdar um limite pela metade; o campo volta a ser
-    // o de escolha do limite, com o outro rótulo
+    // o texto some e o valor é descartado, para a próxima tentativa não herdar limite
     expect(screen.queryByText(/Ao atingir/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Limite de tentativas da senha mestra')).toHaveValue('');
   });
@@ -371,8 +356,7 @@ describe('Configurações: disciplina do formulário do limite', () => {
     await user.type(limitField(), '60');
     await user.click(screen.getByRole('button', { name: 'Ativar autodestruição' }));
 
-    // sucesso: some o aviso de confirmação, nenhum erro aparece e o campo é
-    // esvaziado, sem herdar o valor antigo numa próxima edição
+    // sucesso: some o aviso e o campo é esvaziado, sem herdar o valor antigo
     await waitFor(() => {
       expect(screen.queryByText(/Ao atingir/)).not.toBeInTheDocument();
     });
@@ -452,8 +436,7 @@ describe('Configurações: disciplina do formulário do limite', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Desativar autodestruição' }));
 
-    // o campo fica com o "0" que acabou de ser gravado e não entra no modo de
-    // confirmação, que é só para escolher um limite novo
+    // o campo fica com o "0" gravado e não entra na confirmação, que é só para limite novo
     await waitFor(() => {
       expect(screen.getByLabelText('Limite de tentativas da senha mestra')).toHaveValue('0');
     });

@@ -7,12 +7,7 @@ import {
   parseOtpAuthUri,
 } from '@zero/shared/otpauth';
 
-/**
- * O formato `otpauth://` é o que os serviços entregam quando o usuário escolhe
- * "não posso escanear agora". Um parser permissivo demais aqui vira um token
- * silenciosamente errado na tela; um restritivo demais vira "código inválido"
- * num serviço que estava certo. Estes testes travam os dois lados.
- */
+/** Trava o parser e o gerador de `otpauth://`: permissivo erra o token, restritivo nega o certo. */
 
 const STRONG_SECRET = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
 const GITHUB = `otpauth://totp/GitHub:alice@github.com?secret=${STRONG_SECRET}&issuer=GitHub`;
@@ -311,16 +306,14 @@ describe('cantos do rótulo e dos parâmetros', () => {
   const base = (extra: string): string => `otpauth://totp/Conta?secret=${STRONG_SECRET}${extra}`;
 
   it('rótulo sem separador vira conta inteira e emissor vazio', () => {
-    // `otpauth://totp/so-a-conta` é aceito pela wiki. Sem o `:` não há emissor
-    // no rótulo, e é o parâmetro `issuer` que decide se ele existe.
+    // sem `:` não há emissor no rótulo; quem decide se ele existe é o parâmetro `issuer`
     const token = parseOtpAuthUri(base(''));
 
     expect(token).toMatchObject({ account: 'Conta', issuer: '' });
   });
 
   it('rótulo com %3A separa no lugar certo, antes de decodificar', () => {
-    // Se o corte viesse depois do `decodeURIComponent`, o `%3A` viraria `:` e
-    // partiria o rótulo no meio de um nome que continha a sequência.
+    // cortar depois do `decodeURIComponent` faria o `%3A` partir o rótulo no meio
     const token = parseOtpAuthUri(`otpauth://totp/Acme%3ACorp%3Aconta?secret=${STRONG_SECRET}`);
 
     expect(token).toMatchObject({ issuer: 'Acme', account: 'Corp:conta' });

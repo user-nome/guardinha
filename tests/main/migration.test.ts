@@ -124,8 +124,7 @@ describe('migração do cofre no desbloqueio', () => {
     expect(pin).toBeDefined();
     if (pin !== undefined) expect(await isLegacy('pin', pin, PIN)).toBe(false);
 
-    // o método que não foi usado continua no embrulho antigo até o próximo
-    // desbloqueio, porque reembrulhá-lo exigiria a credencial dele
+    // o método não usado fica no embrulho antigo: reembrulhar exige a credencial dele
     const master = container?.methods.master;
     expect(master).toBeDefined();
     if (master !== undefined) expect(await isLegacy('master', master, MASTER)).toBe(true);
@@ -347,8 +346,7 @@ describe('manifesto e snapshot na v5', () => {
 
     expect(() => vaultStorage.verifyManifestData(container, vaultKey)).not.toThrow();
 
-    // a v2 não tem hash: trocar o conteúdo do arquivo não é detectado por ela.
-    // É justamente por isso que a migração re-sela na v3.
+    // a v2 olha ids, não hashes: por isso a migração re-sela na v3.
     fs.writeFileSync(`${entriesDir()}/${ENTRY_ID}.zke`, Buffer.alloc(64));
     expect(() => vaultStorage.verifyManifestData(container, vaultKey)).not.toThrow();
   });

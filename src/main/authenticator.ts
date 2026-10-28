@@ -15,15 +15,7 @@ import {
 } from '@zero/shared';
 import type { AuthCode, AuthToken, AuthTokenDraft } from '@zero/types';
 
-/**
- * Regras dos tokens de 2FA (TOTP, RFC 6238): lista, grava, apaga e gera o
- * código do momento.
- *
- * Espelha `entries.ts`: não toca `fs` nem cifra, passa pela fachada e devolve
- * os metadados sem o segredo. O segredo é decifrado, usado no HMAC e descartado
- * dentro de `currentCodes`; ele nunca vira valor de retorno, porque o valor de
- * retorno é o que atravessa o IPC para o processo da interface.
- */
+/** Tokens de 2FA (TOTP, RFC 6238): lista, grava, apaga e gera o código, sem expor o segredo. */
 
 /** Registro decifrado → o que o renderer enxerga (sem o segredo). */
 function toPublicToken(record: AuthToken): AuthToken {
@@ -39,11 +31,7 @@ function toPublicToken(record: AuthToken): AuthToken {
   };
 }
 
-/**
- * Tokens do cofre, do mais recente para o mais antigo. Confere o manifesto
- * antes, como `listEntries`: um `.zka` plantado de fora do app derruba a lista
- * em vez de virar um token que o usuário não reconhece.
- */
+/** Tokens do cofre, do mais recente para o mais antigo; confere o manifesto antes. */
 export function listTokens(): AuthToken[] {
   if (vaultSession().isDecoy()) return [];
   const key = requireSessionKey();
@@ -70,11 +58,7 @@ function assertTokenShape(input: AuthTokenDraft): void {
   }
 }
 
-/**
- * Cria (sem `id`) ou atualiza um token a partir do `otpauth://` que o serviço
- * mostrou. O segredo sai da URI e vai direto para o AES-256-GCM: ele nunca é
- * devolvido, nem gravado em log, nem mandado de volta para a tela.
- */
+/** Cria (sem `id`) ou atualiza um token a partir do `otpauth://` mostrado pelo serviço. */
 export function saveTokenFromUri(uri: string): AuthToken[] {
   const m = currentMessages();
   const parsed = parseOtpAuthUri(uri);
@@ -148,16 +132,7 @@ export function removeToken(id: string): AuthToken[] {
   return listTokens();
 }
 
-/**
- * Código de todos os tokens no instante `nowMs`.
- *
- * O segredo é decifrado por token, usado e o buffer é zerado antes de sair do
- * escopo. Um único IPC por virada de período serve a tela inteira.
- *
- * Não chama `touch()`: a tela consulta os códigos sozinha a cada virada de
- * período, e contar essa consulta como atividade impedia o auto-lock de 5
- * minutos de disparar enquanto a aba de 2FA estivesse aberta.
- */
+/** Código de todos os tokens no instante `nowMs`; não chama `touch()` para não segurar o auto-lock. */
 export function currentCodes(nowMs: number = Date.now()): AuthCode[] {
   if (vaultSession().isDecoy()) return [];
   const key = requireSessionKey();

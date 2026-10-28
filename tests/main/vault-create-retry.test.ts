@@ -25,10 +25,7 @@ describe('retentativa de criação após setup privilegiado', () => {
   });
 
   it('usa erro interno se a falha de pasta não vier como Error', async () => {
-    // Mesmo caminho do teste acima, agora na primeira tentativa: o valor
-    // lançado é `unknown` de propósito, e o `instanceof Error` de `vault.ts`
-    // precisa absorver isso sem deixar `undefined` (ou o próprio valor) vazar
-    // para a mensagem da interface.
+    // o valor lançado é `unknown` de propósito: `instanceof Error` precisa absorver sem vazar `undefined`
     const falhaSemError: unknown = ['sem', 'Error'];
     vi.spyOn(vaultStorage, 'exists').mockReturnValue(false);
     vi.spyOn(vaultStorage, 'ensureStructure').mockImplementationOnce(() => {
@@ -43,9 +40,7 @@ describe('retentativa de criação após setup privilegiado', () => {
 
   it('usa erro interno se o setup privilegiado falha com valor não Error', async () => {
     const m = currentMessages();
-    // o valor lançado é `unknown` de propósito: é a forma de reproduzir a
-    // rejeição de baixo nível que o `instanceof Error` de `vault.ts` precisa
-    // absorver sem deixar `undefined` vazar para a mensagem da interface
+    // mesma coisa no setup privilegiado: valor `unknown` que o `instanceof Error` precisa absorver
     const falhaSemError: unknown = 'falha sem Error';
     vi.spyOn(vaultStorage, 'exists').mockReturnValue(false);
     vi.spyOn(vaultStorage, 'ensureStructure')
@@ -96,11 +91,7 @@ describe('retentativa de criação após setup privilegiado', () => {
   });
 
   it('segue para a criação quando a retentativa não acha cofre nenhum', async () => {
-    // O outro lado da mesma checagem: `exists()` falso nos dois pontos tem de
-    // deixar a criação seguir. A chave é o que prova isso sem pagar três
-    // derivações Argon2id: o `createKey` só é chamado depois da recontagem, e
-    // um cofre vazio depois do setup privilegiado é um caminho que a suíte
-    // nunca exercitou.
+    // `exists()` falso nos dois pontos deixa a criação seguir; `createKey` prova isso sem pagar Argon2id
     const m = currentMessages();
     const chegouAqui = new Error('a criação seguiu adiante');
     vi.spyOn(vaultStorage, 'exists').mockReturnValue(false);

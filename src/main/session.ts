@@ -1,25 +1,13 @@
 import { activityMonitor } from '@zero/main/activity';
 import { currentMessages } from '@zero/main/i18n';
 
-/**
- * Única detentora da chave do cofre em memória (Singleton). A guarda e a
- * zeragem de memória moram aqui: nenhum outro módulo mantém cópia da chave, e
- * o lock deixa de ser uma variável de módulo espalhada entre arquivos.
- *
- * A ociosidade não é assunto desta classe: quem mede o tempo é o
- * `ActivityMonitor` (Observer), que avisa e este Singleton obedece.
- */
+/** Única detentora da chave em memória (Singleton): guarda e zera a chave, ninguém mais. */
 export class VaultSessionManager {
   private static instance: VaultSessionManager | null = null;
 
   private key: Buffer | null = null;
 
-  /**
-   * Sessão decoy: o PIN de coação abriu um cofre que não existe mais. Não há
-   * chave nenhuma em memória (a chave real foi apagada na RAM antes do disco),
-   * mas o app se comporta como se tivesse aberto um cofre vazio, que é
-   * exatamente o que a pessoa sob coação precisa poder mostrar.
-   */
+  /** Sessão decoy: cofre destruído, sem chave na RAM, mas com a tela de cofre vazio. */
   private decoy = false;
 
   private constructor() {
@@ -41,10 +29,7 @@ export class VaultSessionManager {
     this.touch();
   }
 
-  /**
-   * Sessão de coação: o cofre foi destruído e o que aparece é um cofre vazio.
-   * Não guarda chave alguma, então nada aqui pode decifrar um `.zke`.
-   */
+  /** Sessão de coação: cofre vazio e sem chave, então nada aqui decifra um `.zke`. */
   public adoptDecoy(): void {
     this.wipe();
     this.decoy = true;
@@ -78,11 +63,7 @@ export class VaultSessionManager {
     activityMonitor.touch();
   }
 
-  /**
-   * Zera a chave na memória (`fill(0)`) e cancela o auto-lock: o lock manual,
-   * o timeout e o encerramento do app passam por aqui, sem sobrar cópia
-   * legível. A sessão decoy também morre aqui.
-   */
+  /** Zera a chave na RAM (`fill(0)`) e cancela o auto-lock; a sessão decoy morre aqui. */
   public wipe(): void {
     if (this.key !== null) {
       this.key.fill(0);

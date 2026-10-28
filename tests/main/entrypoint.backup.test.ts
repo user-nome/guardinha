@@ -3,11 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app, BrowserWindow, dialog, ipcMain, resetElectronMock } from '../mocks/electron.ts';
 import type { IpcHandler } from '../mocks/electron.ts';
 
-// O pacote é cópia de bytes já cifrados: o que este arquivo prova é só a
-// fronteira do canal, com o `backup` inteiro mockado. O conteúdo do `.gbk` e o
-// Cryptographic Erase da restauração têm teste próprio (`backup.test.ts`), e
-// aqui o que importa é o diálogo nativo (única origem do caminho), o cancelamento
-// e o aviso de sessão perdida que a restauração dispara.
+// O `backup` é mockado aqui: o teste cobre a fronteira do canal, o diálogo nativo e o aviso de sessão.
 vi.mock('@zero/main/backup/backup', () => ({
   exportBackup: vi.fn(() => ({ path: '/pendrive/cofre.gbk', files: 3, bytes: 2048 })),
   restoreBackup: vi.fn(() => ({ path: '/pendrive/cofre.gbk', files: 3 })),

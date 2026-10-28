@@ -8,24 +8,11 @@ import { ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
 import { SHRED_PASSES, shredFile } from '@zero/main/shred';
 import type { SaltedPayload } from '@zero/types/crypto';
 
-/**
- * Arquivos individuais dos tokens de 2FA (`.auth/<uuid>.zka`).
- *
- * Mesmo desenho de `entries-store.ts` e pelo mesmo motivo: um token por
- * arquivo, para que apagar um não obrigue a reescrever o segredo de todos os
- * outros, e para que a cifragem por registro (salt e IV novos a cada gravação)
- * valha para cada um. O conteúdo decifrado é `{ issuer, account, algorithm,
- * digits, period, secret, createdAt, updatedAt }`; o segredo só existe dentro
- * do AES-256-GCM.
- */
+/** Arquivos individuais dos tokens de 2FA (`.auth/<uuid>.zka`), um segredo por arquivo. */
 
 const AUTH_EXTENSION = 'zka';
 
-/**
- * Segunda camada contra path traversal: o caminho só é montado a partir de id
- * sem separador nem byte nulo, então nenhum chamador escapa de `.auth/` com
- * `../`. Mesma regra de `entries-store.ts`.
- */
+/** Segunda camada contra path traversal: id sem separador nem byte nulo escapa de `.auth/`. */
 function assertSafeAuthId(id: string): void {
   if (id === '' || id.includes('/') || id.includes('\\') || id.includes('\0')) {
     throw new Error(currentMessages().errors.invalidId);

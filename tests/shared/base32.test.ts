@@ -66,9 +66,7 @@ describe('normalização', () => {
 });
 
 describe('vetores do RFC 4648', () => {
-  // Vetores fixos do anexo da RFC, e não um round-trip: um round-trip passa
-  // mesmo com o acumulador de bits começando errado, porque os dois lados
-  // erram igual. Estes números não mudam de máquina.
+  // Vetores fixos da RFC, não round-trip: um round-trip passaria com o acumulador errado dos dois lados
   const casos: [string, string][] = [
     ['', ''],
     ['f', 'MY'],
@@ -93,8 +91,7 @@ describe('vetores do RFC 4648', () => {
   });
 
   it('descarta os bits sobrados do último grupo', () => {
-    // 'foob' são 28 bits úteis e o Base32 carrega os 5 restantes zerados, então
-    // o grupo de 32 bits representa o texto sem sobra nenhuma.
+    // 'foob' tem 28 bits úteis e os 5 restantes vão zerados, sem sobra no grupo de 32 bits
     expect([...(base32Decode('MZXW6YQ') ?? [])]).toEqual([0x66, 0x6f, 0x6f, 0x62]);
     expect([...(base32Decode('MZXW6YTBOI') ?? [])]).toEqual([0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72]);
   });
@@ -102,8 +99,7 @@ describe('vetores do RFC 4648', () => {
 
 describe('isBase32 no limite de tamanho', () => {
   it('aceita um único caractere do alfabeto', () => {
-    // O piso é 1, não 2: um segredo colado com um caractere só é curto demais
-    // para servir, mas continua sendo Base32 válido.
+    // o piso é 1: um segredo de um caractere é curto demais, mas ainda é Base32 válido
     expect(isBase32('A')).toBe(true);
     expect(isBase32('7')).toBe(true);
   });

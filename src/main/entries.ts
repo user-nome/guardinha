@@ -6,14 +6,9 @@ import { currentMessages } from '@zero/main/i18n';
 import { isUuid } from '@zero/shared';
 import type { Credential, CredentialInput } from '@zero/types';
 
-/**
- * Todas as credenciais decifradas, da mais recente para a mais antiga.
- * Confere o manifesto antes: arquivo removido/injetado de fora do app derruba
- * a lista com o erro único de adulteração (fail-closed, sem ignorar nada).
- */
+/** Todas as credenciais decifradas, da mais recente para a mais antiga; falha fechado. */
 export function listEntries(): Credential[] {
-  // sessão decoy (PIN de coação): o cofre foi destruído e o que aparece é
-  // vazio. Sem chave não há o que decifrar, e inventar ids seria mentira
+  // sessão decoy (PIN de coação): o cofre foi destruído e não há o que decifrar
   if (vaultSession().isDecoy()) return [];
   const key = requireSessionKey();
   vaultStorage.verifyManifest(key);

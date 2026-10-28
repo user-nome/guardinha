@@ -1,9 +1,4 @@
-/**
- * Configurações da janela do app.
- *
- * Ficam aqui para que o entrypoint não tenha `1200`, `800`, `400`, `360`
- * soltos e para que o teste de janela importe da mesma fonte.
- */
+/** Configurações da janela do app, partilhadas pelo entrypoint e pelo teste de janela. */
 
 export const WINDOW_WIDTH = 1_200;
 export const WINDOW_HEIGHT = 800;

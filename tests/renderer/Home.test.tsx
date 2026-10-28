@@ -6,12 +6,7 @@ import { Home } from '@zero/renderer/components/Home';
 import { installApi } from '../mocks/api.ts';
 import type { Credential } from '@zero/types';
 
-/**
- * A lista de credenciais é a tela que o usuário mais olha. Os testes aqui
- * cobrem os três estados (carregando, vazio, com itens), a busca por título,
- * usuário e domínio, e as ações de copiar e abrir o site, que passam pelos
- * canais que limpam o clipboard e validam o domínio no main.
- */
+/** Lista de credenciais: estados de carregamento, busca, cópia e abertura do site. */
 
 describe('Home: coluna da grade', () => {
   it('usa a coluna larga, que comporta a grade de cartões', async () => {
@@ -60,11 +55,7 @@ const ENTRIES: Credential[] = [
   },
 ];
 
-/**
- * Primeiro elemento de uma lista de `getAllBy*`. Os botões de ação aparecem
- * uma vez por credencial, então o primeiro é o da lista; o `undefined` é
- * impossible aqui, mas o TypeScript não sabe disso com `noUncheckedIndexedAccess`.
- */
+/** Primeiro item da lista; o `undefined` é impossível aqui, mas o TS não sabe. */
 function first(elements: HTMLElement[]): HTMLElement {
   const element = elements[0];
   if (element === undefined) throw new Error('nenhum elemento encontrado');
@@ -338,9 +329,7 @@ describe('Home: ações', () => {
 
 describe('Home com falha ao carregar', () => {
   it('mostra o erro e não o estado vazio', async () => {
-    // A lista vazia e a lista que não carregou são telas diferentes: a segunda
-    // tem de dizer o que houve, senão o usuário conclui que o cofre está vazio
-    // quando na verdade o app não conseguiu ler.
+    // Lista vazia e lista que não carregou são telas diferentes: a segunda diz o que houve.
     const api = installApi();
     api.entries.list = vi.fn(() => Promise.reject(new Error('falha de leitura')));
 
@@ -359,13 +348,7 @@ describe('Home com falha ao carregar', () => {
 });
 
 describe('Home com falha na recarga', () => {
-  /**
-   * O primeiro carregamento ou dá certo ou deixa `entries` nulo, e o nulo cai no
-   * ramo de "abrindo o cofre". A faixa de erro acima da lista só aparece no
-   * segundo carregamento, quando a recarga falha depois de a lista já ter
-   * voltado. Estes testes fixam a condição combinada: erro no topo, mas nunca no
-   * lugar da tela vazia nem repetido sobre uma lista que já tem itens.
-   */
+  /** Erro no topo só no segundo carregamento, nunca no lugar da tela vazia. */
   it('mostra o erro quando a recarga falha com a lista vazia', async () => {
     const user = userEvent.setup();
     const api = installApi({ entries: [] });

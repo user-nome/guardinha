@@ -7,12 +7,7 @@ import { vaultStorage } from '@zero/main/facade';
 import { createVault } from '@zero/main/vault';
 import type { CredentialInput } from '@zero/types';
 
-/**
- * Validação do CRUD de credenciais. Os três ramos cobertos aqui são a fronteira
- * entre a tela e o arquivo: um id que não é UUID, um id que o cofre não
- * conhece e uma remoção de id estranho. Cada um precisa falhar com a mensagem
- * certa, e não com um erro de filesystem.
- */
+/** CRUD de credenciais: id que não é UUID, id desconhecido e remoção de id estranho. */
 
 const MASTER = 'senha-mestra-guardinha24';
 const PIN = '49201733';
@@ -71,8 +66,7 @@ describe('entries: id e atualização', () => {
   });
 
   it('recusa atualizar um id que o cofre não tem', () => {
-    // o id tem cara de UUID, mas não existe: isso é credencial apagada, não
-    // credencial nova com id reusing
+    // o id tem cara de UUID, mas não existe: isso é credencial apagada, não id reutilizado
     expect(() => saveEntry(entry({ id: VALID_ID }))).toThrow(
       currentMessages().errors.entryNotFound,
     );
@@ -117,17 +111,14 @@ describe('entries: remoção', () => {
 
 describe('entries: remoção idempotente', () => {
   it('apagar um arquivo que já não existe não lança', () => {
-    // A remoção pode ser repetida por uma tela que atualiza depois de um erro;
-    // sem a guarda de existência, o `shred` estoura com ENOENT.
+    // A remoção pode repetir numa tela que atualiza depois de erro; sem guarda, o `shred` estoura.
     expect(() => deleteEntry('ffffffff-9999-4999-8999-999999999999')).not.toThrow();
   });
 });
 
 describe('entries: ordem da lista', () => {
   it('mostra a credencial editada por último, não por primeiro', () => {
-    // A lista da tela começa pelo que o usuário mexeu por último. Um `+` no
-    // comparador inverteria a ordem sem quebrar nenhum teste antigo, que só
-    // conferia que as ids estavam na lista.
+    // A lista começa pelo que o usuário mexeu por último; um `+` no comparador inverteria a ordem.
     const [primeira] = saveEntry(entry({ title: 'Ordem-a' }));
     const [segunda] = saveEntry(entry({ title: 'Ordem-b' }));
     const idPrimeira = primeira?.id ?? '';
@@ -141,10 +132,7 @@ describe('entries: ordem da lista', () => {
   });
 
   it('ordena por data mesmo quando a soma das datas daria sempre positivo', () => {
-    // `b - a` ordena de verdade; `b + a` dá positivo para qualquer par e a
-    // ordenação vira a ordem em que o diretório devolveu os arquivos. As duas
-    // credenciais são atualizadas em ordem inversa à do diretório para que a
-    // diferença apareça.
+    // `b - a` ordena de verdade; `b + a` é sempre positivo e mantém a ordem do diretório.
     const now = vi.spyOn(Date, 'now');
     const base = Date.now() + 1_000_000;
     const primeira = saveEntry(entry({ title: 'Ordem-soma-a' }))[0];

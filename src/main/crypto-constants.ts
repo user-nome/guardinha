@@ -1,25 +1,18 @@
-/**
- * Medidas e rótulos da cifra do cofre.
- *
- * Os números ficam aqui para que `crypto.ts`, `unwrapping.ts`, `entries-store.ts`
- * e o formato do container não escrevam `32`, `16` ou `64` cada um do seu jeito.
- * Os rótulos do HKDF são contrato de disco: trocar um deles invalida os arquivos
- * já gravados.
- */
+/** Medidas e rótulos da cifra do cofre; os rótulos do HKDF são contrato de disco. */
 
-/** Tamanho da chave do cofre e das chaves derivadas, em bytes (256 bits). */
+/** Tamanho da chave do cofre e das derivadas, em bytes. */
 export const KEY_BYTES = 32;
 
-/** Mesma chave em hexadecimal (dois caracteres por byte). */
+/** Mesma chave em hexadecimal. */
 export const KEY_HEX_LENGTH = KEY_BYTES * 2;
 
-/** Salt do Argon2id e do HKDF, em bytes (128 bits). */
+/** Salt do Argon2id e do HKDF, em bytes. */
 export const SALT_BYTES = 16;
 
-/** IV do AES-256-GCM, em bytes (128 bits). */
+/** IV do AES-256-GCM, em bytes. */
 export const IV_BYTES = 16;
 
-/** Tag de autenticação do AES-256-GCM, em bytes (128 bits). */
+/** Tag de autenticação do AES-256-GCM, em bytes. */
 export const TAG_BYTES = 16;
 
 /** Digest do SHA-256, em bytes. */
@@ -37,11 +30,7 @@ export const KEY_INFO_ENTRY = 'guardinha-vault-entry-v1';
 /** Rótulo do HKDF dos tokens de 2FA (`.zka`). */
 export const KEY_INFO_AUTH = 'guardinha-vault-auth-v1';
 
-/**
- * Rótulo de domínio de cada método de desbloqueio (P9). Vira o `info` do HKDF e
- * a AAD do AES-256-GCM do embrulho, então copiar o blob do PIN para o slot de
- * pânico (ou qualquer outra troca de papel) falha na autenticação.
- */
+/** Rótulo de domínio de cada método, no `info` do HKDF e na AAD do embrulho. */
 export function methodKeyInfo(kind: string): string {
   return `guardinha-method-${kind}-v1`;
 }
