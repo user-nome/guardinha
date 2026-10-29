@@ -51,7 +51,7 @@ describe('VaultSessionManager (Singleton)', () => {
     expect(oldKey.every((byte) => byte === 0)).toBe(true);
   });
 
-  it('auto-lock zera a chave 5 minutos depois da última operação', () => {
+  it('auto-lock zera a chave 2 minutos depois da última operação', () => {
     const key = Buffer.alloc(32, 7);
     vaultSession().adopt(key);
 

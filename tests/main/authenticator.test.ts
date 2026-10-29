@@ -135,7 +135,7 @@ describe('tokens de 2FA', () => {
 
   it('consultar os códigos não conta como atividade nem rearma o auto-lock', () => {
     // P1: a aba de 2FA consulta `currentCodes` sozinha a cada virada de período.
-    // Quando a leitura chamava `touch()`, o temporizador de 5 minutos reiniciava
+    // Quando a leitura chamava `touch()`, o temporizador de 2 minutos reiniciava
     // para sempre e o cofre nunca trancava com a aba aberta.
     saveTokenFromUri(GITHUB_URI);
     const touch = vi.spyOn(vaultSession(), 'touch');

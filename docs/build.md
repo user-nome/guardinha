@@ -179,13 +179,16 @@ Fluxo completo em `CONTRIBUTING.md` (seção 10); resumo do
 2. O job **Verificar versão** (`resolver-versao`) compara `package.json` com as
    Releases e decide se há o que publicar (push sem bump de versão vira execução
    verde e rápida).
-3. O job **Verificar qualidade** (`qualidade`) roda em paralelo ao anterior e
-   é o **gate**: `npm run check` (tipo, lint, formato, OSV e shellcheck) e
-   `npm test`. Os binários `osv-scanner` e `shellcheck` são baixados no
-   próprio job, com versão fixada, porque `bin/` é gitignored e não existe no
-   checkout do CI.
-4. O job **Gerar e publicar** (`build-deb`) tem `needs: [resolver-versao,
-qualidade]`: só começa se **os dois** passarem. Falha de tipo, lint,
+3. O job **Qualidade** (`qualidade`) chama o `quality.yml` como workflow
+   reutilizável, com `uses: ./.github/workflows/quality.yml` e o input
+   `run_mutation` desligado: o gate é o mesmo da branch de trabalho, com
+   `npm run check`, a cobertura de 100% e o E2E, sem uma segunda cópia dos
+   passos. Os binários `osv-scanner` e `shellcheck` são baixados com versão
+   fixada, porque `bin/` é gitignored e não existe no checkout do CI. O job
+   depende de **Verificar versão** e só roda quando há o que publicar, então um
+   push na `main` com a Release já publicada não paga o gate.
+4. O job **Gerar e publicar** (`build-deb`) depende de **Verificar versão** e do
+   gate de qualidade: só começa se os dois passarem. Falha de tipo, lint,
    formato, auditoria OSV, shellcheck ou teste interrompe a publicação.
 5. O mesmo job compila, roda o `electron-builder`, cria a tag `vX.Y.Z` se não
    existir e publica a Release.
@@ -332,17 +335,21 @@ justamente o tipo de gate afrouxado que este repositório não tem.
 
 ## Gate da branch de trabalho
 
-`.github/workflows/quality.yml` confere a `developer` enquanto o código está
+`.github/workflows/quality.yml` confere a `ajustes` enquanto o código está
 sendo escrito, que é o oposto do `publish.yml` (que só roda na `main`, no
 momento em que a versão sai). Sem ele, erro de tipo, formatação quebrada,
 dependência vulnerável, teste vermelho ou cobertura abaixo de 100% só apareceriam
-depois do merge.
+depois do merge. O `publish.yml` chama esse mesmo arquivo como workflow
+reutilizável (`workflow_call`), então a definição do gate existe uma vez e a
+publicação não mantém uma segunda cópia dos passos.
 
-| Gatilho                    | O que roda                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| push na `developer`        | "Verificar qualidade", "Testes e cobertura", "Testes E2E" e "Testes de mutação" |
-| PR para `main`/`developer` | os três primeiros, e são eles que travam o merge                                |
-| execução manual            | os quatro, para conferir na mão um passo local duvidoso                         |
+| Gatilho                    | O que roda                                                           |
+| -------------------------- | -------------------------------------------------------------------- |
+| push na `ajustes`          | "Verificar qualidade", "Testes e cobertura" e "Testes E2E"           |
+| PR para `ajustes`          | os mesmos três, e são eles que travam o merge                        |
+| chamado pelo `publish.yml` | os mesmos três, sempre com `run_mutation: false`                     |
+| agendamento mensal         | "Testes de mutação"                                                  |
+| execução manual            | os três do ritmo normal, mais a mutação se `run_mutation` for pedido |
 
 Três jobs no ritmo normal, para a falha apontar o culpado, e um quarto em outro
 ritmo:
@@ -358,16 +365,16 @@ ritmo:
   alvos sob `xvfb` (`npm run test:e2e`) e instala o `.deb` de verdade para
   conferir que ele resolve as dependências. O detalhe está em `docs/e2e.md`.
 - **Testes de mutação**: a varredura de `tools/mutation/` (`docs/mutation.md`).
-  Roda em push na `developer`, uma vez por mês e por disparo manual, **não** em
-  pull request nem em push para a `main`, porque leva horas e o número que ela
-  mede só muda quando alguém escreve teste novo. Reprova abaixo de 65%, e por
-  isso não é status check obrigatório: ela informa e reprova, mas não segura o
-  merge.
+  Roda uma vez por mês e por disparo manual, **não** em push nem em pull
+  request, porque leva horas e o número que ela mede só muda quando alguém
+  escreve teste novo. Reprova abaixo de 65%, e por isso não é status check
+  obrigatório: ela informa e reprova, mas não segura o merge.
 
 Para o merge ficar travado de verdade, marque os três status checks do ritmo
-normal como obrigatórios nas regras de proteção da `main` (Settings > Branches >
-Branch protection rules). Sem isso o workflow é informativo: ele roda, mas
-ninguém é obrigado a esperar.
+normal como obrigatórios nas regras de proteção da `ajustes` (Settings >
+Branches > Branch protection rules). Na `main` a trava é o próprio
+`publish.yml`, que só publica depois do gate. Sem isso o workflow é informativo:
+ele roda, mas ninguém é obrigado a esperar.
 
 ## O mesmo gate no CircleCI
 
@@ -416,8 +423,8 @@ onde a execução parte.
 
 ## Outros workflows
 
-| Arquivo          | Papel                                                             |
-| ---------------- | ----------------------------------------------------------------- |
-| `quality.yml`    | Gate de tipos, lint, formato, OSV, cobertura e E2E em `developer` |
-| `codeql.yml`     | CodeQL em push/PR para `main` e semanalmente                      |
-| `dependabot.yml` | PRs semanais para dependências npm e actions                      |
+| Arquivo          | Papel                                                           |
+| ---------------- | --------------------------------------------------------------- |
+| `quality.yml`    | Gate de tipos, lint, formato, OSV, cobertura e E2E em `ajustes` |
+| `codeql.yml`     | CodeQL em push/PR para `main` e semanalmente                    |
+| `dependabot.yml` | PRs semanais para dependências npm e actions                    |

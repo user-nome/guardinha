@@ -2,8 +2,8 @@
 
 export const PENALTY_DELAYS_SECONDS = [10, 30, 60, 3_600, 86_400] as const; // 10s, 30s, 1m, 1h, 24h
 
-/** Trava automática após 5 minutos sem operação no cofre. */
-export const IDLE_LOCK_MS = 5 * 60 * 1_000;
+/** Trava automática após 2 minutos sem operação no cofre. */
+export const IDLE_LOCK_MS = 2 * 60 * 1_000;
 
 /** Tempo até limpar o clipboard nativo após copiar (30 s). */
 export const CLEAR_CLIPBOARD_MS = 30_000;

@@ -4,6 +4,13 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
+## [2.4.1] 2026-10-28
+
+### Alterado
+
+- **Auto-lock caiu de 5 para 2 minutos.** Sem operação, a chave sai da memória
+  e o cofre bloqueia depois de dois minutos, reduzindo a janela de exposição.
+
 ## [2.4.0] 2026-10-28
 
 ### Adicionado

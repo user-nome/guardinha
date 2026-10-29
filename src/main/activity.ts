@@ -1,6 +1,6 @@
 import { IDLE_LOCK_MS } from '@zero/shared/auth-constants';
 
-/** Trava automática após 5 minutos sem operação no cofre. */
+/** Trava automática após 2 minutos sem operação no cofre. */
 export { IDLE_LOCK_MS };
 
 /** Evento emitido quando o cofre passa do tempo de ociosidade. */

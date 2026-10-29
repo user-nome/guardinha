@@ -8,7 +8,7 @@
 sem telemetria e sem usar a internet. Suas senhas ficam cifradas no seu disco e
 só abrem com o seu PIN.
 
-**Versão atual: 2.4.0 · Linux (amd64)**
+**Versão atual: 2.4.1 · Linux (amd64)**
 
 [Baixar .deb](https://github.com/user-nome/guardinha/releases/latest/download/guardinha_amd64.deb)
 
@@ -93,7 +93,7 @@ aplicativo torna cada tentativa errada cara e oferece formas de destruí-lo de v
 - **Espera crescente e bloqueio automático.** Cada tentativa errada aumenta a
   espera (10 s, 30 s, 1 min, 1 h e depois 24 h), e essa espera fica gravada no
   cofre: fechar o aplicativo não zera nada. Além disso, o cofre **trava sozinho
-  após 5 minutos sem uso** e a chave some da memória.
+  após 2 minutos sem uso** e a chave some da memória.
 - **Destruição de emergência.** Para o pior cenário existem três ferramentas, todas
   irreversíveis: o botão que **destrói o cofre inteiro**, o **PIN de coação** (que
   abre um cofre vazio enquanto apaga o de verdade, para uso sob coação física) e a

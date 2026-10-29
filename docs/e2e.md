@@ -52,7 +52,7 @@ backup; bloqueio, login por PIN e senha mestra, redefinição do PIN, confirmaç
 de destruição e PIN de coação. A migração explícita de um cofre v5 também roda
 nesse alvo: aviso no login, adiamento, recusa de credencial errada, migração
 completa com credencial e token preservados e o PIN de coação legado ainda
-abrindo o cofre decoy. O auto-lock roda na mesma suíte, após cinco minutos reais
+abrindo o cofre decoy. O auto-lock roda na mesma suíte, após dois minutos reais
 de ociosidade.
 
 Essa cobertura é de jornadas e integração entre o app compilado, o renderer, o
@@ -97,7 +97,7 @@ use `GUARDINHA_E2E_APP=/caminho/para/guardinha`.
 
 ## Auto-lock
 
-A trava automática acontece depois de cinco minutos reais de ociosidade e não há
+A trava automática acontece depois de dois minutos reais de ociosidade e não há
 costura de relógio no app. O teste que a mede ponta a ponta fica em
 `e2e/autolock.e2e.test.ts` e faz parte de `npm run test:e2e` e
 `npm run test:e2e:bundled`. O teste observa o IPC do auto-lock e o retorno à
