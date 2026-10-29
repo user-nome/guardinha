@@ -75,8 +75,7 @@ describe('generateHighEntropyPassword', () => {
   });
 
   it('comprimento 1 devolve um caractere, e não vazio', () => {
-    // A guarda é `length <= 0`: em 1 o gerador tem de sortear, senão o medidor
-    // de força da tela mostra uma senha que não existe.
+    // A guarda é `length <= 0`: em 1 o gerador sorteia, senão o medidor mostra senha inexistente.
     const senha = generateHighEntropyPassword(options({ length: 1, useLower: true }));
     expect(senha).toHaveLength(1);
     expect(senha).toMatch(/^[a-z]$/);
@@ -232,8 +231,7 @@ describe('assertGeneratorOptions', () => {
     expect(() =>
       assertGeneratorOptions(valid({ customEntropyWords: ['a', 'b', 'c', 'd', 'e', 'f'] })),
     ).toThrow();
-    // cinco é o teto, e o teto é inclusivo: recusar aqui tiraria uma palavra
-    // que a tela oferece
+    // cinco é o teto, e o teto é inclusivo: recusar aqui tiraria uma palavra que a tela oferece
     expect(() =>
       assertGeneratorOptions(valid({ customEntropyWords: ['a', 'b', 'c', 'd', 'e'] })),
     ).not.toThrow();
@@ -288,9 +286,7 @@ describe('entropia do gerador', () => {
   });
 
   it('mistura exatamente 32 bytes (256 bits) de aleatoriedade do sistema', () => {
-    // Os 32 bytes entram no resumo pessoal e não aparecem no resultado, então
-    // um byte a mais ou a menos muda o material derivado sem mudar o formato; o
-    // que separa as duas versões é o argumento da chamada.
+    // Os 32 bytes entram no resumo pessoal sem aparecer: o argumento da chamada separa as versões.
     const sorteio = vi.spyOn(crypto, 'randomBytes');
     generateHighEntropyPassword({
       length: 12,
@@ -309,10 +305,7 @@ describe('entropia do gerador', () => {
   });
 
   it('a saída é determinística com a mesma entropia e o mesmo embaralhamento', () => {
-    // Fixar o material aleatório transforma o gerador numa função: qualquer
-    // deslocamento no índice do digest (começar em 1, andar de 2 em 2) ou no
-    // laço de embaralhamento muda os caracteres, e o valor esperado é o que
-    // separa as versões.
+    // Material fixo torna o gerador uma função: índice ou embaralhamento trocado muda a saída.
     vi.spyOn(crypto, 'randomBytes').mockImplementation((size: number) => Buffer.alloc(size, 0));
     vi.spyOn(crypto, 'randomInt').mockImplementation((max: number) =>
       max === 26 ? 0 : max === 2 ? 0 : Math.floor(max / 2),
@@ -336,9 +329,7 @@ describe('entropia do gerador', () => {
   });
 
   it('sorteia a quantidade reservada dentro do conjunto daquela categoria', () => {
-    // Um número reservado sai do alfabeto dos números, não do conjunto geral:
-    // se o laço da categoria não rodar, o `randomInt(10)` some e a reserva vira
-    // só mais um caractere sorteado entre letras e números.
+    // Número reservado sai do alfabeto dos números: sem o laço da categoria, a reserva se dilui.
     vi.spyOn(crypto, 'randomBytes').mockImplementation((size: number) => Buffer.alloc(size, 0));
     const limites: number[] = [];
     vi.spyOn(crypto, 'randomInt').mockImplementation((max: number) => {
@@ -364,10 +355,7 @@ describe('entropia do gerador', () => {
   });
 
   it('comprimento 0 corta antes de acionar o gerador aleatório', () => {
-    // A guarda é `length <= 0`: em zero o laço não roda e a saída já seria ''
-    // de qualquer jeito, então o que separa a guarda da falta dela é o trabalho
-    // que ela evita. Relaxada para `< 0`, zero cairia no sorteio e a chamada
-    // abaixo aconteceria, em vez de a função sair de imediato.
+    // A guarda é `length <= 0`: relaxada para `< 0`, zero cairia no sorteio em vez de sair.
     const bytes = vi.spyOn(crypto, 'randomBytes').mockImplementation(() => {
       throw new Error('o gerador não deveria sortear para comprimento 0');
     });

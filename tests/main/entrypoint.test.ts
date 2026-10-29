@@ -301,8 +301,7 @@ describe('canal generator:generate', () => {
     expect(senha).toMatch(/^[A-Z]+$/);
     expect(senha).toHaveLength(40);
 
-    // sem nenhuma categoria não há o que sortear, e devolver vazio seria
-    // fingir que gerou uma senha
+    // sem nenhuma categoria não há o que sortear, e devolver vazio seria fingir que gerou uma senha
     expect(() =>
       call('generator:generate', appFrame(), {
         ...base,
@@ -344,15 +343,13 @@ describe('protocolo guardinha://', () => {
   });
 
   it('normaliza o travessão escrito de forma direta, sem escapar da raiz', () => {
-    // o `new URL` resolve `..` antes de a gente ver, então esta forma nem
-    // chega a ameaçar a raiz: o 404 é a resposta correta
+    // O `new URL` resolve `..` antes de chegarmos a ver, então o 404 é a resposta correta.
     const response = protocolHandler()({ url: 'guardinha://app/../../../etc/passwd' });
     expect(response.status).toBe(404);
   });
 
   it('rejeita path traversal codificado com 403', () => {
-    // aqui é o ataque de verdade: `%2e%2e%2f` sobrevive à normalização da URL
-    // e só vira `../` no `decodeURIComponent`, dentro do processo main
+    // Aqui é o ataque real: `%2e%2e%2f` sobrevive à URL e vira `../` no `decodeURIComponent`.
     const response = protocolHandler()({
       url: 'guardinha://app/%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd',
     });

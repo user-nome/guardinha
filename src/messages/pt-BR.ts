@@ -392,9 +392,7 @@ export const ptBR = {
     internal: 'Erro interno do cofre.',
     /** Guarda de origem do IPC: o emissor não é a página oficial do app. */
     foreignFrame: 'IPC bloqueado: a requisição não veio da página do app.',
-    // Invariantes internas: o contrato do código sendo violado. O caminho normal
-    // converte tudo em `vaultTampered` ou `wrongPin` antes de chegar à tela, mas
-    // o texto mora aqui como todo erro emitido pelo processo main.
+    // Invariantes internas: o caminho normal converte em vaultTampered ou wrongPin.
     containerCorrupted: 'Registro do cofre corrompido.',
     invalidManifest: 'Manifesto de integridade inválido.',
     invalidKdfParams: 'Parâmetros de KDF inválidos.',

@@ -119,9 +119,7 @@ describe('desbloqueio: quem entra e quem fica de fora', () => {
   }, 120_000);
 
   it('copiar o blob do PIN para o slot de pânico não transforma o PIN em gatilho', async () => {
-    // P9: cada método tem `info` de HKDF e AAD próprios. O blob do PIN no slot
-    // de pânico continua sendo um blob de PIN: o caminho de coação falha ao
-    // decifrar e o login normal segue pelo slot original.
+    // P9: blob de PIN no slot de pânico falha ao decifrar e o login segue pelo slot original.
     const vaultKey = randomBytes(32);
     const container = await seedVault({
       vaultKey,
@@ -144,9 +142,7 @@ describe('desbloqueio: quem entra e quem fica de fora', () => {
   }, 120_000);
 
   it('copiar o blob do pânico para o slot do PIN não transforma a coação em login', async () => {
-    // P9 pelo outro lado: sem a identidade do método, o blob do pânico no slot
-    // do PIN abriria o cofre de verdade com o PIN de coação, e quem está sob
-    // coação veria o cofre real em vez do vazio.
+    // P9 pelo outro lado: sem a identidade do método, o blob de pânico abriria o cofre real.
     const vaultKey = randomBytes(32);
     const container = await seedVault({
       vaultKey,
@@ -325,9 +321,7 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
   });
 
   it('copiar o arquivo de A sobre o de B é detectado pelo hash do manifesto', async () => {
-    // P6: o manifesto prende o conjunto de nomes e o SHA-256 de cada arquivo.
-    // Copiar `.zke` de A sobre B mantém a lista de ids, então a conferência de
-    // conjunto passaria; o hash gravado é que denuncia a troca antes da leitura.
+    // P6: copiar `.zke` de A sobre B mantém os ids, então só o hash gravado denuncia a troca.
     const vaultKey = randomBytes(32);
     const idA = '55555555-5555-4555-8555-555555555555';
     const idB = '66666666-6666-4666-8666-666666666666';
@@ -358,8 +352,7 @@ describe('manifesto: arquivo injetado ou removido derruba a listagem', () => {
   });
 
   it('copiar o arquivo de 2FA de A sobre o de B é detectado pelo hash do manifesto', async () => {
-    // P6 pelo lado dos tokens: a troca mantém a lista de ids, então só o
-    // SHA-256 gravado no manifesto separa o token legítimo do conteúdo alheio.
+    // P6 nos tokens: a troca mantém os ids e só o SHA-256 do manifesto separa o conteúdo alheio.
     const vaultKey = randomBytes(32);
     const idA = '77777777-7777-4777-8777-777777777777';
     const idB = '88888888-8888-4888-8888-888888888888';
@@ -519,9 +512,7 @@ describe('contadores de falha', () => {
   });
 
   it('duas tentativas concorrentes não rodam a derivação ao mesmo tempo', async () => {
-    // H3: sem a fila, as duas chamadas leem o mesmo container e uma gravação
-    // descarta a outra. A prova mais direta é a derivação sobreposta: a fila
-    // corta antes de gastar o Argon2id, então o pico de derivações é 1.
+    // H3: sem a fila, as duas chamadas leem o mesmo container e uma gravação descarta a outra.
     const vaultKey = randomBytes(32);
     await seedVault({ vaultKey, credentials: { pin: PIN } });
     vaultSession().wipe();
@@ -554,8 +545,7 @@ describe('contadores de falha', () => {
     }
 
     expect(pico).toBe(1);
-    // a primeira falha conta e arma a trava; a segunda, agora serializada, já
-    // entra na espera em vez de gastar uma tentativa a mais
+    // A primeira falha arma a trava; a segunda, serializada, entra na espera sem gastar tentativa.
     const state = readVaultContainer();
     expect(state?.attempts).toBe(1);
     expect(state?.lockUntil).not.toBeNull();

@@ -382,9 +382,7 @@ describe('Generator', () => {
 
 describe('os limites do slider', () => {
   it('vai de 0 a 72, que é o teto que o main aceita', () => {
-    // `assertGeneratorOptions` recusa acima de 72: se o slider deixasse passar
-    // 73, o app geraria a senha e a gravação seria recusada pelo main, com o
-    // usuário olhando para uma senha que não salva.
+    // `assertGeneratorOptions` recusa acima de 72: um slider que passe 73 gera senha que não salva.
     open();
     expect(screen.getByRole('slider', { name: 'Tamanho da Senha' })).toHaveAttribute(
       'aria-valuemax',
@@ -425,9 +423,7 @@ describe('os limites do slider', () => {
   });
 
   it('palavras do tamanho exato da senha ainda cabem', async () => {
-    // O corte é `> length`: no empate o gerador aceita e quem recusa é o limite
-    // manual, com a mensagem certa. Com `>=`, o empate viraria "palavras maiores
-    // que a senha", que é falso.
+    // O corte é `> length`: no empate o gerador aceita e quem recusa é o limite manual.
     const user = userEvent.setup();
     const api = installApi();
     const generate = vi.fn().mockResolvedValue('x');
@@ -488,10 +484,7 @@ describe('os limites do slider', () => {
   });
 
   it('a cota de uma categoria desconta também as palavras pessoais', async () => {
-    // As palavras entram na senha como caracteres manuais, então elas consomem
-    // a cota junto com as categorias. Sem esse desconto, a tela ofereceria uma
-    // quantidade que o main recusa. A cota da própria categoria também conta:
-    // ela é o que sobra depois das outras, e não o que sobra para as outras.
+    // As palavras consomem a cota junto com as categorias; a cota da categoria é o que sobra.
     const user = userEvent.setup();
     open();
 
@@ -510,10 +503,7 @@ describe('os limites do slider', () => {
   });
 
   it('mudar a quantidade de palavras não tira o consentimento', async () => {
-    // A inclusão das palavras é uma escolha do usuário, e ela só é desligada
-    // quando não há palavra nenhuma para incluir (a quantidade zero). Mudar a
-    // quantidade com palavras escolhidas não pode revogar a escolha: o
-    // usuário marcaria as palavras de novo sem entender por que sumiram.
+    // A inclusão só desliga sem palavra nenhuma: mudar a quantidade não revoga a escolha.
     const user = userEvent.setup();
     open();
     await user.type(screen.getByPlaceholderText('Objeto'), 'abcde');
@@ -544,8 +534,7 @@ describe('os limites do slider', () => {
     expect(usage).not.toHaveClass('text-red-300');
     expect(usage).toHaveAttribute('aria-live', 'polite');
 
-    // sem cota sobrando, a outra categoria para em zero: o piso do `Math.max`
-    // existe para não oferecer quantidade negativa
+    // Sem cota sobrando, a outra categoria para em zero: o piso do `Math.max` evita negativo.
     const upper = screen.getByRole('textbox', { name: 'Maiúsculas: Quantidade' });
     expect(upper).toHaveAttribute('aria-valuemax', '0');
     await user.clear(upper);
@@ -565,8 +554,7 @@ describe('os limites do slider', () => {
   });
 
   it('tamanho 1 avisa que o tamanho está vazio em vez de gerar', async () => {
-    // A guarda é `length <= 0`: em 1 o gerador tem o que sortear, e avisar
-    // "tamanho vazio" seria mentira.
+    // A guarda é `length <= 0`: em 1 o gerador tem o que sortear e "vazio" seria mentira.
     const user = userEvent.setup();
     installApi();
     const onToast = open();

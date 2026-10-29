@@ -14,8 +14,6 @@ só abrem com o seu PIN.
 
 </div>
 
-<b> Esses links são antigos e não funcionam, estou lidando com a hospedagem do novo site primeiro, depois arrumo esse README </b>
-
 ---
 
 ## O que é o Guardinha

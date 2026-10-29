@@ -71,8 +71,7 @@ describe('EntryModal: criação', () => {
   });
 
   it('trava o botão de salvar enquanto o cofre grava', async () => {
-    // O save é assíncrono: entre o clique e a resposta, o botão vira "Salvando…"
-    // e fica desabilitado, para um segundo clique não gravar em dobro.
+    // O save é assíncrono: o botão vira "Salvando…" e desabilita para não gravar em dobro.
     const user = userEvent.setup();
     const api = installApi();
     let concluir: (credential: Credential[]) => void = () => undefined;
@@ -231,8 +230,7 @@ describe('EntryModal: edição', () => {
     await user.click(screen.getByRole('button', { name: 'Excluir' }));
     await user.click(screen.getByRole('button', { name: CONFIRM_TEXT }));
 
-    // mesmo durante a exclusão o estado é o de ocupado: os dois caminhos
-    // perigosos compartilham a mesma trava
+    // Durante a exclusão o estado também é ocupado: os dois caminhos compartilham a trava.
     expect(screen.getByRole('button', { name: 'Salvando…' })).toBeDisabled();
 
     concluir([]);

@@ -99,9 +99,7 @@ describe('auth-store: leitura e escrita', () => {
   });
 
   it('não toca no arquivo quando o id não está em disco', () => {
-    // A guarda `existsSync` separa "apagar o token" de "tentar apagar o token":
-    // sem ela, o shred ainda abriria o caminho antes de descobrir que não há
-    // arquivo ali. O `lstatSync` do `shredFile` é o que fica observável.
+    // A guarda `existsSync` separa "apagar" de "tentar": o `lstatSync` do shred fica observável.
     const id = '99999999-7777-4777-8777-999999999999';
     const lstat = vi.spyOn(nodeFs, 'lstatSync');
     try {
@@ -115,8 +113,7 @@ describe('auth-store: leitura e escrita', () => {
 
 describe('permissões e filtro de arquivos dos tokens', () => {
   it('grava o .zka com 0600', () => {
-    // O token de 2FA é o segredo mais exposto do app: um arquivo 0644 seria
-    // lido por qualquer usuário da máquina e daria conta do serviço.
+    // O token de 2FA é o segredo mais exposto: 0644 o entregaria a qualquer usuário da máquina.
     const payload: SaltedPayload = encryptAuthRecord(
       { issuer: 'GitHub', account: 'alice', secret: 'ab' },
       requireSessionKey(),
@@ -129,8 +126,7 @@ describe('permissões e filtro de arquivos dos tokens', () => {
   });
 
   it('só devolve id de arquivo .zka, ignorando o que estiver ao lado', () => {
-    // O diretório `.auth` é controlado pelo app, mas um `.tmp` deixado por uma
-    // escrita interrompida não pode entrar na lista e virar um token fantasma.
+    // Um `.tmp` de escrita interrompida não pode entrar na lista e virar token fantasma.
     const id = 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff';
     writeAuthPayload(
       id,

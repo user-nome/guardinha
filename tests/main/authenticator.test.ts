@@ -134,9 +134,7 @@ describe('tokens de 2FA', () => {
   });
 
   it('consultar os códigos não conta como atividade nem rearma o auto-lock', () => {
-    // P1: a aba de 2FA consulta `currentCodes` sozinha a cada virada de período.
-    // Quando a leitura chamava `touch()`, o temporizador de 2 minutos reiniciava
-    // para sempre e o cofre nunca trancava com a aba aberta.
+    // P1: `currentCodes` consulta sozinho; com `touch()`, o cofre nunca trancava com a aba aberta.
     saveTokenFromUri(GITHUB_URI);
     const touch = vi.spyOn(vaultSession(), 'touch');
     try {
@@ -295,8 +293,7 @@ describe('tokens de 2FA', () => {
 
   it('responde adulteração quando alguém planta um arquivo fora do app', () => {
     const key = requireSessionKey();
-    // o caso que o manifesto existe para fechar: um `.zka` plantado que o cofre
-    // nunca gravou passaria como token legítimo se o manifesto não contasse
+    // O caso do manifesto: um `.zka` plantado passaria como token legítimo sem ele.
     const id = vaultStorage.newId();
     writeAuthPayload(id, {
       ...encryptAuthRecord(
@@ -354,8 +351,7 @@ describe('tokens de 2FA', () => {
 
 describe('regras do token que a suíte media mal', () => {
   it('exige emissor ou conta, mas aceita qualquer um dos dois sozinho', () => {
-    // `&&` aqui vira `||` sem quebrar nenhum teste antigo: os dois campos
-    // vinham preenchidos. A regra é: rótulo vazio nos dois é inválido.
+    // `&&` aqui vira `||` sem quebrar teste antigo: a regra é rótulo vazio nos dois ser inválido.
     const semNada = (): AuthToken[] => saveToken(draft({ issuer: '   ', account: '' }));
     const soEmissor = saveToken(draft({ issuer: 'GitHub', account: '' }));
     const soConta = saveToken(draft({ issuer: '', account: 'alice' }));
@@ -384,8 +380,7 @@ describe('regras do token que a suíte media mal', () => {
   });
 
   it('aceita o segredo do tamanho mínimo e recusa um byte a menos', () => {
-    // O limite é o ponto exato: `>=` trocado por `>` deixaria passar segredo
-    // curto, que é justamente o que o serviço rejeitaria depois.
+    // O limite é exato: `>=` trocado por `>` deixaria passar segredo curto, que o serviço rejeita.
     const minimo = base32Encode(randomBytes(OTP_SECRET_MIN_BYTES));
     const curto = base32Encode(randomBytes(OTP_SECRET_MIN_BYTES - 1));
     const [aceito] = saveToken(draft({ secret: minimo }));

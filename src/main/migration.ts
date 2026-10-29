@@ -117,11 +117,7 @@ function needsMigration(container: VaultContainerData, vaultKey: Buffer): boolea
   return openManifest(vaultKey, container.manifest).version < MANIFEST_VERSION;
 }
 
-/**
- * Monta o container novo sem gravar: reembrulha cada método presente, confere o
- * manifesto, reescreve todos os `.zke`/`.zka` e sela a v3. Devolve `null` quando
- * não há nada a migrar; credencial errada, arquivo adulterado ou falha de disco lançam.
- */
+/** Reembrulha os métodos, reescreve os registros e sela a v3; `null` se nada a migrar. */
 export async function buildMigratedContainer(
   container: VaultContainerData,
   vaultKey: Buffer,
@@ -151,10 +147,7 @@ export function persistMigratedContainer(container: VaultContainerData): void {
   vaultStorage.writeContainer(container);
 }
 
-/**
- * Um cofre já na v6 pode ter sobrado meio migrado pelo fluxo incremental antigo:
- * método embrulhado na v5 ou manifesto na v2. O aviso só aparece com a chave em mãos.
- */
+/** Cofre meio migrado pelo fluxo antigo: método v5 ou manifesto v2, com a chave em mãos. */
 export function hasLegacyFormat(
   container: VaultContainerData,
   vaultKey: Buffer,

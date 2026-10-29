@@ -168,8 +168,7 @@ export function AuthTokenModal({
               />
             </label>
             {uri.trim() !== '' && preview === null && (
-              // sem isto, colar um endereço pela metade e esperar o botão "Salvar"
-              // para descobrir que faltava o segredo é a única forma de saber
+              // Sem isto, o usuário só descobre o segredo faltando ao clicar em Salvar.
               <p role="alert" className="text-xs text-rose-400">
                 {richText(m.authenticator.uriInvalid)}
               </p>

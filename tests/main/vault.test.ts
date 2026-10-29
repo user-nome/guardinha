@@ -313,9 +313,7 @@ describe('ciclo de vida do cofre (integração)', () => {
   });
 
   it('11. cofre de outra versão recusa com mensagem que explica o caso', async () => {
-    // O formato do container é de uma versão só. Um cofre gravado por outra
-    // versão está inteiro e cifrado, então a tela precisa dizer isso: dizer
-    // "alterado fora do app" faz o usuário achar que perdeu os dados.
+    // O formato é de uma versão só: o cofre de outra versão está inteiro, não "alterado".
     const containerFile = path.join(process.env.GUARDINHA_VAULT_DIR ?? '', 'vault.zkv');
     const before = fs.readFileSync(containerFile);
 
@@ -347,9 +345,7 @@ describe('apaga a chave derivada de trabalho', () => {
     await setPanicPin({ pin: '74185236' });
     resetAttempts();
 
-    // PIN que não é o de pânico nem o real: o caminho de pânico deriva, falha
-    // ao desembrulhar e devolve o controle. O cofre de teste fica intacto, e o
-    // `finally` do `tryPanicUnlock` é o que se quer exercitar aqui.
+    // PIN que não é pânico nem real: o pânico deriva, falha ao desembrulhar e devolve o controle.
     const derivadas = capturarDerivadas('panic');
     const result = await unlock({ credential: '15975300', kind: 'pin' });
     await clearPanicPin();
@@ -552,8 +548,7 @@ describe('estado sem cofre na tela', () => {
   it('clearPanicPin devolve o status sem container, em vez de lançar', async () => {
     const leitura = vi.spyOn(vaultStorage, 'readContainer').mockReturnValue(null);
     try {
-      // não há container para apagar caminho de pânico, e a resposta é o status
-      // de sempre: sem `if (container !== null)`, o `delete` derrubaria a tela
+      // Sem container não há caminho de pânico para apagar, e a resposta é o status de sempre.
       await expect(clearPanicPin()).resolves.toMatchObject({ exists: true });
     } finally {
       leitura.mockRestore();
@@ -597,8 +592,7 @@ describe('a trava de redefinição de PIN bloqueia no último milissegundo', () 
 describe('frase de recuperação curta não paga Argon2id', () => {
   it('recusa antes de derivar quando a frase não tem o mínimo de palavras', async () => {
     resetAttempts();
-    // uma palavra de 14 caracteres: `split(' ')` conta 1 e recusa; `split('')`
-    // contaria 14 e passaria pela checagem de mínimo
+    // Uma palavra de 14 caracteres: `split(' ')` conta 1 e recusa; `split('')` contaria 14.
     const derive = vi.spyOn(keyUnwrapperFor('recovery'), 'derive');
     try {
       const result = await resetPin({ phrase: 'palavracomprida', newPin: NEW_PIN });

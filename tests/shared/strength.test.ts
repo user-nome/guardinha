@@ -153,15 +153,12 @@ describe('as faixas de bits da senha', () => {
   });
 
   it('só maiúsculas também conta como uma categoria só', () => {
-    // O contador soma um por classe de caractere. Se a classe das maiúsculas
-    // não contasse, uma senha só com maiúsculas passaria por "variada".
+    // O contador soma um por classe; sem as maiúsculas, uma senha só de maiúsculas passaria.
     expect(evaluatePassword('XKQMZVBW').reasons).toContain('fewKinds');
   });
 
   it('contar categorias erradas muda a nota de uma senha forte', () => {
-    // 12 caracteres em duas categorias dão 68,4 bits (forte). Se o contador de
-    // categorias subisse um a mais, a senha cairia para "razoável" por ter
-    // "poucas categorias", que é o oposto do que a régua quer dizer.
+    // 12 caracteres em duas categorias dão 68,4 bits; um a mais no contador derrubaria a nota.
     expect(evaluatePassword('XqZmVjKwErtYu')).toMatchObject({ score: 3, reasons: [] });
     expect(evaluatePassword('xqzmvjkw').reasons).toContain('fewKinds');
   });
@@ -169,9 +166,7 @@ describe('as faixas de bits da senha', () => {
 
 describe('bloco repetido: o que a suíte chama de degenerado', () => {
   it('acha o bloco de 2, de 3 e de 4 caracteres', () => {
-    // Os três casos caem em laços diferentes da busca: `size` começa em 2, o
-    // teto é `len / 2` e o bloco tem de caber inteiro. Perder qualquer uma das
-    // três bordas faz uma senha degenerada passar como senha comum.
+    // Os três casos caem em laços diferentes: `size` em 2, o teto `len / 2` e o bloco inteiro.
     for (const senha of ['abababab', 'abcabcab', 'abcdabcd']) {
       const r = evaluatePassword(senha);
       expect(r.blocked).toBe(true);
@@ -180,8 +175,7 @@ describe('bloco repetido: o que a suíte chama de degenerado', () => {
   });
 
   it('o nome de cada motivo é o que a tela mostra', () => {
-    // `sequence` e `lowVariety` são chaves de mensagem: trocá-las por uma string
-    // vazia deixa a tela sem explicação nenhuma da nota.
+    // `sequence` e `lowVariety` são chaves de mensagem: vazias, a tela fica sem explicação.
     expect(evaluatePassword('abcd').reasons).toContain('sequence');
     expect(evaluatePassword('abcdefgh').reasons).toContain('sequence');
     expect(evaluatePassword('xqzmvjxq').reasons).toContain('lowVariety');
@@ -190,9 +184,7 @@ describe('bloco repetido: o que a suíte chama de degenerado', () => {
 
 describe('o PIN e os degraus da régua curta', () => {
   it('quatro dígitos distintos dão exatamente 16 bits', () => {
-    // 8 × log2(4) = 16, que é o degrau entre "muito fraco" e "razoável". É o
-    // único ponto onde os dois degraus do PIN se tocam, então é o que fixa os
-    // dois limites ao mesmo tempo.
+    // 8 × log2(4) = 16 é o degrau entre "muito fraco" e "razoável", o único ponto que fixa os dois.
     expect(evaluatePin('13571357')).toMatchObject({ score: 1, level: 'weak' });
   });
 
@@ -202,8 +194,7 @@ describe('o PIN e os degraus da régua curta', () => {
   });
 
   it('a sequência de 8 dígitos vale 8 bits, não os 24 dos seus dígitos distintos', () => {
-    // O corte da sequência vale antes do cálculo: um PIN com oito dígitos
-    // distintos e em ordem é o PIN mais previsível que existe.
+    // O corte da sequência vale antes do cálculo: oito dígitos em ordem é o PIN mais previsível.
     expect(evaluatePin('12345678')).toMatchObject({
       score: 0,
       blocked: true,
@@ -212,8 +203,7 @@ describe('o PIN e os degraus da régua curta', () => {
   });
 
   it('três dígitos distintos não são bloco repetido', () => {
-    // O degrau é `distinct <= 2`: com três distintos o motivo é variedade
-    // baixa, e trocar o número trocaria o diagnóstico que o usuário lê.
+    // O degrau é `distinct <= 2`: com três distintos o motivo é variedade baixa.
     expect(evaluatePin('12312312').reasons).toEqual(['lowVariety']);
   });
 
@@ -227,8 +217,7 @@ describe('o PIN e os degraus da régua curta', () => {
   });
 
   it('o corte de data vale para o PIN que é data', () => {
-    // 4 dígitos distintos dão 16 bits, e a data derruba para 15: um a menos
-    // que o degrau. É o que separa "razoável" de "muito fraco" aqui.
+    // 4 dígitos distintos dão 16 bits e a data derruba para 15, o degrau entre as duas notas.
     expect(evaluatePin('12011999').score).toBe(0);
     expect(evaluatePin('12011999').reasons).toContain('dateLike');
   });
@@ -236,9 +225,7 @@ describe('o PIN e os degraus da régua curta', () => {
 
 describe('a data dentro de um PIN', () => {
   it('as bordas de ano, mês e dia continuam sendo data', () => {
-    // 1900 e 2099 são os anos que fecham a faixa plausível; mês 12 e dia 31 são
-    // as últimas bordas de mês e dia. Cada um destes PINs é data **exatamente**
-    // na borda, então estreitar qualquer um dos três corte o PIN.
+    // 1900, 2099, mês 12 e dia 31 são as bordas exatas: estreitar qualquer uma corta o PIN.
     expect(evaluatePin('01011900').reasons).toContain('dateLike');
     expect(evaluatePin('01012099').reasons).toContain('dateLike');
     expect(evaluatePin('12121999').reasons).toContain('dateLike');
@@ -246,23 +233,19 @@ describe('a data dentro de um PIN', () => {
   });
 
   it('dia 32 não é dia, e mês 13 não é mês', () => {
-    // A faixa é `day <= 31` e `month <= 12`: alargar uma delas transforma
-    // qualquer número em data e o app passa a acusar de data um PIN comum.
+    // A faixa é `day <= 31` e `month <= 12`: alargar transformaria qualquer número em data.
     expect(evaluatePin('32121999').reasons).not.toContain('dateLike');
     expect(evaluatePin('01131999').reasons).not.toContain('dateLike');
   });
 
   it('o recorte é DDMMAAAA, e também AAAA MMDD', () => {
-    // Duas formas aceitas, cada uma de um recorte diferente: em
-    // '12011999' o dia e o mês saem das duas primeiras duplas; em '19900112' só
-    // a segunda forma fecha. Um PIN de cada um pega as duas metades do `slice`.
+    // Duas formas aceitas: '12011999' usa as duas primeiras duplas; '19900112' só a segunda.
     expect(evaluatePin('12011999').reasons).toContain('dateLike');
     expect(evaluatePin('19900112').reasons).toContain('dateLike');
   });
 
   it('número com mais de oito dígitos não vira data', () => {
-    // A forma tem exatamente oito dígitos; sem isso, um ID de 10 dígitos com
-    // um ano plausível no começo seria lido como data de nascimento.
+    // A forma tem exatamente oito dígitos: um ID de 10 com ano plausível viraria data.
     expect(evaluatePin('1990010112').reasons).not.toContain('dateLike');
   });
 });
@@ -271,8 +254,7 @@ describe('a régua da frase de recuperação', () => {
   const palavras = (...w: string[]): string => w.join(' ');
 
   it('oito palavras distintas em doze não avisam nada', () => {
-    // O degrau é `unique < 8`: com oito distintas a frase já tem variedade
-    // de sobra, e avisar aqui faria o usuário trocar palavra à toa.
+    // O degrau é `unique < 8`: com oito distintas a frase já tem variedade de sobra.
     expect(
       evaluatePhrase(
         palavras(
@@ -315,10 +297,7 @@ describe('a régua da frase de recuperação', () => {
   });
 
   it('quatro palavras distintas em doze bloqueiam a frase', () => {
-    // `unique <= 4`: com quatro distintas a frase não carrega informação, e o
-    // piso de bloqueio é estrito de propósito.
-    // Quatro distintas, três repetições de cada: o piso `unique <= 4` é o que
-    // separa "frase fraca" de "frase recusada", e é fechado (`<=`).
+    // O piso `unique <= 4` é fechado: quatro distintas com repetição separam fraca de recusada.
     expect(
       evaluatePhrase(
         palavras(
@@ -362,8 +341,7 @@ describe('a régua da frase de recuperação', () => {
   });
 
   it('metade das palavras comuns derruba a nota para o degrau de cima', () => {
-    // Seis de doze palavras da lista comum: a frase continua válida, mas a
-    // nota é limitada, porque metade dela é adivinhável por dicionário.
+    // Seis de doze palavras da lista comum: a frase vale, mas metade é adivinhável por dicionário.
     expect(
       evaluatePhrase(
         palavras(
@@ -385,8 +363,7 @@ describe('a régua da frase de recuperação', () => {
   });
 
   it('cinco de doze palavras comuns ainda não contam como metade', () => {
-    // O degrau é `commonCount * 2 >= total`: cinco de doze é 10 contra 12, e
-    // essa diferença é o que separa "aviso" de "calado".
+    // O degrau é `commonCount * 2 >= total`: cinco de doze dá 10 contra 12, a borda do aviso.
     expect(
       evaluatePhrase(
         palavras(
@@ -408,16 +385,14 @@ describe('a régua da frase de recuperação', () => {
   });
 
   it('quatro palavras, todas comuns, avisam mesmo com a frase curta', () => {
-    // `total >= 4`: o piso existe para não gastar o nome do aviso numa frase de
-    // duas palavras, onde a contagem não diz nada.
+    // `total >= 4`: frase de duas palavras não gasta o nome do aviso.
     expect(evaluatePhrase(palavras('casa', 'bola', 'gato', 'livro')).reasons).toContain(
       'commonWord',
     );
   });
 
   it('palavra média de três letras exatos é o degrau das palavras curtas', () => {
-    // A média fecha em 3,0 e o corte é `<= 3`: é a única forma de estar
-    // exatamente na borda sem casos degenerados.
+    // A média fecha em 3,0 e o corte é `<= 3`: a única forma de estar na borda sem degenerar.
     expect(
       evaluatePhrase(
         palavras(
@@ -464,8 +439,7 @@ describe('a régua da frase de recuperação', () => {
   });
 
   it('os bits crescem com a variedade, não com o total de palavras', () => {
-    // 12 palavras todas distintas: 12 × 12,9 bits. Com cinco distintas e sete
-    // repetidas, o desconto das repetições tem de aparecer na nota.
+    // 12 palavras distintas dão 12 × 12,9 bits; cinco distintas e sete repetidas pagam o desconto.
     const distintas = evaluatePhrase(
       palavras(
         'zebra',

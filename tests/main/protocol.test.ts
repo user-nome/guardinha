@@ -33,9 +33,7 @@ describe('o scheme e a página do app', () => {
     delete process.env.ELECTRON_RENDERER_URL;
   });
 
-  // A declaração do scheme em si é conferida em `entrypoint.test.ts`, que lê a
-  // chamada do boot. Aqui o que importa é a página do app, que é a base das duas
-  // guardas.
+  // O scheme é conferido em `entrypoint.test.ts`; aqui importa a página, base das duas guardas.
 
   it('sem dev server, a página do app é a própria origem', () => {
     delete process.env.ELECTRON_RENDERER_URL;
@@ -43,8 +41,7 @@ describe('o scheme e a página do app', () => {
   });
 
   it('dev server vazio não vale como URL: cai na origem do app', () => {
-    // Variável presente e vazia é o caso em que o `process.env` devolve string
-    // vazia. Sem o teste de `!== ''`, o app tentaria carregar a URL vazia.
+    // Variável presente e vazia: sem o teste de `!== ''`, o app carregaria a URL vazia.
     process.env.ELECTRON_RENDERER_URL = '';
     expect(appPageUrl()).toBe(`${APP_ORIGIN}/index.html`);
   });
@@ -72,9 +69,7 @@ describe('a guarda de origem do IPC', () => {
   });
 
   it('recusa quando o protocolo é o do app mas o host não é', () => {
-    // A checagem é de esquema **e** host. Trocar o `&&` por `||` faria o
-    // protocolo do app bastar para passar, que é abrir o IPC para qualquer
-    // página servida sob `guardinha://`.
+    // A checagem é de esquema **e** host: com `||`, qualquer página sob `guardinha://` passaria.
     expect(() => assertAppFrame(frame('guardinha://atacante/index.html'))).toThrow();
   });
 
@@ -145,11 +140,7 @@ describe('o servidor de assets', () => {
   });
 
   it('recusa caminho que saia da raiz do renderer', async () => {
-    // A barreira de *path traversal*. O vetor que importa é o `..%2f`: o
-    // construtor de URL normaliza `..` puro, mas `%2f` sobrevive à
-    // normalização e só vira barra no `decodeURIComponent` do handler, que é
-    // justamente onde o escape acontece. O prefixo testado é `${root}${sep}`,
-    // e sem a barra o nome da própria pasta passaria.
+    // O vetor é o `..%2f`: sobrevive à normalização da URL e só vira barra no `decodeURIComponent`.
     for (const ataque of [
       '/assets/..%2f..%2f..%2fetc/passwd',
       '/..%2f..%2fetc/shadow',
@@ -174,10 +165,7 @@ describe('o servidor de assets', () => {
   });
 
   it('o 404 diz o que aconteceu, e não devolve corpo vazio', async () => {
-    // O corpo do 404 é o que aparece no DevTools e no log do Chromium quando o
-    // bundle não foi montado. Sem texto, a falha some e só sobra o status. A
-    // frase é de status do protocolo, em inglês e literal: quem lê é o
-    // carregador de asset, não a interface, então ela não vem do bundle.
+    // O corpo do 404 aparece no DevTools: frase literal em inglês, fora do bundle.
     existeSync.mockReturnValue(false);
     const resposta = pedir('/assets/faltando.js');
 
@@ -201,16 +189,12 @@ describe('os assets resolvidos no boot', () => {
   });
 
   it('o preload sai como .cjs, que é o que o Electron sandboxed executa', () => {
-    // `format: 'cjs'` está fixado em `electron.vite.config.mts` porque o preload
-    // roda sandboxed como script simples, sem loader ESM.
+    // `format: 'cjs'` está fixado no vite config: o preload roda sandboxed, sem loader ESM.
     expect(resolvePreloadScript()).toMatch(/index\.c[cm]?js$/);
   });
 
   it('o preload é procurado na pasta preload, irmã do main', () => {
-    // `path.join(__dirname, '../preload')`: resolver a partir de `__dirname`
-    // direto colocaria o bundle no mesmo diretório do main, que é onde o
-    // `electron-vite` não escreve nada, e a janela receberia um preload que não
-    // existe, silenciosamente.
+    // `path.join(__dirname, '../preload')` põe o bundle onde o `electron-vite` escreve, senão some.
     expect(path.basename(path.dirname(resolvePreloadScript()))).toBe('preload');
     expect(path.dirname(resolvePreloadScript())).not.toBe(path.dirname(path.dirname(__filename)));
   });

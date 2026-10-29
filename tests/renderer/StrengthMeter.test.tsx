@@ -52,15 +52,13 @@ describe('StrengthMeter', () => {
   });
 
   it('limita o score nas duas pontas, sem barra quebrada', () => {
-    // O `score` vem do cálculo de força; um valor fora de 0..4 não pode gerar
-    // segmento extra nem índice `undefined` na tabela de cores.
+    // Um `score` fora de 0..4 não pode gerar segmento extra nem índice `undefined`.
     expect(segments(renderMeter(result({ score: -3 }))).length).toBe(4);
     expect(segments(renderMeter(result({ score: 9 }))).length).toBe(4);
     expect(
       segments(renderMeter(result({ score: -3 }))).filter((c) => c.includes('bg-slate')).length,
     ).toBe(3);
-    // abaixo de zero a nota satura em 0, e o primeiro segmento recebe a cor da
-    // faixa mais fraca, não fica sem cor
+    // Abaixo de zero a nota satura em 0 e o primeiro segmento recebe a cor mais fraca.
     expect(segments(renderMeter(result({ score: -3 })))[0]).toContain('bg-rose-600');
     // acima de 4 satura em 4, com a cor da faixa mais forte
     expect(segments(renderMeter(result({ score: 9 })))[0]).toContain('bg-emerald-500');
@@ -119,8 +117,7 @@ describe('StrengthMeter', () => {
 
 describe('a linha de motivos é condicional de verdade', () => {
   it('sem motivo e sem dica, o componente não deixa nenhum parágrafo para trás', () => {
-    // A linha dos motivos só existe quando há motivo. Renderizá-la vazia
-    // deixaria um parágrafo sem texto na tela, que é o que o `> 0` evita.
+    // A linha dos motivos só existe quando há motivo: o `> 0` evita parágrafo vazio.
     const { container } = render(
       <MessagesProvider language="pt-BR">
         <StrengthMeter result={result({ score: 4, reasons: [] })} />
