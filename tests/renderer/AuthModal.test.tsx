@@ -7,12 +7,7 @@ import { installApi } from '../mocks/api.ts';
 import { LOCKED, NO_PANIC, UNLOCKED } from '../mocks/api.ts';
 import type { VaultStatus } from '@zero/types';
 
-/**
- * A tela de autenticação é onde moram as regras de acesso do cofre, e ela tem
- * quatro modos distintos: criar (credenciais e frase), desbloquear por PIN,
- * desbloquear por senha mestra e redefinir o PIN. Cada validação abaixo é uma
- * barreira: remover uma delas aqui é remover a barreira do app.
- */
+/** Quatro modos de acesso; cada validação aqui é uma barreira do app. */
 
 const MASTER = 'senha-mestra-guardinha24';
 const PIN = '49201733';

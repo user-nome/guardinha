@@ -7,10 +7,7 @@ import { MessagesProvider } from '@zero/renderer/i18n';
 import { installApi } from '../mocks/api.ts';
 import type { AuthToken, Credential } from '@zero/types';
 
-/**
- * Colunas de cartão por tela e por largura de janela: o jsdom não calcula
- * layout, então o teste trava a classe que decide.
- */
+/** O jsdom não calcula layout, então o teste trava a classe que decide as colunas. */
 
 const ENTRY: Credential = {
   id: 'id-github',

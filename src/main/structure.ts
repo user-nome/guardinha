@@ -18,20 +18,7 @@ export function tempPathFor(file: string): string {
   return `${file}.${randomBytes(8).toString('hex')}${TEMP_SUFFIX}`;
 }
 
-/**
- * Grava arquivo de segredo de forma atômica: temporário no mesmo diretório,
- * `rename` e `chmod` no destino.
- *
- * A sequência estava copiada em `storage.ts`, `entries-store.ts`,
- * `auth-store.ts` e `settings.ts`, e uma das cópias tinha perdido o `chmod`.
- * O `rename` já entrega um inode novo, com o modo do temporário, mas isso é
- * implícito demais para um arquivo que guarda segredo cifrado: o `chmod`
- * explícito é o que fecha a porta quando o destino já existia com permissão
- * frouxa, e é o que mantém as cópias iguais.
- *
- * O temporário usa nome aleatório e `flag: 'wx'` (`O_CREAT | O_EXCL`): um
- * symlink ou arquivo pré-existente no caminho falha em vez de ser seguido.
- */
+/** Escrita atômica: `.tmp` com `wx`, `rename` e `chmod` explícito no destino. */
 export function writeSecretFile(file: string, data: Buffer | string): void {
   const tmp = tempPathFor(file);
   fs.writeFileSync(tmp, data, { mode: SECRET_FILE_MODE, flag: 'wx' });
@@ -72,14 +59,7 @@ export function isVaultDirUnavailable(error: unknown): boolean {
   return error instanceof Error && error.message === currentMessages().errors.vaultDirUnavailable;
 }
 
-/**
- * Todo arquivo regular do cofre: pasta do container, `.entries` e `.auth`
- * juntas. Serve para o erasure e para a varredura de temporários órfãos, que
- * precisam ver o que existe de fato em vez do que o manifesto afirma.
- *
- * `.auth` entra na mesma lista de propósito: o Cryptographic Erase não pode
- * ter um diretório de arquivos que ele não apaga.
- */
+/** Todo arquivo regular do cofre, inclusive `.auth`, para o erase não esquecer pasta. */
 export function vaultFiles(): string[] {
   const files: string[] = [];
   for (const dir of [vaultDir(), entriesDir(), authDir()]) {

@@ -6,11 +6,7 @@ import { EntryModal } from '@zero/renderer/components/EntryModal';
 import { installApi } from '../mocks/api.ts';
 import type { Credential } from '@zero/types';
 
-/**
- * O modal de credencial tem dois caminhos dangerous: salvar e excluir. Excluir
- * pede confirmação dentro do próprio modal, e é essa dupla confirmação que
- * impede que um clique errado apague a senha de um serviço.
- */
+/** Salvar e excluir: a confirmação dentro do modal evita apagar por engano. */
 
 const EXISTING: Credential = {
   id: 'aaaaaaaa-1111-4111-8111-111111111111',

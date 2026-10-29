@@ -3,17 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ElectronMockModule from '../mocks/electron.ts';
 import type { ElectronApi } from '@zero/types';
 
-/**
- * O preload é a **única** ponte entre a interface e o processo main. Este teste
- * importa o módulo de verdade (ele se registra sozinho no `contextBridge`) e
- * confere, canal por canal, que cada método da fachada vira o `invoke` certo
- * com o payload certo. Um método trocado de canal aqui só apareceria em uso,
- * como um botão que não faz nada.
- *
- * `resetModules` recria o stub do `electron` junto, então o módulo do teste
- * precisa importar os dois na mesma volta: se o teste segurasse uma instância
- * do mock e o preload pegasse outra, todo assert leria `undefined`.
- */
+/** O preload é a única ponte com o main: confere canal e payload de cada método. */
 
 type ElectronMock = typeof ElectronMockModule;
 type VaultMethod = keyof ElectronApi['vault'];
@@ -74,6 +64,8 @@ describe('preload: montagem da ponte window.api', () => {
       'create',
       'destroy',
       'lock',
+      'migrate',
+      'migrationStatus',
       'onAutoLocked',
       'panicStatus',
       'resetPin',
@@ -97,6 +89,7 @@ describe('preload: canais do cofre', () => {
     ['destroy', 'vault:destroy'],
     ['clearPanicPin', 'vault:clear-panic-pin'],
     ['panicStatus', 'vault:panic-status'],
+    ['migrationStatus', 'vault:migration-status'],
   ] as const)('%s vai para %s', async (method, channel) => {
     await callVault(loaded.api, method);
     expect(loaded.last()[0]).toBe(channel);
@@ -108,6 +101,7 @@ describe('preload: canais do cofre', () => {
     ['resetPin', 'vault:resetPin'],
     ['setPanicPin', 'vault:set-panic-pin'],
     ['setNukeLimit', 'vault:set-nuke-limit'],
+    ['migrate', 'vault:migrate'],
   ] as const)('%s leva o payload para %s', async (method, channel) => {
     const payload = { sentinela: method };
     await callVault(loaded.api, method, payload);

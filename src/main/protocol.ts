@@ -77,25 +77,13 @@ export function registerAppProtocol(): void {
   });
 }
 
-/**
- * URL da página do app: o dev server do Vite em desenvolvimento, o scheme
- * `guardinha://` em produção. Fica em um lugar só porque a guarda de navegação
- * da janela e a guarda de origem do IPC precisam concordar com essa base: se
- * as duas resolvessem diferente, uma delas passaria a recusar o frame legítimo.
- */
+/** URL da página do app, a mesma base para a navegação e para a guarda do IPC. */
 export function appPageUrl(): string {
   const devUrl = process.env.ELECTRON_RENDERER_URL;
   return devUrl !== undefined && devUrl !== '' ? devUrl : `${APP_ORIGIN}/index.html`;
 }
 
-/**
- * O preload é emitido como `.cjs` (CommonJS) porque o Electron executa preload
- * **sandboxed** como script simples, sem loader ESM; `format: 'cjs'` está fixado
- * em `electron.vite.config.mts`. Resolve o que existir no bundle gerado.
- *
- * Mora aqui com o resto do I/O de asset do app: sondar o bundle é a mesma
- * pergunta que o servidor do scheme responde, e o `index.ts` não precisa de `fs`.
- */
+/** Sonda o preload `.cjs` no bundle; fica aqui para o `index.ts` não precisar de `fs`. */
 export function resolvePreloadScript(): string {
   const dir = path.join(__dirname, '../preload');
   const found = ['index.cjs', 'index.mjs', 'index.js']
@@ -110,11 +98,7 @@ export function resolveWindowIcon(): string | undefined {
   return fs.existsSync(iconPath) ? iconPath : undefined;
 }
 
-/**
- * Só aceita URL da página oficial do app: dev server do Vite em dev, ou o
- * scheme `guardinha://` em produção. Qualquer frame fora desse host (ex.: um
- * `<webview>` injetado) é bloqueado antes do handler de domínio rodar.
- */
+/** Só a URL do app: dev server em dev, `guardinha://` em produção. */
 function isAppFrameUrl(url: string | undefined): boolean {
   if (url === undefined) return false;
   try {
@@ -130,10 +114,7 @@ function isAppFrameUrl(url: string | undefined): boolean {
   }
 }
 
-/**
- * O pedaço do evento do IPC que a guarda precisa. A forma aninhada e opcional
- * é validada aqui para que a URL nunca seja lida de um frame desconhecido.
- */
+/** O pedaço do evento do IPC que a guarda valida antes de ler a URL. */
 interface FrameEmitter {
   senderFrame?: { url?: unknown } | null;
 }
@@ -144,14 +125,7 @@ function isFrameEmitter(value: unknown): value is FrameEmitter {
   return frame === undefined || frame === null || isRecord(frame);
 }
 
-/**
- * Recusa IPC cujo emissor não é a página oficial do app (scheme `guardinha://`
- * em produção ou dev server do Vite em dev). Requer `event.senderFrame`.
- *
- * A mensagem sai do bundle porque este erro **atravessa o IPC**: ele chega ao
- * renderer como `Error` rejeitado, igual aos outros, e o usuário pode estar
- * no idioma escolhido.
- */
+/** Recusa IPC de emissor que não é a página do app; a mensagem sai localizada. */
 export function assertAppFrame(event: unknown): void {
   const url = isFrameEmitter(event) ? event.senderFrame?.url : undefined;
   if (!isAppFrameUrl(typeof url === 'string' ? url : undefined)) {

@@ -1,5 +1,11 @@
 import { vi } from 'vitest';
-import type { AuthToken, ElectronApi, PanicStatus, VaultStatus } from '@zero/types';
+import type {
+  AuthToken,
+  ElectronApi,
+  PanicStatus,
+  VaultMigrationStatus,
+  VaultStatus,
+} from '@zero/types';
 
 export const UNLOCKED: VaultStatus = {
   exists: true,
@@ -13,10 +19,17 @@ export const LOCKED: VaultStatus = { ...UNLOCKED, locked: true };
 
 export const NO_PANIC: PanicStatus = { hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 };
 
-/**
- * Ouvintes que o renderer registrou em `vault.onAutoLocked`, para o teste
- * disparar o push que o main faria no auto lock.
- */
+/** Cofre já no formato atual: nenhum teste vê o aviso de migração sem pedir. */
+export const NO_MIGRATION: VaultMigrationStatus = {
+  needed: false,
+  fromVersion: 6,
+  toVersion: 6,
+  methods: [],
+  entries: 0,
+  authTokens: 0,
+};
+
+/** Ouvintes de `vault.onAutoLocked`, para o teste disparar o push do main. */
 export const autoLockedListeners: ((status: VaultStatus) => void)[] = [];
 
 /** Espia a chamada de cancelamento feita pelo renderer no cleanup do efeito. */
@@ -30,6 +43,7 @@ export function installApi(
     tokens?: AuthToken[];
     language?: 'pt-BR' | 'en';
     panic?: PanicStatus;
+    migration?: VaultMigrationStatus;
     backup?: ElectronApi['backup'];
   } = {},
 ): ElectronApi {
@@ -54,6 +68,8 @@ export function installApi(
       clearPanicPin: () => Promise.resolve(status),
       setNukeLimit: () => Promise.resolve({ ok: false, error: 'não usado', status }),
       panicStatus: () => Promise.resolve(overrides.panic ?? NO_PANIC),
+      migrationStatus: () => Promise.resolve(overrides.migration ?? NO_MIGRATION),
+      migrate: () => Promise.resolve({ ok: true, status }),
       onAutoLocked: vi.fn((listener: (status: VaultStatus) => void) => {
         autoLockedListeners.push(listener);
         return unsubscribeAutoLock;

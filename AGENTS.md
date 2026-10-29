@@ -56,10 +56,12 @@ Camadas:
   `root:root 0711` sem listagem (navegar/excluir o topo exige sudo) e, quando
   falta permissão, `createVault` chama o helper do pacote via `pkexec`
   (ação PolicyKit `com.guardinha.keypass.setup-vault`; diálogo do sistema: a
-  senha nunca passa pelo app). **Sem migração de formato**: o container tem uma
-  versão só (a 5), o layout de pastas tem um nome só (`.entries`, `.auth`) e a
-  extensão do payload de credencial tem uma só (`.zke`); os formatos
-  anteriores foram removidos enquanto o app ainda não tinha usuário. Raiz
+  senha nunca passa pelo app). **Migração só explícita**: o container tem uma
+  versão gravada (a 6) e a 5 só é lida pela migração oferecida no login
+  (`migration.ts` e `MigrationModal`), o layout de pastas tem um nome só
+  (`.entries`, `.auth`) e a extensão do payload de credencial tem uma só
+  (`.zke`); os formatos anteriores foram removidos enquanto o app ainda não
+  tinha usuário. Raiz
   sobrepõe com `GUARDINHA_VAR_LIB`, caminho completo com `GUARDINHA_VAULT_DIR`
   (testes; `npm run dev` usa `.dev-vault/`); configurações em
   `$XDG_CONFIG_HOME/guardinha/settings.json`.
@@ -223,7 +225,7 @@ Camadas:
 - Argon2id com custo por método de desbloqueio (PIN de 8 dígitos e PIN de
   pânico: 256 MB / t=4 / p=4; senha mestra e frase de recuperação: 128 MB /
   t=3 / p=4) e AES-256-GCM por arquivo: mudar parâmetros **não** exige migrar o
-  `vault.zkv` (hoje versão `5`, com o KDF de cada método dentro do container),
+  `vault.zkv` (hoje versão `6`, com o KDF de cada método dentro do container),
   porque cada método é reembrulhado com o custo atual no próprio desbloqueio, e
   isso só é possível para quem tem a credencial. As chaves derivadas por HKDF
   usam rótulo de domínio com sufixo `-v1`: trocar o rótulo invalida os arquivos

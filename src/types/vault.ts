@@ -50,6 +50,23 @@ export interface PanicPinInput {
   pin: string;
 }
 
+/** Métodos que precisam da credencial para migrar a chave para o formato atual. */
+export type MigrationMethod = 'master' | 'pin' | 'recovery';
+
+/** O que falta para o cofre estar no formato mais novo, para a tela de atualização. */
+export interface VaultMigrationStatus {
+  needed: boolean;
+  fromVersion: number;
+  toVersion: number;
+  /** Métodos presentes no container, na ordem em que a tela pede as credenciais. */
+  methods: MigrationMethod[];
+  entries: number;
+  authTokens: number;
+}
+
+/** Credenciais informadas no login para reembrulhar todos os métodos de uma vez. */
+export type VaultMigrationInput = Partial<Record<MigrationMethod, string>>;
+
 /** Estado da trava exponencial gravado no `vault.zkv`, repartido por `auth.ts` e `vault.ts`. */
 export interface PersistedAuthState {
   attempts: number;

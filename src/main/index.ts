@@ -2,9 +2,11 @@ import { Menu, app, BrowserWindow, dialog, ipcMain, session, shell } from 'elect
 import type { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import {
   createVault,
+  getMigrationStatus,
   getStatus,
   isVaultLockedError,
   lock,
+  migrateVault,
   panicDestroy,
   resetPin,
   setNukeLimit,
@@ -56,6 +58,7 @@ import type {
   PanicPinInput,
   ResetPinInput,
   UnlockInput,
+  VaultMigrationInput,
 } from '@zero/types';
 
 // o Electron exige o scheme declarado antes de ficar pronto, então roda no topo do módulo
@@ -207,6 +210,14 @@ function registerIpc(): void {
     assertAppFrame(event);
     return panicStatus();
   });
+  ipcMain.handle('vault:migration-status', (event) => {
+    assertAppFrame(event);
+    return getMigrationStatus();
+  });
+  ipcMain.handle('vault:migrate', (event, input: VaultMigrationInput) => {
+    assertAppFrame(event);
+    return migrateVault(input);
+  });
 
   /** Abre o domínio da credencial no navegador padrão (só http/https). */
   ipcMain.handle('shell:open-domain', (event, domain: string) => {
@@ -307,11 +318,7 @@ function removeApplicationMenu(): void {
   Menu.setApplicationMenu(null);
 }
 
-/**
- * Ouvinte do `ActivityMonitor` (Observer): o auto-lock zera a chave no main e
- * empurra o novo status para o renderer no mesmo instante (o renderer não
- * precisa esperar o polling de 15 s para voltar à tela de autenticação).
- */
+/** Observer do auto-lock: zera a chave e empurra o status, sem esperar o polling. */
 function registerActivityObserver(): void {
   activityMonitor.subscribe(() => {
     const status = lock();

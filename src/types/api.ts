@@ -10,6 +10,8 @@ import type {
   PanicStatus,
   ResetPinInput,
   UnlockInput,
+  VaultMigrationInput,
+  VaultMigrationStatus,
   VaultResult,
   VaultStatus,
 } from '@zero/types/vault';
@@ -33,6 +35,10 @@ export interface ElectronApi {
     setNukeLimit: (limit: number) => Promise<VaultResult>;
     /** Estado das proteções de pânico, para a interface montar o formulário. */
     panicStatus: () => Promise<PanicStatus>;
+    /** Diz se o cofre aberto ainda está no formato antigo e o que a migração vai tocar. */
+    migrationStatus: () => Promise<VaultMigrationStatus>;
+    /** Migra o cofre inteiro de uma vez, com as credenciais informadas no login. */
+    migrate: (input: VaultMigrationInput) => Promise<VaultResult>;
     /** Ouvinte do auto-lock (Observer); devolve a função que cancela. */
     onAutoLocked: (listener: (status: VaultStatus) => void) => () => void;
   };

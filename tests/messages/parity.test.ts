@@ -23,11 +23,7 @@ function leavesOf(bundle: object): Map<string, unknown> {
   return out;
 }
 
-/**
- * O bundle canônico é o pt-BR; os outros traduções. Cada um é conferido
- * separadamente, então traduzir `zh-CN` não pode quebrar o `ko`, e um bundle
- * novo entra na lista sem ninguém lembrar de estender o teste.
- */
+/** Cada bundle conferido sozinho: traduzir um não pode quebrar o outro. */
 const TRADUCOES: readonly Language[] = ['en', 'zh-CN', 'ko', 'ja'];
 
 describe('bundles de mensagens', () => {

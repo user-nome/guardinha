@@ -90,10 +90,7 @@ function ensureStructure(): void {
   }
 }
 
-/**
- * Empacota o cofre e grava no destino escolhido (pendrive). Devolve quantos
- * arquivos entraram e o tamanho do pacote, para a tela confirmar o que saiu.
- */
+/** Empacota o cofre no destino e devolve a contagem e o tamanho do pacote. */
 export function exportBackup(destination: string, appVersion: string): BackupResult {
   const segments = collectSegments();
   const packed = packBackup(segments, appVersion);
@@ -101,13 +98,7 @@ export function exportBackup(destination: string, appVersion: string): BackupRes
   return { path: destination, files: segments.length, bytes: packed.length };
 }
 
-/**
- * Substitui o cofre atual pelos arquivos do backup. O pacote é validado por
- * inteiro (magic, versão, digest global, SHA-256 de cada arquivo) e o
- * `vault.zkv` restaurado é conferido antes de qualquer escrita: um pacote
- * autofabricado com SHA-256 coerente não pode mais apagar o cofre atual para
- * gravar um container inválido.
- */
+/** Valida o pacote inteiro antes de escrever e confere o `vault.zkv` restaurado. */
 export function restoreBackup(source: string): RestoreResult {
   const opened = unpackBackup(readBackup(source));
   const container = opened.files.find((file) => file.path === 'vault.zkv');

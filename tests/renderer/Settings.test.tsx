@@ -9,11 +9,7 @@ function installPanic(panic: PanicStatus): void {
   installApi({ status: UNLOCKED, panic });
 }
 
-/**
- * Promessa que o teste resolve quando quiser. O estado `busy` só existe
- * enquanto o canal está em voo, então sem segurar a resposta não há como
- * observar o botão travado.
- */
+/** Promessa controlada pelo teste, para observar o botão travado durante o voo. */
 function pending<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let settle: ((value: T) => void) | undefined;
   const promise = new Promise<T>((resolve) => {

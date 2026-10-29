@@ -11,7 +11,7 @@ import {
   VAULT_VERSION,
 } from '@zero/main/container-format';
 import { currentMessages } from '@zero/main/i18n';
-import { containerBackupFile, containerFile } from '@zero/main/layout';
+import { containerFile } from '@zero/main/layout';
 import { isVaultDestroyed } from '@zero/main/erasure-state';
 import { ensureVaultStructure, writeSecretFile } from '@zero/main/structure';
 import { listAuthIds, hashAuth } from '@zero/main/auth-store';
@@ -64,17 +64,6 @@ export function writeVaultContainer(data: VaultContainerData): void {
   if (isVaultDestroyed()) return;
   ensureVaultStructure();
   writeSecretFile(containerFile(), packVaultContainer(data));
-}
-
-/** Cópia do container antes da primeira migração daquela versão: é o caminho de downgrade. */
-export function backupContainer(version: number): void {
-  const target = containerBackupFile(version);
-  if (fs.existsSync(target)) return;
-  const raw = fs.readFileSync(containerFile());
-  const unpacked = unpackVaultContainer(raw);
-  // arquivo mudou entre a leitura e a cópia: abortar a migração em vez de guardar outro
-  if (!unpacked.ok || unpacked.data.version !== version) throw tampered();
-  writeSecretFile(target, raw);
 }
 
 export function readAuthState(): PersistedAuthState {

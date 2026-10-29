@@ -5,10 +5,7 @@ import { SelectField } from '@zero/renderer/components/SelectField';
 import type { SelectOption } from '@zero/renderer/components/SelectField';
 import type { Language } from '@zero/types';
 
-/**
- * Seletor de idioma da barra lateral: o campo de escolha do formulário em
- * versão compacta, com os nomes traduzidos.
- */
+/** Seletor de idioma da barra lateral, com os nomes traduzidos. */
 
 interface LanguageSelectProps {
   language: Language;

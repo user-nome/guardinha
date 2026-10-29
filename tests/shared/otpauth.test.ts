@@ -60,12 +60,7 @@ function parametrosDe(uri: string): string[] {
   return [...new URLSearchParams(consulta).keys()];
 }
 
-/**
- * O segredo é decifrado de um Base32 efêmero só para conferir o tamanho mínimo,
- * e o buffer é zerado antes de a função voltar. O `fill(1)` silencioso deixaria
- * o segredo do usuário inteiro na memória até o GC, sem mudar nada no que a
- * função devolve: só a referência capturada denuncia.
- */
+/** O segredo Base32 é zerado antes de voltar; só a referência capturada denuncia. */
 describe('o segredo decifrado some da memória', () => {
   it('o buffer do Base32 é zerado depois da checagem de tamanho', () => {
     const vistas: Uint8Array[] = [];

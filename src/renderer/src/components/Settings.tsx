@@ -8,10 +8,7 @@ import { Page } from '@zero/renderer/components/Page';
 import { MAX_NUKE_LIMIT_INPUT } from '@zero/shared/auth-constants';
 import type { PanicStatus } from '@zero/types';
 
-/**
- * Proteções de pânico: PIN de coação e autodestruição por tentativas, só com o
- * cofre aberto; quem valida formato e piso é o main.
- */
+/** Proteções de pânico (PIN de coação e autodestruição), só com o cofre aberto. */
 export function Settings(): JSX.Element {
   const m = useMessages();
   const [panic, setPanic] = useState<PanicStatus | null>(null);

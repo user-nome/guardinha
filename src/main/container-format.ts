@@ -1,9 +1,6 @@
 import { IV_BYTES, SALT_BYTES, TAG_BYTES } from '@zero/main/crypto-constants';
 
-/**
- * Layout binário do `vault.zkv` e do `.zke`; mudar um valor muda o arquivo em disco.
- * Detalhes em docs/cofre.md.
- */
+/** Layout binário do `vault.zkv` e do `.zke`; mudar um valor muda o disco. */
 
 /** Magic do container: `ZKVAULT1`. */
 export const VAULT_MAGIC = Buffer.from('ZKVAULT1', 'ascii');

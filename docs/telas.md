@@ -15,6 +15,7 @@ Todo texto vem do contexto de idioma (`useMessages()`), nunca embutido no JSX.
 | `Home`              | Lista de credenciais com busca e ações                                  |
 | `EntryModal`        | Criar/editar credencial, com excluir quando é edição                    |
 | `AuthModal`         | Criação do cofre, desbloqueio e redefinição de PIN                      |
+| `MigrationModal`    | Aviso de atualização: pede as credenciais e migra o cofre de uma vez    |
 | `Generator`         | Senha aleatória com comprimento, gostos e entropia pessoal              |
 | `Authenticator`     | Códigos de 2FA dos tokens, com contagem e cópia                         |
 | `AuthTokenModal`    | Criar/editar token pelo endereço `otpauth://` ou pela chave Base32      |
@@ -155,6 +156,21 @@ Ao concluir, o cofre é criado já desbloqueado e o app entra na Home.
   Se as falhas zerarem, a aba some sozinha.
 - **Esqueci o PIN**: modo de redefinição, com a frase de recuperação, o PIN novo
   e a confirmação; é o único lugar onde a frase é usada.
+
+## Aviso de migração
+
+Depois de um desbloqueio, o App consulta `vault.migrationStatus()`. Se o cofre
+está num formato anterior, o `MigrationModal` abre por cima da Home e mostra a
+versão de origem, a de destino e a contagem do que será reescrito. Ele pede a
+senha mestra, o PIN e a frase de recuperação que existirem no container, sem
+medidor de força: aqui a credencial é prova de posse, não uma escolha nova. O
+botão de ação fica desabilitado até todos os campos estarem preenchidos.
+
+**Depois** fecha o aviso e deixa o cofre no formato antigo, ainda funcional; o
+aviso volta no próximo login. Credencial recusada mostra a mensagem daquele
+método sem dizer qual dos outros está certa, e nada é gravado. No sucesso, o
+App atualiza o status, fecha o modal e mostra o toast de migração concluída. O
+PIN de coação não aparece no formulário.
 
 ## Home
 

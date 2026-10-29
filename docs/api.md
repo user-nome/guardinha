@@ -20,18 +20,20 @@ credencial (`credenciais.md`).
 
 ## `window.api.vault`
 
-| Método                | Canal                   | Payload → retorno                | Descrição                                                                                                                 |
-| --------------------- | ----------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `status()`            | `vault:status`          | `→ VaultStatus`                  | `exists`, `locked`, `attempts`, `lockUntil`, `lockRemainingMs`.                                                           |
-| `create(input)`       | `vault:create`          | `CreateVaultInput → VaultResult` | Cria o cofre em `/var/lib/.guardinha/.vault/` com frase **escrita pelo usuário** (≥ 12 palavras); valida formato e força. |
-| `unlock(input)`       | `vault:unlock`          | `UnlockInput → VaultResult`      | Desbloqueia com `kind`: `master` \| `pin`; a **senha mestra só aparece após 3 falhas** de PIN.                            |
-| `resetPin(input)`     | `vault:resetPin`        | `ResetPinInput → VaultResult`    | Único uso da frase de recuperação: valida a frase e instala um novo PIN (abre o cofre).                                   |
-| `lock()`              | `vault:lock`            | `→ VaultStatus`                  | Zera a chave em memória, limpa o clipboard e bloqueia.                                                                    |
-| `destroy()`           | `vault:destroy`         | `→ VaultStatus`                  | Cryptographic Erase: zera a chave da RAM e sobrescreve e apaga o cofre. A confirmação em duas etapas mora no renderer.    |
-| `setPanicPin(input)`  | `vault:set-panic-pin`   | `PanicPinInput → VaultResult`    | Instala o PIN de coação (exige cofre desbloqueado). Recusa o PIN real e PIN previsível.                                   |
-| `clearPanicPin()`     | `vault:clear-panic-pin` | `→ VaultStatus`                  | Remove o caminho de pânico do container (exige cofre desbloqueado).                                                       |
-| `setNukeLimit(limit)` | `vault:set-nuke-limit`  | `number → VaultResult`           | Limite estrito de falhas da senha mestra que dispara o erase (exige cofre desbloqueado). `0` desliga; piso 50.            |
-| `panicStatus()`       | `vault:panic-status`    | `→ PanicStatus`                  | `hasPanicPin`, `nukeLimit` e `attemptsMaster`, para a tela de Configurações. Neutro enquanto o cofre está bloqueado.      |
+| Método                | Canal                    | Payload → retorno                   | Descrição                                                                                                                     |
+| --------------------- | ------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `status()`            | `vault:status`           | `→ VaultStatus`                     | `exists`, `locked`, `attempts`, `lockUntil`, `lockRemainingMs`.                                                               |
+| `create(input)`       | `vault:create`           | `CreateVaultInput → VaultResult`    | Cria o cofre em `/var/lib/.guardinha/.vault/` com frase **escrita pelo usuário** (≥ 12 palavras); valida formato e força.     |
+| `unlock(input)`       | `vault:unlock`           | `UnlockInput → VaultResult`         | Desbloqueia com `kind`: `master` \| `pin`; a **senha mestra só aparece após 3 falhas** de PIN.                                |
+| `resetPin(input)`     | `vault:resetPin`         | `ResetPinInput → VaultResult`       | Único uso da frase de recuperação: valida a frase e instala um novo PIN (abre o cofre).                                       |
+| `migrationStatus()`   | `vault:migration-status` | `→ VaultMigrationStatus`            | `needed`, versões de origem e destino, métodos presentes e contagem de credenciais e tokens. O App consulta após desbloquear. |
+| `migrate(input)`      | `vault:migrate`          | `VaultMigrationInput → VaultResult` | Migra o cofre de uma vez para a versão atual; exige as credenciais de todos os métodos do container e cofre desbloqueado.     |
+| `lock()`              | `vault:lock`             | `→ VaultStatus`                     | Zera a chave em memória, limpa o clipboard e bloqueia.                                                                        |
+| `destroy()`           | `vault:destroy`          | `→ VaultStatus`                     | Cryptographic Erase: zera a chave da RAM e sobrescreve e apaga o cofre. A confirmação em duas etapas mora no renderer.        |
+| `setPanicPin(input)`  | `vault:set-panic-pin`    | `PanicPinInput → VaultResult`       | Instala o PIN de coação (exige cofre desbloqueado). Recusa o PIN real e PIN previsível.                                       |
+| `clearPanicPin()`     | `vault:clear-panic-pin`  | `→ VaultStatus`                     | Remove o caminho de pânico do container (exige cofre desbloqueado).                                                           |
+| `setNukeLimit(limit)` | `vault:set-nuke-limit`   | `number → VaultResult`              | Limite estrito de falhas da senha mestra que dispara o erase (exige cofre desbloqueado). `0` desliga; piso 50.                |
+| `panicStatus()`       | `vault:panic-status`     | `→ PanicStatus`                     | `hasPanicPin`, `nukeLimit` e `attemptsMaster`, para a tela de Configurações. Neutro enquanto o cofre está bloqueado.          |
 
 Os canais de autodestruição (`vault:destroy`, `vault:set-panic-pin`,
 `vault:clear-panic-pin`, `vault:set-nuke-limit`) são **irreversíveis ou

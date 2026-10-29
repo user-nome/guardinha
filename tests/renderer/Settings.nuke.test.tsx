@@ -6,10 +6,7 @@ import { MessagesProvider } from '@zero/renderer/i18n';
 import { UNLOCKED, installApi } from '../mocks/api.ts';
 import type { PanicStatus, VaultResult } from '@zero/types';
 
-/**
- * Configurações: cada falha de canal das duas proteções destrutivas vira erro na
- * tela, nunca tela em branco.
- */
+/** Falha de canal nas proteções destrutivas vira erro na tela, nunca tela em branco. */
 
 function installPanic(panic: PanicStatus): void {
   installApi({ status: UNLOCKED, panic });
