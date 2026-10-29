@@ -1,7 +1,4 @@
-/**
- * Estado de destruição do cofre no processo: sem `fs` e sem importação, para
- * `storage.ts` e `erase.ts` lerem a mesma verdade sem ciclo.
- */
+/** Estado de destruição do cofre no processo, sem `fs`, para evitar ciclo. */
 let destroyed = false;
 
 export function isVaultDestroyed(): boolean {

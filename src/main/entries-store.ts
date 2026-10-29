@@ -14,12 +14,7 @@ import { SHRED_PASSES, shredFile } from '@zero/main/shred';
 import type { SaltedPayload } from '@zero/types/crypto';
 import type { TempCleanupResult } from '@zero/types';
 
-/**
- * Arquivos individuais das credenciais (`.entries/<uuid>.zke`). Saiu de
- * `storage.ts` para caber o erasure sem estourar o teto de linhas do
- * repositório: o container (`vault.zkv`), a trava e o manifesto ficam lá, e aqui
- * fica tudo que é um arquivo por credencial.
- */
+/** Arquivos de credencial (`.entries/<uuid>.zke`), um por credencial. */
 
 /** Extensão única de payload de credencial; o binário tem magic próprio. */
 const ENTRY_EXTENSION = 'zke';
@@ -28,11 +23,7 @@ function tampered(): Error {
   return new Error(currentMessages().errors.vaultTampered);
 }
 
-/**
- * Segunda camada contra path traversal (classe do CVE-2026-21589): o caminho
- * do arquivo só é montado a partir de id sem separador nem byte nulo, então
- * nenhum chamador consegue escapar de `.entries/` com `../`.
- */
+/** Anti path traversal: id sem separador nem byte nulo não escapa de `.entries/`. */
 function assertSafeEntryId(id: string): void {
   if (id === '' || id.includes('/') || id.includes('\\') || id.includes('\0')) {
     throw new Error(currentMessages().errors.invalidId);
@@ -79,24 +70,14 @@ export function writeEntryPayload(id: string, payload: SaltedPayload): void {
   writeSecretFile(entryFile(id), packEntryPayload(payload));
 }
 
-/**
- * Remove os arquivos da credencial com sobrescrita. Os `.zke` já são texto
- * cifrado e, sem a chave do cofre, são irrecuperáveis mesmo sem sobrescrita:
- * o shred aqui é higiene, não o controle principal (que é o Cryptographic Erase,
- * em `src/main/erase.ts`). O caminho chega sempre de `entryFile()`, nunca de
- * id cru, então o shred não vira rota alternativa para path traversal.
- */
+/** Shred é higiene: sem a chave, o `.zke` já é irrecuperável; o caminho vem de `entryFile`. */
 export function deleteEntry(id: string): void {
   assertSafeEntryId(id);
   const file = entryFile(id);
   if (fs.existsSync(file)) shredFile(file, SHRED_PASSES);
 }
 
-/**
- * Temporários órfãos: um `.tmp` deixado por um crash não é coberto pelo
- * manifesto (`listEntryIds` só lista `.zke`), então sobrevive sem ninguém notar. Os mais velhos que `maxAgeMs` são sobrescritos e apagados; os
- * mais novos são deixados intactos, porque podem ser de uma escrita em curso.
- */
+/** `.tmp` órfão não está no manifesto: os antigos são sobrescritos, os novos ficam. */
 export function cleanStaleTempFiles(maxAgeMs: number): TempCleanupResult {
   const cutoff = Date.now() - maxAgeMs;
   let removed = 0;

@@ -68,10 +68,7 @@ function warn(stage: string, error: unknown): void {
   );
 }
 
-/**
- * Prepara a migração sem deixar a falha escapar. Devolve o próprio container
- * quando não há nada a fazer ou quando a migração não foi possível.
- */
+/** Prepara a migração sem lançar; devolve o container original quando não dá. */
 export async function migrateContainerBestEffort(
   container: VaultContainerData,
   vaultKey: Buffer,
@@ -85,14 +82,7 @@ export async function migrateContainerBestEffort(
   }
 }
 
-/**
- * Grava o container migrado, criando o snapshot de downgrade antes.
- *
- * `requireBackup` separa os dois casos: no desbloqueio, sem snapshot não há
- * downgrade e a migração é abortada com o arquivo antigo intacto; na
- * redefinição de PIN, o novo PIN já foi embrulhado e precisa ser gravado mesmo
- * assim, então a falta de snapshot é só um aviso.
- */
+/** Grava o container migrado; no desbloqueio, sem snapshot não grava e aborta. */
 export function persistMigration(
   previous: VaultContainerData,
   next: VaultContainerData,
@@ -109,11 +99,7 @@ export function persistMigration(
   vaultStorage.writeContainer(next);
 }
 
-/**
- * Prepara e grava a migração. A função nunca lança: o desbloqueio já provou a
- * credencial e não pode ser derrubado por uma migração que é conveniência de
- * formato.
- */
+/** Prepara e grava; nunca lança, porque migração é conveniência de formato. */
 export async function migrateAndPersist(
   container: VaultContainerData,
   vaultKey: Buffer,

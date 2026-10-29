@@ -55,11 +55,7 @@ export function writeAuthPayload(id: string, payload: SaltedPayload): void {
   writeSecretFile(authFile(id), packEntryPayload(payload));
 }
 
-/**
- * Apaga o arquivo do token com sobrescrita. Como nas credenciais, o shred aqui
- * é higiene: o que realmente destroys o segredo TOTP é o Cryptographic Erase
- * (apagar o `vault.zkv` zera a chave), não a reescrita do arquivo.
- */
+/** Shred é higiene: o Cryptographic Erase é o que apaga o segredo TOTP de verdade. */
 export function deleteAuth(id: string): void {
   assertSafeAuthId(id);
   ensureVaultStructure();

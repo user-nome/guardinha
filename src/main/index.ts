@@ -307,11 +307,7 @@ function removeApplicationMenu(): void {
   Menu.setApplicationMenu(null);
 }
 
-/**
- * Ouvinte do `ActivityMonitor` (Observer): o auto-lock zera a chave no main e
- * empurra o novo status para o renderer no mesmo instante (o renderer não
- * precisa esperar o polling de 15 s para voltar à tela de autenticação).
- */
+/** Observer do auto-lock: zera a chave e empurra o status, sem esperar o polling. */
 function registerActivityObserver(): void {
   activityMonitor.subscribe(() => {
     const status = lock();

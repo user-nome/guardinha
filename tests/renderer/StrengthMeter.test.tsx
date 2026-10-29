@@ -5,12 +5,7 @@ import { StrengthMeter } from '@zero/renderer/components/StrengthMeter';
 import { evaluatePassword } from '@zero/shared';
 import type { StrengthResult } from '@zero/shared';
 
-/**
- * A barra de força é informativa: quem bloqueia é quem chama. Mesmo assim ela
- * tem decisões próprias (o `score` é limitado a 0..4, o primeiro segmento acende
- * sempre, e o motivo só aparece quando existe), e é o que o usuário lê para
- * entender por que o cofre recusou a senha.
- */
+/** A barra é informativa, mas tem regras próprias de `score` e de motivo. */
 
 function result(overrides: Partial<StrengthResult> = {}): StrengthResult {
   return { score: 0, level: 'veryWeak', blocked: false, reasons: [], ...overrides };

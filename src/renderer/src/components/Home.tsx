@@ -133,10 +133,7 @@ export function Home({ onToast }: HomeProps): JSX.Element {
           <p className="text-sm text-slate-400">{m.home.emptyFoundText}</p>
         </div>
       ) : (
-        /* A grade conta a largura da janela, e não o espaço que sobrou: uma
-           coluna quando o cartão não cabe com folga, duas e três conforme a
-           janela cresce. Cartão estreito demais (nome cortado no meio) é pior
-           que cartão em pilha. Ver `card-grid.ts`. */
+        /* Grade pela largura da janela; ver `card-grid.ts`. */
         <div className={CARD_GRID.compact}>
           {filtered.map((entry) => (
             <div

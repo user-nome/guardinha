@@ -414,13 +414,7 @@ afterAll(() => {
   vi.useRealTimers();
 });
 
-/**
- * Cryptographic Erase do segredo TOTP. O `fill(0)` é o que impede que os bytes
- * do segredo continuem num Buffer depois que o código foi calculado, e nenhum
- * dos dois tinha teste: a suíte conferia o código devolvido, que é o mesmo com
- * o segredo zerado ou com `0x01` no lugar. O segredo é capturado por referência
- * no `base32Decode`, então continua observável depois do `fill`.
- */
+/** O segredo TOTP é zerado depois do cálculo, capturado por referência. */
 describe('apaga o segredo TOTP da memória', () => {
   beforeAll(async () => {
     // o describe anterior já criou o cofre; `createVault` recusa recriar

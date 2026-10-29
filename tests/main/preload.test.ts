@@ -3,17 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ElectronMockModule from '../mocks/electron.ts';
 import type { ElectronApi } from '@zero/types';
 
-/**
- * O preload é a **única** ponte entre a interface e o processo main. Este teste
- * importa o módulo de verdade (ele se registra sozinho no `contextBridge`) e
- * confere, canal por canal, que cada método da fachada vira o `invoke` certo
- * com o payload certo. Um método trocado de canal aqui só apareceria em uso,
- * como um botão que não faz nada.
- *
- * `resetModules` recria o stub do `electron` junto, então o módulo do teste
- * precisa importar os dois na mesma volta: se o teste segurasse uma instância
- * do mock e o preload pegasse outra, todo assert leria `undefined`.
- */
+/** O preload é a única ponte com o main: confere canal e payload de cada método. */
 
 type ElectronMock = typeof ElectronMockModule;
 type VaultMethod = keyof ElectronApi['vault'];

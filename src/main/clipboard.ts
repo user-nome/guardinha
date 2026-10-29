@@ -1,10 +1,7 @@
 import { clipboard } from 'electron';
 import { CLEAR_CLIPBOARD_MS } from '@zero/shared/auth-constants';
 
-/**
- * Proxy do clipboard nativo: o main é o único a tocar `electron.clipboard`,
- * com expiração e limpeza automática.
- */
+/** Proxy do clipboard nativo, com expiração e limpeza automática. */
 export class SecureClipboardProxy {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private copied: string | null = null;

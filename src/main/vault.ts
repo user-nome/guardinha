@@ -101,11 +101,7 @@ export function requireSessionKey(): Buffer {
   return vaultSession().requireKey();
 }
 
-/**
- * true se o erro é "a sessão já foi zerada" e não outra falha de domínio.
- * Mesmo padrão de `isVaultDirUnavailable`: compara com a mensagem já
- * localizada, porque é ela que o `VaultSessionManager` lança.
- */
+/** Erro de "sessão já zerada", comparado pela mensagem já localizada. */
 export function isVaultLockedError(error: unknown): boolean {
   return error instanceof Error && error.message === currentMessages().errors.vaultLocked;
 }
@@ -198,14 +194,7 @@ async function createVaultNow(input: CreateVaultInput): Promise<VaultResult> {
   return { ok: true, status: getStatus() };
 }
 
-/**
- * Dois embrulhos são o mesmo blob? O container não autentica o papel de cada
- * método, então copiar o blob do PIN para o slot de pânico faria o PIN normal
- * destruir o cofre. A cópia literal mantém salt, IV, tag e texto cifrado
- * idênticos; um embrulho legítimo de pânico usa salt e IV aleatórios e nunca
- * colide. Um atacante que queira disfarçar a cópia precisaria reembrulhar a
- * chave real, o que exige a chave ou o PIN, já fora do modelo de ameaça.
- */
+/** Cópia literal de embrulho entre métodos faria o PIN normal destruir o cofre. */
 function sameWrappedMethod(a: WrappedMethod, b: WrappedMethod): boolean {
   return (
     a.kdfSalt === b.kdfSalt &&
@@ -216,13 +205,7 @@ function sameWrappedMethod(a: WrappedMethod, b: WrappedMethod): boolean {
   );
 }
 
-/**
- * A credencial abre este método? É a invariante "o PIN de pânico não pode ser
- * o PIN que abre o cofre", usada nas duas direções: `setPanicPin` recusa o PIN
- * real e `resetPin` recusa instalar o PIN de pânico como novo PIN. O custo é o
- * Argon2id do método, e o buffer derivado é zerado mesmo quando o desembrulho
- * falha.
- */
+/** O PIN de pânico não pode ser o PIN que abre o cofre, nas duas direções. */
 async function methodMatchesCredential(
   kind: 'pin' | 'panic',
   method: WrappedMethod | undefined,
@@ -242,23 +225,7 @@ async function methodMatchesCredential(
   }
 }
 
-/**
- * PIN de coação: um código alternativo que abre um cofre vazio enquanto
- * aciona o Cryptographic Erase.
- *
- * Deliberadamente **não** passa pela trava exponencial: quem está sob coação não
- * tem como esperar 24 h, e um PIN de pânico que só funciona fora da trava
- * seria inútil justamente na hora em que seria preciso. Isso é uma escolha
- * consciente, com o lado ruim anotado em `SECURITY.md`: o PIN de pânico é um
- * caminho que não conta tentativa, então ele nunca gera lockout por si só.
- *
- * E também **não** conta tentativa quando erra. Um PIN de pânico que somasse em
- * `attempts` denunciaria a existência de um segundo caminho justamente para quem
- * está testando o app sob coação. Ele paga a derivação do método panic, com o
- * mesmo custo do PIN; o tempo total do fluxo, porém, é maior para um PIN comum,
- * porque o pânico é tentado antes da cadeia normal. Esse risco conhecido está
- * registrado em `SECURITY.md`.
- */
+/** PIN de coação: abre um cofre vazio e apaga o real, sem trava nem contagem. */
 async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData): Promise<boolean> {
   const method = container.methods.panic;
   // só faz sentido para algo no formato de PIN: uma senha mestra de 24
@@ -288,11 +255,7 @@ async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData)
   }
 }
 
-/**
- * Desbloqueia o cofre com senha mestra ou PIN. A cadeia de manipuladores
- * (`src/main/unlock.ts`) decide: trava exponencial, formato, Argon2id e
- * integridade, nesta ordem de custo.
- */
+/** Desbloqueia pela cadeia de `unlock.ts`: trava, formato, Argon2id e integridade. */
 export function unlock(input: UnlockInput): Promise<VaultResult> {
   return exclusive(() => unlockNow(input));
 }
@@ -349,10 +312,7 @@ async function unlockNow(input: UnlockInput): Promise<VaultResult> {
   return { ok: true, status: getStatus() };
 }
 
-/**
- * Instala (ou troca) o PIN de coação. Exige cofre desbloqueado, porque sem a
- * chave do cofre não há como reembrulhar a decoy com o Argon2id certo.
- */
+/** Instala o PIN de coação; exige cofre aberto para reembrulhar a chave decoy. */
 export function setPanicPin(input: PanicPinInput): Promise<VaultResult> {
   return exclusive(() => setPanicPinNow(input));
 }
@@ -400,13 +360,7 @@ export function hasPanicPin(): boolean {
   return container?.methods.panic !== undefined;
 }
 
-/**
- * Estado das proteções de pânico, para a interface montar o formulário.
- *
- * Bloqueado, a resposta é neutra: revelar que existe um segundo caminho de
- * desbloqueio para quem ainda não provou a credencial entregaria justamente a
- * informação que o PIN de coação esconde.
- */
+/** Estado do pânico; bloqueado, a resposta é neutra para não revelar o caminho. */
 export function panicStatus(): PanicStatus {
   if (!vaultSession().isUnlocked()) {
     return { hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 };
@@ -419,13 +373,7 @@ export function panicStatus(): PanicStatus {
   };
 }
 
-/**
- * Limite estrito de tentativas da senha mestra que dispara o Cryptographic
- * Erase. `0` desliga, e é o padrão: apagar o cofre por contagem é uma lâmina sem
- * ponta para o usuário, porque cinco erros de digitação levariam à perda
- * definitiva (a frase de recuperação não salva, já que o arquivo que a
- * embrulha foi apagado). Quem liga, liga sabendo; ver `SECURITY.md`.
- */
+/** Limite de tentativas da senha mestra que apaga o cofre; `0` desliga. */
 export function setNukeLimit(limit: number): Promise<VaultResult> {
   return exclusive(() => setNukeLimitNow(limit));
 }
@@ -452,10 +400,7 @@ function setNukeLimitNow(limit: number): VaultResult {
   return { ok: true, status: getStatus() };
 }
 
-/**
- * Redefine o PIN provando posse da frase de recuperação (único uso da frase).
- * Em caso de sucesso o cofre já sai desbloqueado com o novo PIN.
- */
+/** Redefine o PIN pela frase de recuperação; sai desbloqueado com o novo PIN. */
 export function resetPin(input: ResetPinInput): Promise<VaultResult> {
   return exclusive(() => resetPinNow(input));
 }

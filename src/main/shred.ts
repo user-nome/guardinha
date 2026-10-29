@@ -3,10 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SHRED_PASSES, MAX_SHRED_PASSES, SHRED_BLOCK_BYTES } from '@zero/shared/auth-constants';
 
-/**
- * Sobrescrita de arquivo antes do `unlink`; recebe caminho já validado e não conhece o cofre.
- * Detalhes em docs/cofre.md.
- */
+/** Sobrescreve antes do `unlink`; caminho já validado, sem conhecer o cofre. */
 
 /** Passadas por padrão: 3, o mesmo padrão do `shred(1)`. */
 export { SHRED_PASSES };

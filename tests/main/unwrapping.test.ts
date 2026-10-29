@@ -149,18 +149,7 @@ describe('perfis de KDF por método de desbloqueio', () => {
   });
 });
 
-/**
- * Cryptographic Erase da chave de embrulho. O `fill(0)` depois de cifrar o
- * registro é o que impede que a chave derivada do Argon2id fique viva na pilha
- * depois de `wrap`, e nada a observava: o resultado do `wrap` é idêntico com a
- * chave zerada ou com `0x01` no lugar.
- *
- * A chave é capturada no `hkdfSync` porque é por ali que ela entra no cofre:
- * `encryptRecord` a recebe como `vaultKey` e deriva o registro a partir dela.
- * O Buffer é capturado **por referência**, como em `tests/main/crypto.test.ts`:
- * só a referência continua apontando para o mesmo objeto depois do `fill`, e é
- * esse objeto que precisa estar zerado quando o `wrap` termina.
- */
+/** A chave de embrulho é zerada depois de `wrap`, capturada por referência. */
 describe('apaga a chave de embrulho depois de envolver', () => {
   it('a chave usada para cifrar o registro não sobrevive ao wrap', async () => {
     const vistas: Buffer[] = [];

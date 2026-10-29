@@ -21,10 +21,7 @@ import {
 import type { OtpAlgorithm } from '@zero/shared';
 import type { AuthToken, AuthTokenDraft } from '@zero/types';
 
-/**
- * Formulário de token de 2FA por `otpauth://` ou por campos manuais, validado
- * com o mesmo `parseOtpAuthUri` do main.
- */
+/** Formulário de token de 2FA por `otpauth://` ou por campos manuais. */
 
 interface AuthTokenModalProps {
   /** `null` cria um token novo. */

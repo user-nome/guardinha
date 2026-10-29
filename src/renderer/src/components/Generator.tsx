@@ -133,11 +133,7 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
 
   const checkedCount = toggles.filter((toggle) => toggle.checked).length;
 
-  /**
-   * O conjunto de caracteres da senha é só o que está marcado, então desligar a
-   * última categoria deixaria o gerador sem o que sortear. A última ligada fica
-   * ligada: para trocar tudo de vez, o usuário desliga uma e liga outra.
-   */
+  /** A última categoria ligada não desliga, para o gerador nunca ficar sem conjunto. */
   const handleToggle = (
     set: (value: boolean) => void,
     setCount: (value: number) => void,

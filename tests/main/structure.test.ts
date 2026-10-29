@@ -143,11 +143,7 @@ describe('writeSecretFile', () => {
   });
 });
 
-/**
- * O modo com que as pastas nascem. O `chmodSync` logo depois reafirma 0700, o
- * que faz o modo final não separar as duas versões da constante; é o modo
- * *pedido* ao `ensureDirSync`, que cria a pasta, que precisa ficar fixado.
- */
+/** O modo pedido ao `ensureDirSync`, antes do `chmodSync` reafirmar 0700. */
 describe('ensureVaultStructure', () => {
   it('cria cada pasta em 0700, e não em 0701', () => {
     // 0701 deixa a pasta atravessável por qualquer usuário da máquina, e a

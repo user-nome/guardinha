@@ -1,9 +1,6 @@
 import type { Messages } from '@zero/messages/pt-BR';
 
-/**
- * 日本語; `pt-BR` é o canônico e o TypeScript confere a forma do objeto.
- * Nomes de marca, caminhos e identificadores técnicos não se traduzem.
- */
+/** 日本語; `pt-BR` é o canônico e o TypeScript confere a forma do objeto. */
 export const ja: Messages = {
   common: {
     close: '閉じる',

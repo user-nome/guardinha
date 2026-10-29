@@ -13,10 +13,7 @@ export const LOCKED: VaultStatus = { ...UNLOCKED, locked: true };
 
 export const NO_PANIC: PanicStatus = { hasPanicPin: false, nukeLimit: 0, attemptsMaster: 0 };
 
-/**
- * Ouvintes que o renderer registrou em `vault.onAutoLocked`, para o teste
- * disparar o push que o main faria no auto lock.
- */
+/** Ouvintes de `vault.onAutoLocked`, para o teste disparar o push do main. */
 export const autoLockedListeners: ((status: VaultStatus) => void)[] = [];
 
 /** Espia a chamada de cancelamento feita pelo renderer no cleanup do efeito. */

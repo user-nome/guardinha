@@ -1,16 +1,8 @@
 import path from 'node:path';
 
-/**
- * Onde o cofre mora. Só resolve caminhos: nenhum I/O, nenhuma dependência de
- * Electron, para que `storage.ts`, o armazenamento das entradas e a rotina de
- * erasure concordem sobre o mesmo lugar sem repetir a árvore de diretórios.
- */
+/** Onde o cofre mora: só resolve caminhos, sem I/O nem Electron. */
 
-/**
- * Raiz do cofre: `/var/lib/.guardinha/.vault`, pastas ocultas por padrão
- * (fora de `~/`, sobrevive à limpeza da pasta do usuário). `GUARDINHA_VAR_LIB`
- * redireciona a raiz e `GUARDINHA_VAULT_DIR` sobrepõe o caminho completo (testes/dev).
- */
+/** Raiz do cofre; `GUARDINHA_VAR_LIB` e `GUARDINHA_VAULT_DIR` redirecionam (testes/dev). */
 export function vaultDir(): string {
   const override = process.env.GUARDINHA_VAULT_DIR;
   if (override !== undefined && override !== '') return override;
@@ -23,18 +15,7 @@ export function entriesDir(): string {
   return path.join(vaultDir(), '.entries');
 }
 
-/**
- * Tokens de 2FA, uma pasta própria dentro do cofre e um arquivo cifrado por
- * token (`.auth/<uuid>.zka`), no mesmo formato dos `.zke` das credenciais.
- *
- * Fica **dentro** de `.vault` por um motivo prático: a raiz
- * `/var/lib/.guardinha/` é do sistema (`root:root 0711`, criada no `postinst`) e
- * o Cryptographic Erase não pode mexer nela. Dentro de `.vault` o token entra
- * na mesma varredura que a credencial, então a autodestruição alcança os dois
- * sem nenhum caminho novo capaz de esquecer um deles. Um segredo TOTP que
- * sobrevive ao Cryptographic Erase é uma senha de servidor
- * que sobrevive a ele.
- */
+/** Tokens de 2FA dentro de `.vault`, para o erase alcançar junto com as credenciais. */
 export function authDir(): string {
   return path.join(vaultDir(), '.auth');
 }
@@ -44,11 +25,7 @@ export function containerFile(): string {
   return path.join(vaultDir(), 'vault.zkv');
 }
 
-/**
- * Snapshot do container na versão anterior à migração, guardado para o
- * downgrade. O nome carrega a versão para que uma migração futura não
- * sobrescreva o caminho de volta da mais antiga.
- */
+/** Snapshot de downgrade da versão anterior; o nome carrega a versão. */
 export function containerBackupFile(version: number): string {
   return path.join(vaultDir(), `vault.zkv.v${version}.bak`);
 }

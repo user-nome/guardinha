@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["module"]
+    "types": ["node"]
   },
   "include": [
     "electron.vite.config.mts",
