@@ -84,16 +84,14 @@ describe('ActivityMonitor (Observer)', () => {
     expect(second).toHaveBeenCalledWith('idle-timeout');
   });
 
-  // `clearTimeout(null)` é no-op no Node: o descuido de cancelar sem temporizador
-  // pendente só aparece na própria chamada.
+  // `clearTimeout(null)` é no-op no Node: cancelar sem temporizador só aparece na chamada.
   it('touch rearmado cancela o temporizador anterior com um valor de verdade', () => {
     const clear = vi.spyOn(globalThis, 'clearTimeout');
 
     monitor.touch();
     monitor.touch();
 
-    // uma vez só (o segundo `touch` cancela o temporizador do primeiro) e nunca
-    // com `null`
+    // uma vez só (o segundo `touch` cancela o temporizador do primeiro) e nunca com `null`
     expect(clear).toHaveBeenCalledTimes(1);
     expect(clear.mock.calls[0]?.[0]).not.toBeNull();
   });
@@ -122,8 +120,7 @@ describe('ActivityMonitor (Observer)', () => {
 
 describe('período ocioso do cofre', () => {
   it('é de 2 minutos, como manda AGENTS.md', () => {
-    // O temporizador usa relógio falso, então qualquer valor serviria nos testes
-    // acima: sem esta afirmação, trocar 2 por 30 passaria a suíte inteira.
+    // O temporizador usa relógio falso; sem esta afirmação, trocar 2 por 30 passaria.
     expect(IDLE_LOCK_MS).toBe(2 * 60 * 1000);
   });
 });

@@ -155,9 +155,7 @@ describe('container do cofre (vault.zkv)', () => {
   });
 
   it('lê a v5 para migrar e grava a versão que o container declara', () => {
-    // a v5 tem o mesmo layout; o que muda é o embrulho dos métodos e o
-    // manifesto. A gravação incidental precisa preservar a versão lida, senão
-    // uma tentativa de PIN promoveria o arquivo sem migrar nada.
+    // A v5 tem o mesmo layout: a gravação incidental preserva a versão lida, sem promover nada.
     const legacy: VaultContainerData = { ...sampleContainer(), version: 5 };
     const bytes = packVaultContainer(legacy);
     expect(bytes.readUInt32BE(8)).toBe(5);
@@ -173,8 +171,7 @@ describe('container do cofre (vault.zkv)', () => {
   });
 
   it('cada método guarda o seu próprio custo de Argon2id', () => {
-    // o motivo de o tripo global ter saído do cabeçalho: o PIN é 256 MiB e a
-    // senha mestra 128 MiB, e um único campo não representaria os dois
+    // O digest global saiu do cabeçalho: PIN e senha mestra têm custos diferentes.
     const restored = packed(sampleContainer());
     expect(restored.methods.master?.kdf).toEqual(KDF_MASTER);
     expect(restored.methods.pin?.kdf).toEqual(KDF_PIN);
@@ -248,8 +245,7 @@ describe('container do cofre (vault.zkv)', () => {
   });
 
   it('distingue cofre de outra versão de arquivo danificado', () => {
-    // o motivo importa na tela: um cofre de outra versão está inteiro e cifrado,
-    // e dizer "alterado fora do app" faz o usuário achar que perdeu os dados
+    // O motivo importa: um cofre de outra versão está inteiro, não "alterado fora do app".
     const packedBytes = packVaultContainer(sampleContainer());
 
     const otherVersion = Buffer.from(packedBytes);
@@ -290,9 +286,7 @@ describe('container do cofre (vault.zkv)', () => {
   });
 
   it('aceita um cofre só com PIN, sem inventar método de master', () => {
-    // O byte de flags começa zerado. Se ele já nascesse com o bit do master
-    // ligado, o leitor tentaria abrir um método que não existe antes do PIN e
-    // recusaria um cofre perfeitamente válido.
+    // O byte de flags nasce zerado; com o bit do master ligado, um cofre válido seria recusado.
     const data = sampleContainer();
     delete data.methods.master;
     const restored = packed(data);
@@ -354,9 +348,7 @@ describe('payload de entrada (.zke)', () => {
   });
 
   it('roundtrip de um payload sem texto cifrado, que ocupa só o cabeçalho', () => {
-    // `ctLen = 0` é um tamanho legal: o `.zke` tem 60 bytes de cabeçalho e nada
-    // depois. A guarda de tamanho é `<`, então esse arquivo é aceito, e é assim
-    // que o reader sabe a diferença entre "vazio" e "cortado no meio".
+    // `ctLen = 0` é legal: a guarda é `<`, então o reader separa "vazio" de "cortado no meio".
     const payload = {
       salt: 'aa'.repeat(16),
       iv: 'bb'.repeat(16),
@@ -398,9 +390,7 @@ describe('manifesto de integridade', () => {
   });
 
   it('lê o manifesto v2 da v5 e devolve hashes vazios', () => {
-    // o `v` mora dentro do blob cifrado: a v2 é lida para a migração, mas não
-    // promete hash nenhum, então o mapa sai vazio e a conferência de conteúdo
-    // fica para depois de a v3 ser selada
+    // O `v` mora no blob cifrado: a v2 sai com mapa vazio e a conferência fica para a v3.
     const key = randomBytes(32);
     const old = encryptRecord({ v: 2, ids: IDS, authIds: [] }, key);
     expect(openManifest(key, old)).toEqual({
@@ -445,8 +435,7 @@ describe('manifesto de integridade', () => {
   });
 
   it('falha quando o mapa de hashes tem valor que não é SHA-256', () => {
-    // P6: o hash é o que prende o conteúdo; aceitar formato livre daria ao
-    // manifesto uma promessa que a verificação não consegue cumprir
+    // P6: o hash prende o conteúdo; formato livre prometeria o que a verificação não cumpre.
     const key = randomBytes(32);
     const broken = encryptRecord(
       {
@@ -484,8 +473,7 @@ describe('manifesto de integridade', () => {
 });
 
 describe('leitura fail-closed de buffer truncado', () => {
-  // Um container pela metade não pode virar "cofre válido": o caminho de
-  // leitura precisa recusar, senão o app abre um cofre sem chave embrulhada.
+  // Container pela metade não pode virar cofre válido: a leitura recusa antes de abrir.
   const damaged = (buffer: Buffer): VaultUnpackResult => unpackVaultContainer(buffer);
 
   it('recusa buffer menor que o cabeçalho', () => {
@@ -521,14 +509,7 @@ describe('leitura fail-closed de buffer truncado', () => {
   });
 
   it('recusa em qualquer corte, e não só nos tamanhos redondos', () => {
-    // Cortar em frações bonitas passa por fora da guarda que importa. O que
-    // fecha o `readBlob` é o tamanho **declarado** do texto ser maior que o que
-    // sobrou, e isso só acontece num corte qualquer, entre o fim do cabeçalho e
-    // o fim do texto. Varrer todos os cortes pega essa janela; as frações não.
-    //
-    // O motivo também é conferido em cada corte: a tela differentiate "cofre de
-    // outra versão" de "arquivo danificado", então uma recusa sem nome algum é
-    // um mutante que sobrevive.
+    // Varrer todos os cortes pega o corte no meio; o motivo também é conferido em cada um.
     const payload = encryptRecord({ title: 'GitHub' }, randomBytes(32));
     const packed = packEntryPayload(payload);
     for (let cut = 1; cut < packed.length; cut++) {
@@ -542,9 +523,7 @@ describe('leitura fail-closed de buffer truncado', () => {
   });
 
   it('aceita um blob de tamanho zero que fecha exatamente o arquivo', () => {
-    // Guarda de `readBlob`: o cabeçalho do blob tem 52 bytes e pode ser a última
-    // coisa do arquivo, com `ctLen = 0`. O corte é `>`, não `>=`: um arquivo que
-    // termina exatamente no fim do cabeçalho é um blob vazio, não truncamento.
+    // O cabeçalho do blob tem 52 bytes e o corte é `>`: blob vazio no fim do arquivo é legal.
     const data = sampleContainer();
     const packed = packVaultContainer(data);
     const manifestAt = manifestOffset(data);
@@ -566,8 +545,7 @@ describe('leitura fail-closed de buffer truncado', () => {
 
 describe('flags do container', () => {
   it('não liga o bit de um método que o cofre não tem', () => {
-    // O byte de flags começa zerado e cada método liga o seu bit: um bit ligado
-    // a mais diria ao leitor para ler KDF e payload onde não há nada.
+    // O byte de flags nasce zerado; um bit a mais mandaria ler KDF e payload onde não há nada.
     const without = sampleContainer();
     delete without.methods.recovery;
     const packed = packVaultContainer(without);
@@ -593,9 +571,7 @@ describe('flags do container', () => {
 
 describe('tamanho em disco do container', () => {
   it('mede o payload em bytes, não em caracteres hex', () => {
-    // `encryptedData` é hex, então o tamanho gravado tem que contar os bytes
-    // depois do `Buffer.from`. Contar os caracteres deixa o arquivo maior que o
-    // necessário e o leitor perde o alinhamento dos blocos seguintes.
+    // `encryptedData` é hex: contar os bytes, não os caracteres, mantém o alinhamento dos blocos.
     const data = sampleContainer();
     const packed = packVaultContainer(data);
     const read = unpackVaultContainer(packed);
@@ -625,8 +601,7 @@ describe('recusa do manifesto pela mensagem', () => {
   });
 
   it('nomeia o motivo quando a lista de ids é inválida, a versão é desconhecida ou a de tokens é inválida', () => {
-    // Três `throw` com o mesmo texto: sem conferir a mensagem, trocar a string
-    // passaria, e o usuário veria um erro sem dizer o que houve.
+    // Três `throw` com o mesmo texto: sem conferir a mensagem, o usuário vê erro sem explicação.
     const key = randomBytes(32);
 
     expect(() =>
@@ -654,10 +629,7 @@ describe('recusa do manifesto pela mensagem', () => {
   });
 
   it('recusa um manifesto gravado com a versão seguinte', () => {
-    // O teste acima só prova que o par escreve e lê a mesma versão. Este é o
-    // outro lado do contrato: um manifesto selado com 4 (o número que a próxima
-    // versão usaria) tem de ser recusado, senão subir a versão abriria em silêncio
-    // os arquivos que a versão de hoje gravou.
+    // O outro lado: manifesto selado com 4 tem de ser recusado, senão subir a versão abriria tudo.
     const key = randomBytes(32);
     const future = encryptRecord({ v: 4, ids: IDS, authIds: [], ...HASHES }, key);
     expect(() => openManifest(key, future)).toThrow('Manifesto de integridade inválido.');

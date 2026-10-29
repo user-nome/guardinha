@@ -34,8 +34,7 @@ export function Generator({ onToast }: GeneratorProps): JSX.Element {
   const [useSymbols, setUseSymbols] = useState(true);
   const [countSymbols, setCountSymbols] = useState(0);
 
-  // As palavras são usadas como personalização; só entram literalmente com
-  // consentimento explícito do usuário.
+  // Palavras pessoais só entram literalmente com consentimento explícito.
   const [customWords, setCustomWords] = useState<string[]>(
     Array.from({ length: MAX_CUSTOM_WORDS }, () => ''),
   );

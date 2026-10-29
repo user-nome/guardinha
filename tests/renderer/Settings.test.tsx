@@ -278,8 +278,7 @@ describe('Configurações: estados de envio', () => {
     await user.type(screen.getByLabelText(/Repita o PIN de coação/i), '73910456');
     await user.click(screen.getByRole('button', { name: /Definir PIN de coação/i }));
 
-    // o main ainda não reporta PIN instalado, então o formulário fica; mesmo
-    // assim a visibilidade volta ao padrão e o PIN digitado não fica à mostra
+    // Sem PIN reportado o formulário fica, mas a visibilidade volta ao padrão e o PIN some da tela.
     await waitFor(() => {
       expect(screen.getByLabelText(/PIN de coação \(8 dígitos\)/i)).toHaveAttribute(
         'type',

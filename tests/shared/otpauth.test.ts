@@ -123,8 +123,7 @@ describe('parseOtpAuthUri', () => {
   });
 
   it('toma o emissor do prefixo do rótulo quando não vem o parâmetro', () => {
-    // é o que o Google Authenticator antigo faz, e o motivo de o formato
-    // pedir os dois em concordância
+    // É o que o Google Authenticator antigo faz: o formato pede os dois em concordância.
     expect(parseOtpAuthUri(`otpauth://totp/Discord:morgan#4321?secret=${STRONG_SECRET}`)).toEqual({
       issuer: 'Discord',
       account: 'morgan#4321',
@@ -165,10 +164,7 @@ describe('parseOtpAuthUri', () => {
   });
 
   it('recusa o URI sem a barra que separa o tipo do rótulo', () => {
-    // `otpauth://totpx?...` não tem rótulo nenhum: o que vem depois de `totp`
-    // sem barra não é um tipo, é o começo de um rótulo que não existe. Se o
-    // tipo fosse lido com o corte trocado, o `totpx` passaria por `totp` e o
-    // token inteiro nasceria de uma URI que ninguém emitiu.
+    // `otpauth://totpx?...` não tem rótulo: com o corte trocado, `totpx` passaria por `totp`.
     expect(parseOtpAuthUri(`otpauth://totpx?secret=${STRONG_SECRET}`)).toBeNull();
   });
 
@@ -184,8 +180,7 @@ describe('parseOtpAuthUri', () => {
   });
 
   it('aceita a chave de 80 bits e os pisos da OWASP', () => {
-    // 16 caracteres Base32 carregam 80 bits; 26 carregam 128 bits (mínimo da
-    // OWASP) e 32 carregam 160 bits (o recomendado).
+    // 16 caracteres Base32 carregam 80 bits, 26 carregam 128 (OWASP) e 32 carregam 160.
     const curta = 'JBSWY3DPEHPK3PXP';
     const owaspMin = 'A'.repeat(26);
     const recommended = 'A'.repeat(32);
@@ -216,10 +211,7 @@ describe('parseOtpAuthUri', () => {
   });
 
   it('aceita o período nas duas pontas da faixa e recusa logo fora delas', () => {
-    // Os limites são o que separa "token válido" de "token estranho": o serviço
-    // usa 30, alguns usam 15, e o teto de 300 é o que impede que a tela mostre
-    // um token travado. Fechar a faixa (`<=` no lugar de `<`) recusaria o
-    // período que a wiki recomenda; deixá-la aberta aceitaria qualquer número.
+    // Fechar a faixa recusaria o período da wiki; deixá-la aberta aceitaria qualquer número.
     expect(
       parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${STRONG_SECRET}&period=15`)?.period,
     ).toBe(15);
@@ -231,9 +223,7 @@ describe('parseOtpAuthUri', () => {
   });
 
   it('recusa período que não é número, em vez de gerar um NaN que vira tela', () => {
-    // `Number('abc')` é NaN, e NaN passa por qualquer comparação: sem o `||` no
-    // leitor de inteiro, o token nasceria com período NaN e o contador da tela
-    // ficaria sem barra de progresso para sempre.
+    // `Number('abc')` é NaN e NaN passa por qualquer comparação: sem o `||`, o período vira NaN.
     expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${STRONG_SECRET}&period=abc`)).toBeNull();
     expect(parseOtpAuthUri(`otpauth://totp/Site:eu?secret=${STRONG_SECRET}&digits=6.5`)).toBeNull();
   });
@@ -257,8 +247,7 @@ describe('buildOtpAuthUri', () => {
     const uri = buildOtpAuthUri(parsed);
     expect(uri.startsWith('otpauth://totp/GitHub:alice@github.com?')).toBe(true);
     expect(uri).toContain(`secret=${STRONG_SECRET}`);
-    // os parâmetros que a wiki deixa de fora por serem padrão saem explícitos:
-    // é o mesmo token e o outro autenticator não precisa adivinhar
+    // Os padrões da wiki saem explícitos: é o mesmo token, sem o outro autenticador adivinhar.
     expect(uri).toContain('&algorithm=SHA1&digits=6&period=30');
   });
 
@@ -315,9 +304,7 @@ describe('cantos do rótulo e dos parâmetros', () => {
   });
 
   it('dígitos fora de 1 a 9 recusam a URI em vez de adivinhar', () => {
-    // `0` ainda casa com `\d{1,9}`, então o que recusa é o tamanho. Um serviço
-    // não devolve 10 dígitos, e aceitar o valor abriria mão do código que o
-    // serviço espera.
+    // `0` ainda casa com o padrão de dígitos: quem recusa é o tamanho, e o serviço espera menos.
     for (const digitos of ['1234567890', '12345678901234567890']) {
       expect(parseOtpAuthUri(base(`&digits=${digitos}`))).toBeNull();
     }
@@ -341,8 +328,7 @@ describe('cantos do rótulo e dos parâmetros', () => {
 
     expect(uri.startsWith('otpauth://totp/alice@github.com?')).toBe(true);
     expect(uri).not.toContain('issuer=');
-    // o nome do parâmetro importa tanto quanto a ausência dele: um `set` com o
-    // nome trocado sai como `=&GitHub`, que nenhum outro authenticator lê
+    // O nome do parâmetro importa: um `set` trocado sai como `=&GitHub`, que ninguém lê.
     expect(parametrosDe(uri)).toEqual(['secret', 'algorithm', 'digits', 'period']);
   });
 });

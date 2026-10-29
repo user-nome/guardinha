@@ -91,8 +91,7 @@ describe('funções de mensagem', () => {
       if (enFn === undefined) continue;
       const args = SAMPLE.slice(0, ptFn.length);
       if (ptFn(...args).trim() === enFn(...args).trim()) {
-        // texto idêntico é permitido em rótulos curtos, mas não em frases com
-        // parâmetro: ali significa que o inglês não foi traduzido
+        // Texto idêntico vale em rótulo curto, mas não em frase com parâmetro: não foi traduzida.
         mismatched.push(path);
       }
     }
@@ -116,9 +115,7 @@ describe('funções de mensagem', () => {
   it.each(LOCALIZED_BUNDLES)(
     '%s formata o backup de formato desconhecido com e sem o número',
     (_language, bundle) => {
-      // mesmo par da função do cofre: o número do formato é o que diz ao usuário
-      // qual versão gravou o arquivo, e a frase sem número é a que aparece
-      // quando o pacote nem esse campo tem
+      // O número do formato diz qual versão gravou o arquivo; sem ele, sobra a frase antiga.
       const unsupported = bundle.errors.backupUnsupportedVersion;
       expect(unsupported()).toContain('Guardinha');
       expect(unsupported()).not.toContain('undefined');

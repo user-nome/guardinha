@@ -414,10 +414,7 @@ describe('AuthModal: desbloqueio por senha mestra', () => {
   });
 
   it('troca o ícone do botão conforme o método de desbloqueio', async () => {
-    // O botão de desbloquear mostra a chave no modo senha mestra e o hash do
-    // PIN no outro. O ícone é a única pista visual de qual método está em uso,
-    // então ele é a saída da decisão: sem ele, o botão ficaria igual nos dois
-    // modos e o texto de erro diria o que a tela já estava mostrando.
+    // O ícone é a única pista visual do método em uso: sem ele o botão fica igual nos dois modos.
     const user = userEvent.setup();
     open(THREE_FAILURES);
 
@@ -484,8 +481,7 @@ describe('AuthModal: redefinição de PIN', () => {
   });
 
   it('a caixa da frase de recuperação tem três linhas', async () => {
-    // A frase é longa por definição: três linhas são o mínimo que a caixa
-    // mostra sem que o usuário tenha de rolar o texto que digitou.
+    // A frase é longa por definição: três linhas é o mínimo sem obrigar o usuário a rolar.
     const user = userEvent.setup();
     open(LOCKED);
     await user.click(screen.getByRole('button', { name: 'Esqueci o PIN' }));

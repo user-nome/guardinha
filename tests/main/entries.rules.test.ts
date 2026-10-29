@@ -152,8 +152,7 @@ describe('entries: ordem da lista', () => {
     const resultado = listEntries()
       .filter((item) => ids.includes(item.id))
       .map((item) => item.id);
-    // o segundo id do diretório recebeu a data mais nova, então a lista começa
-    // por ele; a soma das datas manteria a ordem do diretório
+    // O segundo id recebeu a data mais nova, então a lista começa por ele.
     expect(resultado).toEqual([...noDiretorio].reverse());
     for (const id of ids) removeEntry(id);
   });

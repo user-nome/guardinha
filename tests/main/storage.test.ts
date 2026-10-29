@@ -198,15 +198,12 @@ describe('erros de payload e manifesto adulterados', () => {
 
 describe('a varredura ignora o que não é credencial', () => {
   it('arquivo estranho em .entries/ não vira id na lista', () => {
-    // `listEntryIds` filtra pelo sufixo. Sem o filtro, o `.tmp` de uma escrita
-    // em curso apareceria como credencial na lista da interface.
+    // `listEntryIds` filtra pelo sufixo; sem o filtro, o `.tmp` de uma escrita vira credencial.
     const entries = path.join(targetVaultDir(), '.entries');
     fs.writeFileSync(path.join(entries, 'escrito-vez.zke.tmp'), 'meio de escrita');
     fs.writeFileSync(path.join(entries, 'notas.txt'), 'anotacao');
 
-    // A lista é exatamente o que está em disco com a extensão da credencial, e
-    // nada mais: conferir só que o nome esperado não apareceu deixaria passar
-    // um id tirado do nome errado.
+    // A lista é exatamente o que está em disco: conferir só o nome esperado não pega id errado.
     const noDisco = fs
       .readdirSync(entries)
       .filter((name) => name.endsWith('.zke'))
@@ -226,10 +223,7 @@ describe('a varredura ignora o que não é credencial', () => {
   });
 
   it('escrever depois de um Cryptographic Erase não ressuscita o container', () => {
-    // A guarda de `writeVaultContainer`: com o cofre marcado como destruído, a
-    // escrita sai sem tocar o disco. Sem ela, um read-modify-write com a chave
-    // ainda em memória criaria um `vault.zkv` pela metade e o cofre destruído
-    // voltaria a parecer "adulterado" em vez de "inexistente".
+    // A guarda do erase: com o cofre destruído a escrita sai sem tocar o disco, sem recriar nada.
     const data = readVaultContainer();
     if (data === null) throw new Error('container de teste ausente');
     const antes = fs.readFileSync(containerFile());
@@ -247,10 +241,7 @@ describe('a varredura ignora o que não é credencial', () => {
 
 describe('manifesto: sem selo não há linha de base', () => {
   it('não sela um manifesto ausente: re-selar aceitaria exclusões silenciosas', () => {
-    // O manifesto é a linha de base do cofre. Se `verifyManifest` selasse um
-    // campo nulo, apagar um `.zke` por fora e chamar a listagem adotaria o
-    // diretório já mutilado como estado legítimo. A ausência do selo é
-    // adulteração, e o arquivo não pode ser reescrito no caminho de leitura.
+    // `verifyManifest` não sela campo nulo: adotar o diretório mutilado seria aceitar adulteração.
     const chave = Buffer.alloc(32, 11);
     const data = container();
     data.manifest = null;
@@ -277,9 +268,7 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
   });
 
   it('atualizar o manifesto sem cofre não é erro, é não ter o que selar', () => {
-    // `updateManifest` roda depois de salvar ou remover. Um cofre que não
-    // existe não é erro de aplicação: o código devolve calado, e sem a guarda
-    // o `data.manifest` derrubaria a exceção por cima da tela de autenticação.
+    // `updateManifest` depois de um cofre que sumiu devolve calado, em vez de estourar na tela.
     const arquivo = containerFile();
     const backup = fs.readFileSync(arquivo);
     fs.rmSync(arquivo, { force: true });
@@ -292,8 +281,7 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
   });
 
   it('gravar estado de trava sem cofre não é erro nem cria o container', () => {
-    // A tela de desbloqueio atualiza a trava mesmo quando o cofre acabou de
-    // sumir; sem a guarda, o acesso a `data.attempts` estoura por cima da tela.
+    // A tela de desbloqueio atualiza a trava com o cofre recém-sumido; a guarda evita o estouro.
     const arquivo = containerFile();
     const backup = fs.readFileSync(arquivo);
     fs.rmSync(arquivo, { force: true });
@@ -308,8 +296,7 @@ describe('verifyManifest com o arquivo fora do esperado', () => {
   });
 
   it('updateManifest é o único caminho explícito de re-selar', () => {
-    // A escrita de credencial chama `updateManifest` depois de gravar; é ele
-    // que move a linha de base, nunca o caminho de leitura.
+    // A escrita de credencial move a linha de base pelo `updateManifest`, nunca pela leitura.
     const chave = Buffer.alloc(32, 3);
     const data = container();
     data.manifest = sealManifest(chave, [], [], { entries: {}, auth: {} });

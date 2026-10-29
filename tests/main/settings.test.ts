@@ -89,9 +89,7 @@ describe('loadSettings', () => {
   });
 
   it('aceita arquivo que não é objeto, como `null` ou lista', () => {
-    // JSON válido que não é um registro de preferências: o `asRecord` do
-    // leitor precisa devolver objeto vazio em vez de espalhar o valor (`{...42}`
-    // e `{...null}` não dão o que ler) e deixar o idioma num estado indefinido.
+    // JSON válido que não é registro: o `asRecord` devolve objeto vazio em vez de espalhar o valor.
     fs.ensureDirSync(path.join(temp, 'guardinha'));
     for (const conteudo of ['null', '42', '"en"', '[]', '[{"language":"en"}]']) {
       fs.writeFileSync(file(), conteudo);
@@ -100,8 +98,7 @@ describe('loadSettings', () => {
   });
 
   it('cai no XDG do HOME quando XDG_CONFIG_HOME não está definido', () => {
-    // O caminho tem de ser o do HOME de verdade, conferido no disco: montar a
-    // mesma string aqui e conferir a string não mede o código, mede o teste.
+    // O caminho tem de ser o do HOME de verdade: conferir a mesma string aqui mediria o teste.
     delete process.env.XDG_CONFIG_HOME;
     const home = fs.mkdtempSync(path.join(os.tmpdir(), TEMP_PREFIX));
     const previous = process.env.HOME;
@@ -119,8 +116,7 @@ describe('loadSettings', () => {
   });
 
   it('grava o JSON com indentação de dois espaços', () => {
-    // O arquivo é do app, mas ele é lido por olho quando alguém vai depurar o
-    // idioma; a forma em disco é contrato, não detalhe de formatação.
+    // O arquivo é lido por olho na depuração: a forma em disco é contrato, não formatação.
     saveSettings({ language: 'pt-BR' });
 
     expect(fs.readFileSync(file(), 'utf8')).toBe('{\n  "language": "pt-BR"\n}');
@@ -134,9 +130,7 @@ describe('loadSettings', () => {
 
 describe('permissões do arquivo de preferências', () => {
   it('grava a pasta com 0700 e o arquivo com 0600', () => {
-    // As preferências não são segredo, mas o arquivo fica dentro do HOME do
-    // usuário: 0644 deixaria qualquer outro usuário da máquina ler o idioma e,
-    // mais importante, criar o arquivo para o app escribir por cima.
+    // 0644 deixaria outro usuário ler o idioma e criar o arquivo para o app escrever por cima.
     saveSettings({ language: 'pt-BR' });
 
     expect(fs.statSync(path.dirname(file())).mode & 0o777).toBe(0o700);

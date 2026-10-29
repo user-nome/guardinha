@@ -145,9 +145,7 @@ describe('SelectField: abrir e fechar', () => {
   });
 
   it('remove o ouvinte de mousedown ao fechar o menu', () => {
-    // O efeito prende um ouvinte de `mousedown` no documento enquanto o menu
-    // está aberto. Sem a limpeza, cada abertura deixa mais um ouvinte preso,
-    // todos apontando para o estado de uma abertura que já passou.
+    // Sem a limpeza, cada abertura deixa mais um ouvinte de `mousedown` apontando para o passado.
     const remove = vi.spyOn(document, 'removeEventListener');
     setup();
     abrir();
@@ -230,9 +228,7 @@ describe('SelectField: teclado', () => {
     expect(screen.getByRole('listbox')).toBeInTheDocument();
     expect(antes).toHaveFocus();
 
-    // e o índice interno continua no lugar: a seta seguinte desce um degrau,
-    // não fica presa. Sem a guarda de `next !== null`, a tecla sem efeito
-    // gravaria `null` no índice e o próximo passo viraria `null + 1`.
+    // Sem a guarda de `next !== null`, a tecla sem efeito gravaria `null` no índice.
     fireEvent.keyDown(antes as HTMLElement, { key: 'ArrowDown' });
     expect(opcoes()[2]?.querySelector('button')).toHaveFocus();
   });
@@ -240,9 +236,7 @@ describe('SelectField: teclado', () => {
 
 describe('SelectField: lista que encolhe com o menu aberto', () => {
   it('não tenta focar um item que saiu da lista', () => {
-    // O menu pode ficar aberto enquanto outra tela recarrega as opções. O índice
-    // interno pode continuar apontando para além do fim da lista nova, e a
-    // navegação não pode tentar focar um item que não existe mais.
+    // As opções podem encolher com o menu aberto: a navegação não pode focar um item que sumiu.
     const onChange = vi.fn();
 
     const erros = errosDeJanelaDurante(() => {
@@ -256,8 +250,7 @@ describe('SelectField: lista que encolhe com o menu aberto', () => {
       fireEvent.keyDown(opcao(1).querySelector('button') as HTMLElement, { key: 'ArrowDown' });
       expect(opcao(2).querySelector('button')).toHaveFocus();
 
-      // a lista encolhe para uma opção; o valor corrente continua nela, então o
-      // efeito de reabertura não roda e o índice antigo sobrevive
+      // A lista encolhe para uma opção: o valor corrente continua nela e o índice antigo sobrevive.
       rerender(<SelectField label="Tamanho" options={[OPCOES[0]]} value="a" onChange={onChange} />);
 
       fireEvent.keyDown(opcao(0).querySelector('button') as HTMLElement, { key: 'ArrowUp' });
@@ -288,15 +281,13 @@ describe('SelectField: clique durante a desmontagem', () => {
 
 describe('SelectField: valor fora da lista', () => {
   it('não quebra quando o valor atual não está entre as opções', () => {
-    // O campo é controlado por outro componente; se o valor não estiver na lista,
-    // o rótulo tem de virar texto vazio em vez de estourar o índice.
+    // Valor fora da lista: o rótulo vira texto vazio em vez de estourar o índice.
     expect(() => setup('inexistente')).not.toThrow();
     expect(gatilho().textContent).not.toContain('undefined');
   });
 
   it('lista vazia não quebra nem deixa "undefined" na tela', () => {
-    // `options[activeIndex]` é `undefined` sem nenhuma opção, e é o único caso em
-    // que o rótulo corrente não tem o que mostrar.
+    // `options[activeIndex]` é `undefined` sem nenhuma opção, o único caso sem rótulo.
     const onChange = vi.fn();
     const { container } = render(
       <SelectField label="Tamanho" options={[]} value={'a'} onChange={onChange} />,

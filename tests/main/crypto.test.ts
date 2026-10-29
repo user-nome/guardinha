@@ -145,8 +145,7 @@ describe('frase de recuperação', () => {
 
 describe('parâmetros de KDF fixados', () => {
   it('mantém os custos de produção gravados em AGENTS.md e docs/cofre.md', () => {
-    // Estes números são a proteção contra ataque de força bruta do PIN. Um teste
-    // que só compara o perfil com ele mesmo passa se alguém afrouxar o custo.
+    // Estes números protegem o PIN contra força bruta; comparar o perfil consigo mesmo não basta.
     expect(KDF_CREDENTIAL).toEqual({ memoryKiB: 131_072, iterations: 3, parallelism: 4 });
     expect(KDF_PIN).toEqual({ memoryKiB: 262_144, iterations: 4, parallelism: 4 });
   });
@@ -162,10 +161,7 @@ describe('parâmetros de KDF fixados', () => {
 
 describe('derivação por HKDF', () => {
   it('separa os domínios: entrada e token de 2FA nunca dividem a chave', () => {
-    // É o motivo dos rótulos `-v1`: dois registros com a mesma senha e o mesmo
-    // salt, mas em domínios diferentes, precisam sair com chaves diferentes. Se
-    // os rótulos colidissem, um `.zke` abriria como `.zka` e o app leria a
-    // credencial no lugar do token de 2FA.
+    // Os rótulos `-v1` separam domínios: sem eles um `.zke` abriria como `.zka`.
     const key = randomBytes(32);
     const salt = randomBytes(16);
 
@@ -182,8 +178,7 @@ describe('derivação por HKDF', () => {
     const key = randomBytes(32);
     const entry = encryptRecord({ title: 'GitHub' }, key);
 
-    // O payload do token é cifrado no outro rótulo, então a decifra no domínio
-    // errado tem de falhar na tag, e não devolver lixo.
+    // O payload do token é cifrado no outro rótulo: decifrar no domínio errado falha na tag.
     expect(() => decryptAuthRecord(entry, key)).toThrow();
   });
 
@@ -250,8 +245,7 @@ describe('rótulos de domínio do HKDF', () => {
   it('a chave de registro usa exatamente o rótulo de entrada documentado', () => {
     const key = randomBytes(32);
     const salt = randomBytes(16);
-    // cópia no momento da chamada: depois de `encryptRecord` o Buffer original
-    // já foi zerado, e é justamente esse oOutro teste
+    // Cópia no momento da chamada: depois de `encryptRecord` o Buffer original já foi zerado.
     const usada = comChaveCapturada(salt, () => encryptRecord({ title: 'GitHub' }, key));
     expect(usada).toEqual(esperado(key, salt, 'guardinha-vault-entry-v1'));
   });

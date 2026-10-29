@@ -22,8 +22,7 @@ export function Home({ onToast }: HomeProps): JSX.Element {
   const [modalOpen, setModalOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // fora das dependências: recarregar a lista a cada troca de idioma seria
-  // buscar de novo por causa de um texto de erro que talvez nem apareça
+  // Fora das dependências: recarregar a lista a cada troca de idioma seria à toa.
   const internalError = useLatest(m.errors.internal);
 
   const reload = useCallback(async (): Promise<void> => {

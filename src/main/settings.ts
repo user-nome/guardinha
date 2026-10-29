@@ -30,9 +30,7 @@ function normalizeLanguage(value: unknown): Language {
 export function loadSettings(): AppSettings {
   if (!fs.existsSync(settingsFile())) return { language: 'pt-BR' };
   try {
-    // `readJsonSync` devolve `any`: o arquivo é do usuário e pode ser qualquer
-    // coisa, então ele vira `unknown` e quem decide o formato é
-    // `normalizeLanguage`, não uma afirmação de tipo feita aqui.
+    // readJsonSync devolve any: vira unknown e normalizeLanguage decide o formato.
     const raw: unknown = fs.readJsonSync(settingsFile());
     return { language: normalizeLanguage(asRecord(raw).language) };
   } catch {

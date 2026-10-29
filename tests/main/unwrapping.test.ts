@@ -96,8 +96,7 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
   });
 
   it('recusa chave desembrulhada que não é texto hexadecimal', () => {
-    // O container é dado de fora: um `key` que não é string precisa cair na
-    // guarda, e não chegar ao `Buffer.from` como qualquer outro tipo.
+    // O container é dado de fora: `key` que não é string cai na guarda antes do `Buffer.from`.
     const derived = Buffer.alloc(32, 7);
     const info = methodKeyInfo('master');
     const method: WrappedMethod = {
@@ -112,8 +111,7 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
   });
 
   it('recusa chave corrompida também no embrulho legado', () => {
-    // o fallback da v5 não pode transformar um registro corrompido em
-    // "credencial errada": o erro de forma continua sendo o erro de forma
+    // O fallback da v5 não pode transformar registro corrompido em "credencial errada".
     const derived = Buffer.alloc(32, 7);
     const method: WrappedMethod = {
       kdf: keyUnwrapperFor('master').kdf,
@@ -138,9 +136,7 @@ describe('KeyUnwrapperFactory (Factory Method)', () => {
 
 describe('perfis de KDF por método de desbloqueio', () => {
   it('usa o perfil da senha mestra para master e recovery, e o do PIN para pin e panic', () => {
-    // O roteamento é o que dá ao PIN de pânico o mesmo custo do PIN legítimo.
-    // Inverter a escolha faria o atalho do coator ficar mais barato (ou mais
-    // caro) que o caminho honesto, que é justamente o que não pode acontecer.
+    // O roteamento dá ao PIN de pânico o mesmo custo do PIN legítimo, sem atalho para o coator.
     expect(keyUnwrapperFor('master').kdf).toMatchObject(KDF_CREDENTIAL);
     expect(keyUnwrapperFor('recovery').kdf).toMatchObject(KDF_CREDENTIAL);
     expect(keyUnwrapperFor('pin').kdf).toMatchObject(KDF_PIN);

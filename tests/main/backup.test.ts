@@ -101,9 +101,7 @@ describe('backup integral do cofre', () => {
   });
 
   it('não segue o symlink plantado no .tmp previsível do pendrive', () => {
-    // P5b: o export gravava em `${destino}.tmp` com `writeFileSync`, que segue
-    // symlink. Um pendrive hostil planta esse nome apontando para o `vault.zkv`
-    // e o backup sobrescreve o container. O nome aleatório e o `wx` fecham isso.
+    // P5b: o `${destino}.tmp` fixo seguia symlink e o backup sobrescrevia o `vault.zkv`.
     const destination = exportTo('pendrive-hostil.gbk');
     const victim = containerFile();
     const before = fs.readFileSync(victim);
@@ -143,8 +141,7 @@ describe('backup integral do cofre', () => {
   });
 
   it('recusa container válido sem manifesto selado', () => {
-    // sem o manifesto não há como provar que o diretório restaurado é o do
-    // pacote: o cofre até abriria, mas a lista de credenciais viraria a do disco
+    // Sem o manifesto não há como provar que o diretório restaurado é o do pacote.
     const destination = exportTo('sem-manifesto.gbk');
     const current = vaultStorage.readContainer();
     if (current === null) throw new Error('o cofre do teste sumiu');
@@ -165,10 +162,7 @@ describe('backup integral do cofre', () => {
   });
 
   it('recusa container inválido no pacote antes de apagar o cofre atual', () => {
-    // P4: o pacote é autofabricável (SHA-256 não é assinatura). Antes, um
-    // `vault.zkv` que não era container passava pela checagem de digest, o
-    // cofre atual era apagado e o lixo tomava o lugar. Agora o container é
-    // validado antes do erase.
+    // P4: o `vault.zkv` é validado antes do erase; sem isso, o lixo tomava o lugar do cofre.
     const destination = exportTo('container-invalido.gbk');
     const before = fs.readFileSync(containerFile());
     fs.writeFileSync(
@@ -202,8 +196,7 @@ describe('backup integral do cofre', () => {
     expect(restored.files).toBe(exported.files);
     expect(fs.existsSync(containerFile())).toBe(true);
     expect(fs.statSync(containerFile()).mode & 0o777).toBe(0o600);
-    // os mesmos ids, não só a mesma quantidade: um nome de destino montado com
-    // um caractere a menos criaria arquivos novos e a contagem continuaria igual
+    // Os mesmos ids, não só a mesma quantidade: um nome a menos criaria arquivos novos.
     expect([...listEntryIds()].sort()).toEqual(expectedEntries);
     expect([...listAuthIds()].sort()).toEqual(expectedAuth);
     expect(fs.existsSync(path.join(entriesDir(), `${expectedEntries[0]}.zke`))).toBe(true);
@@ -211,10 +204,7 @@ describe('backup integral do cofre', () => {
   });
 
   it('grava o contêiner por último, uma vez só', () => {
-    // O contêiner é a chave do cofre: se ele for escrito no meio, um crash
-    // deixa credenciais pela metade ao lado de um cofre que abre. As gravações
-    // atômicas passam por `rename`, então a ordem dos renomes é a ordem das
-    // escritas.
+    // O contêiner é a chave do cofre: escrito no meio, um crash deixa credenciais pela metade.
     const destination = exportTo('ordem.gbk');
     exportBackup(destination, '1.0.0');
     markUnlocked();
@@ -236,9 +226,7 @@ describe('backup integral do cofre', () => {
   });
 
   it('recusa restaurar por cima de um cofre existente com a sessão bloqueada', () => {
-    // P4: o SHA-256 do pacote não é assinatura, então um `.gbk` forjado trocaria
-    // o cofre de quem só clicou em restaurar. A sessão aberta é a prova da
-    // credencial atual; sem ela, a restauração não pode encostar no disco.
+    // P4: sem a sessão aberta, um `.gbk` forjado trocaria o cofre de quem só clicou em restaurar.
     const destination = exportTo('bloqueado.gbk');
     exportBackup(destination, '1.0.0');
     const before = fs.readFileSync(containerFile());
@@ -256,9 +244,7 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
   const m = currentMessages();
 
   beforeAll(() => {
-    // A restauração valida o pacote inteiro **antes** de tentar criar as pastas,
-    // então a falha que se quer provocar aqui (escrita e permissão) só aparece
-    // com um `.gbk` de verdade na mão: um pacote válido do mesmo cofre serve.
+    // A falha de escrita só aparece com um `.gbk` válido do mesmo cofre, montado antes.
     exportBackup(exportTo('cofre.gbk'), '1.0.0');
   });
 
@@ -271,15 +257,9 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
   });
 
   it('grava o pacote mesmo em mídia que recusa o modo do arquivo', () => {
-    // Pendrive FAT/exFAT não tem dono nem modo: o `chmod` falha e o backup
-    // precisa ter saído mesmo assim. O conteúdo continua cifrado, então perder o
-    // 0600 ali não expõe nada; perder o arquivo, sim.
+    // FAT/exFAT não tem dono nem modo: o backup sai sem `chmod` e continua cifrado.
     const destino = exportTo('sem-modo.gbk');
-    // Só o `chmod` do **destino** falha: as pastas do cofre usam `chmodSync`
-    // também, e um espelho que recusasse toda chamada derrubaria a montagem do
-    // pacote antes de ele ser escrito. O filtro pelo caminho é o que separa as
-    // duas coisas, como no pendrive de verdade, onde só o arquivo novo é
-    // recusado.
+    // Só o `chmod` do destino falha: um espelho que recusasse tudo derrubaria a montagem do pacote.
     const original = fsExtra.chmodSync;
     const chmod = vi.spyOn(fsExtra, 'chmodSync').mockImplementation((target, mode) => {
       if (String(target) === destino) {
@@ -293,8 +273,7 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
 
       expect(resultado.files).toBeGreaterThan(0);
       expect(fs.readFileSync(destino).subarray(0, 8).toString('ascii')).toBe('ZKBACKUP');
-      // o `chmod` falhou, então o modo que ficou é o passado na criação do
-      // temporário: o backup não pode nascer legível por outros usuários
+      // O `chmod` falhou, então o modo que ficou é o da criação: o backup não pode nascer legível.
       expect(fs.statSync(destino).mode & 0o777).toBe(0o600);
       expect(chmod).toHaveBeenCalledWith(destino, 0o600);
     } finally {
@@ -303,8 +282,7 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
   });
 
   it('devolve erro próprio quando o destino não pode ser gravado', () => {
-    // pendrive sem ponto de montagem, pasta removida no meio do caminho: o
-    // `.gbk` é montado em memória, mas a escrita é o que pode falhar
+    // Pendrive sem ponto de montagem: o `.gbk` é montado em memória e a escrita é que falha.
     const destino = path.join(outDir, 'pasta-que-nao-existe', 'cofre.gbk');
 
     expect(() => exportBackup(destino, '1.0.0')).toThrow(m.errors.backupWriteFailed);
@@ -312,9 +290,7 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
   });
 
   it('devolve erro próprio quando o destino existe e é uma pasta', () => {
-    // destino já é um diretório: o `.tmp` chega a ser escrito e o `rename`
-    // falha. O erro que volta é o do backup, não o do `rename` cru, para que a
-    // tela não exponha nome de arquivo interno.
+    // Destino que é diretório: o `.tmp` é escrito, o `rename` falha e o erro é do backup, não cru.
     const destino = exportTo('destino-que-e-pasta');
     fs.mkdirSync(destino, { recursive: true });
 
@@ -322,8 +298,7 @@ describe('backup: destino e pasta do cofre indisponíveis', () => {
   });
 
   it('repassa erro de disco que não é falta de permissão, sem abrir o pkexec', () => {
-    // `EACCES` é o caso do `/var/lib`; qualquer outra falha (disco cheio, disco
-    // sumindo) é do host e não se resolve com diálogo de sistema
+    // `EACCES` é o caso do `/var/lib`; outra falha (disco cheio) é do host e não pede diálogo.
     const setup = vi.spyOn(privilege, 'setupVaultDirectory');
     vi.spyOn(vaultStorage, 'ensureStructure').mockImplementationOnce(() => {
       throw new Error('disco cheio');

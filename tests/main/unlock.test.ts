@@ -48,9 +48,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
     }
   }, 120_000);
 
-  // `registerFailedAttempt` grava o `nukeLimit` do container no cofre de verdade
-  // e `resetAttempts` o preserva, então os testes de corte não podem deixar a
-  // autodestruição ligada para os arquivos seguintes
+  // `registerFailedAttempt` grava o `nukeLimit`: os testes de corte não podem deixá-lo ligado.
   afterEach(() => {
     vi.restoreAllMocks();
     writeAuthState({ attempts: 0, lockUntil: null, attemptsMaster: 0, nukeLimit: 0 });
@@ -80,9 +78,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
   });
 
   it('PIN malformado não chega a derivar: o validador de formato corta antes', async () => {
-    // Medir o tempo não basta: com o doppelgänger do Argon2id a derivação é
-    // instantânea, e o PIN errado continuaria sendo recusado no fim da cadeia,
-    // só que caro. O que separa as duas coisas é a chamada que não aconteceu.
+    // Medir o tempo não basta: o doppelgänger do Argon2id se denuncia pela chamada que não houve.
     resetAttempts();
     const container = await makeContainer();
     const derive = vi.spyOn(keyUnwrapperFor('pin'), 'derive');
@@ -106,8 +102,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
     const state = loadAuthState();
     expect(state.lockUntil).not.toBeNull();
 
-    // o relógio para: o Argon2id do container custa >10 s sob carga e derrubaria
-    // a espera antes de a cadeia rodar
+    // O relógio para: o Argon2id custa >10 s sob carga e derrubaria a espera antes da cadeia.
     vi.useFakeTimers();
     try {
       const container = await makeContainer();
@@ -137,9 +132,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
   });
 
   it('a trava vale com 1 ms de espera restante, sem deixar a cadeia seguir', async () => {
-    // `remaining <= 0` só libera quando a espera chega a zero. Com `<= 1`, o
-    // último milissegundo já passaria adiante como se a trava tivesse acabado,
-    // e a credencial seguinte rodaria a cadeia inteira.
+    // `remaining <= 0` só libera no zero: com `<= 1`, o último milissegundo passaria adiante.
     const container = await makeContainer();
     vi.useFakeTimers();
     vi.setSystemTime(1_000_000);
@@ -173,13 +166,11 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
   });
 
   it('o corte da autodestruição para a cadeia e conta a tentativa uma vez só', async () => {
-    // `nukeLimit` no container liga a autodestruição; o `1` faz a primeira
-    // falha da senha mestra cruzar o limite.
+    // `nukeLimit` no container liga a autodestruição; o `1` faz a primeira falha cruzar o limite.
     resetAttempts();
     const container = await makeContainer();
     const armed: VaultContainerData = { ...container, nukeLimit: 1 };
-    // senha mestra malformada: recusa no validador de formato, que tem
-    // manipulador depois dele, é onde a cadeia precisa parar de vez
+    // Senha mestra malformada: a cadeia para no validador de formato, antes do custo do Argon2id.
     const ctx = context('curta', 'master', armed);
 
     const result = await runUnlockChain(ctx);
@@ -188,9 +179,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
     expect(result).toBeNull();
     expect(ctx.nuked).toBe(true);
     expect(ctx.vaultKey).toBeUndefined();
-    // uma tentativa do usuário, um incremento: na cadeia `null` significa
-    // "passe adiante", então devolver `null` no corte deixaria a sequência
-    // seguir até a integridade e contaria a mesma falha outra vez
+    // Um incremento por tentativa: `null` no corte seguiria até a integridade e contaria de novo.
     expect(loadAuthState().attempts).toBe(1);
     expect(loadAuthState().attemptsMaster).toBe(1);
   });

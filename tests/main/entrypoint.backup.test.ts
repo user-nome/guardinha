@@ -50,8 +50,7 @@ describe('canal backup:export', () => {
   });
 
   it('trata caminho vazio do diálogo como cancelamento', () => {
-    // o Electron tipa o retorno como `string`, mas um diálogo que devolveu
-    // string vazia não escolheu arquivo nenhum
+    // O Electron tipa o retorno como `string`, mas string vazia não escolheu arquivo nenhum.
     dialog.showSaveDialogSync.mockReturnValue('');
 
     expect(call('backup:export', appFrame())).toEqual({ canceled: true });
@@ -78,9 +77,7 @@ describe('canal backup:export', () => {
 
     call('backup:export', appFrame());
 
-    // O nome sugerido sai da data em UTC, a mesma que o main usa; as opções
-    // são conferidas inteiras, porque um `defaultPath` com a extensão errada
-    // faria o diálogo salvar um arquivo sem o `.gbk`.
+    // O nome sugerido sai da data em UTC: um `defaultPath` sem `.gbk` salvaria sem extensão.
     const hoje = new Date().toISOString().slice(0, 10);
     expect(dialog.showSaveDialogSync).toHaveBeenCalledWith(BOOT_WINDOW, {
       title: m.backup.exportAction,
@@ -106,9 +103,7 @@ describe('canal backup:restore', () => {
   });
 
   it('restaura do arquivo escolhido e devolve o cofre à tela de autenticação', () => {
-    // A restauração substitui o cofre e zera a chave em memória: a tela que
-    // estava montada pertence a um cofre que não existe mais, então o main
-    // avisa pelo mesmo canal do auto-lock.
+    // A restauração zera a chave em memória: o main avisa pelo canal do auto-lock.
     if (BOOT_WINDOW === undefined) throw new Error('nenhuma janela criada no boot');
     dialog.showOpenDialogSync.mockReturnValue(['/pendrive/cofre.gbk']);
     BOOT_WINDOW.webContents.send.mockClear();
@@ -149,10 +144,7 @@ describe('canal backup:restore', () => {
 });
 
 describe('diálogo sem janela', () => {
-  // `mainWindow` só é `null` depois que a janela fecha (o `closed` zera a
-  // referência). A janela pode existir no main e não estar mais ali, e o
-  // diálogo nativo sem janela explícita abriria atrelado a outra coisa: os dois
-  // caminhos precisam existir.
+  // `mainWindow` pode existir no main e não estar mais ali; os dois caminhos precisam existir.
   it('abre o diálogo de salvar sem janela quando ela já fechou', () => {
     dialog.showSaveDialogSync.mockReturnValue('/pendrive/cofre.gbk');
     closeBootWindow();

@@ -105,8 +105,7 @@ describe('o temporizador do clipboard', () => {
     vi.useRealTimers();
   });
 
-  // `clearTimeout(null)` é no-op no Node, então o descuido de chamar o
-  // cancelamento sem temporizador pendente só aparece na própria chamada.
+  // `clearTimeout(null)` é no-op: cancelar sem temporizador pendente só aparece na chamada.
   function spyClear(): MockInstance<typeof globalThis.clearTimeout> {
     return vi.spyOn(globalThis, 'clearTimeout');
   }

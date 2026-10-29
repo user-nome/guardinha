@@ -116,8 +116,7 @@ describe('PIN de coação', () => {
 
     const result = await unlock({ credential: PANIC_PIN, kind: 'pin' });
 
-    // `ok: true` é deliberado: um erro denunciaria o mecanismo a quem está sob
-    // coação. O que a pessoa vê é um cofre aberto e sem nada dentro.
+    // `ok: true` é deliberado: um erro denunciaria o mecanismo a quem está sob coação.
     expect(result.ok).toBe(true);
     expect(result.status).toMatchObject({ exists: true, locked: false });
     expect(listEntries()).toEqual([]);
@@ -171,10 +170,7 @@ describe('PIN de coação', () => {
   });
 
   it('o PIN de pânico não apaga o cofre quando chega pelo campo da senha mestra', async () => {
-    // O `tryPanicUnlock` exige as três coisas: método instalado, entrada em
-    // formato de PIN e PIN válido. Se a checagem de formato deixar de ser uma
-    // condição, o PIN de pânico (8 dígitos) entra pelo caminho da senha mestra,
-    // desembrulha a decoy e **apaga o cofre** de quem nem estava sob coação.
+    // O pânico exige método, formato de PIN e PIN válido; sem a checagem, a decoy apagaria o cofre.
     const result = await unlock({ credential: PANIC_PIN, kind: 'master' });
 
     expect(result.ok).toBe(false);

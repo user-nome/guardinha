@@ -81,8 +81,7 @@ describe('writeSecretFile', () => {
   });
 
   it('sobrescreve sem deixar o temporário para trás', () => {
-    // Deixar `.tmp` em disco é o que a varredura de órfãos limpa depois; a
-    // escrita normal não pode produzir um.
+    // Deixar `.tmp` em disco é o que a varredura de órfãos limpa; a escrita normal não produz um.
     const file = path.join(dir, 'sobrescrito.zka');
     writeSecretFile(file, 'primeira');
     writeSecretFile(file, 'segunda');
@@ -91,9 +90,7 @@ describe('writeSecretFile', () => {
   });
 
   it('não mexe no destino quando o rename falha', () => {
-    // A garantia real do `.tmp` + `rename`: um erro depois de gravar o
-    // temporário e antes de trocar o inode deixa o destino como estava, em vez
-    // de um arquivo pela metade. Sem o `rename`, esta escrita destrói o anterior.
+    // `.tmp` + `rename`: erro depois do temporário deixa o destino como estava, não pela metade.
     const file = path.join(dir, 'intacto.zkv');
     writeSecretFile(file, 'bom');
     vi.spyOn(fsExtra, 'renameSync').mockImplementation(() => {
@@ -113,10 +110,7 @@ describe('writeSecretFile', () => {
   });
 
   it('o temporário tem nome imprevisível e o sufixo que a varredura procura', () => {
-    // O nome fixo `${arquivo}.tmp` deixava um pendrive ou um diretório hostil
-    // plantar o symlink antes da escrita. O nome aleatório tira o alvo do
-    // controle de quem planta; o sufixo continua igual para o `erase` e a
-    // varredura de órfãos reconhecerem o temporário.
+    // Nome aleatório tira o alvo do controle de quem planta o symlink; o sufixo `.tmp` continua.
     const file = path.join(dir, 'aleatorio.zke');
     const first = tempPathFor(file);
     const second = tempPathFor(file);
@@ -128,9 +122,7 @@ describe('writeSecretFile', () => {
   });
 
   it('não segue o symlink plantado no nome previsível do temporário', () => {
-    // O ataque de P5b: o `.tmp` de nome fixo aponta para o `vault.zkv`, e a
-    // escrita atravessa o link e destrói o container. Com o nome aleatório e o
-    // `wx`, o link antigo fica onde está e o alvo não é tocado.
+    // P5b: o `.tmp` fixo apontava para o `vault.zkv`; com nome aleatório e `wx`, o link não cola.
     const victim = path.join(dir, 'vault.zkv');
     const file = path.join(dir, 'credencial.zke');
     fs.writeFileSync(victim, 'container original');
@@ -146,17 +138,13 @@ describe('writeSecretFile', () => {
 /** O modo pedido ao `ensureDirSync`, antes do `chmodSync` reafirmar 0700. */
 describe('ensureVaultStructure', () => {
   it('cria cada pasta em 0700, e não em 0701', () => {
-    // 0701 deixa a pasta atravessável por qualquer usuário da máquina, e a
-    // janela entre o `ensureDirSync` e o `chmodSync` seria o bastante para
-    // listar os `.zke`. Como o `chmod` conserta o modo depois, só o argumento
-    // da criação registra o valor; o teste tem que olhar a chamada.
+    // 0701 deixa a pasta atravessável e o `chmod` conserta depois: o teste olha a criação.
     const anterior = process.env.GUARDINHA_VAULT_DIR;
     process.env.GUARDINHA_VAULT_DIR = path.join(root, 'estrutura');
     const spy = vi.spyOn(fsExtra, 'ensureDirSync');
     try {
       ensureVaultStructure();
-      // o segundo argumento é `number | EnsureDirOptions`: o `ensuredir` do
-      // fs-extra aceita só o modo ou o objeto inteiro, e aqui é o objeto
+      // O segundo argumento é `number | EnsureDirOptions`: aqui é o objeto inteiro.
       const modos = spy.mock.calls.map(([, options]) =>
         typeof options === 'number' ? options : options?.mode,
       );

@@ -297,8 +297,7 @@ function registerIpc(): void {
     });
     if (source === null) return { canceled: true };
     const result = restoreBackup(source);
-    // o cofre antigo (e a chave em memória) deixou de valer: a tela volta para
-    // a autenticação pelo mesmo canal do auto-lock
+    // O cofre antigo deixou de valer: a tela volta para a autenticação pelo auto-lock.
     mainWindow?.webContents.send('vault:auto-locked', getStatus());
     return result;
   });
@@ -360,13 +359,7 @@ if (!gotLock) {
       console.error('Falha ao iniciar o aplicativo:', error);
     });
 
-  // Encerramento de sessão: a chave sai da memória junto com o processo (o wipe
-  // roda antes de qualquer I/O) e o clipboard é limpo na hora, porque o
-  // temporizador de 30 s morre com o processo e deixaria a senha ali para
-  // sempre. Sem `await`: `electron.clipboard` é síncrono, então a gravação
-  // acontece dentro do checkpoint de microtarefas logo após este listener, e
-  // segurar o encerramento com `preventDefault` custaria um ciclo de `quit`
-  // que pode travar.
+  // Encerramento: a chave sai da memória e o clipboard é limpo na hora, sem await.
   app.on('before-quit', () => {
     try {
       lock();

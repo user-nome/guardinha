@@ -8,13 +8,11 @@
 sem telemetria e sem usar a internet. Suas senhas ficam cifradas no seu disco e
 só abrem com o seu PIN.
 
-**Versão atual: 2.4.2 · Linux (amd64)**
+**Versão atual: 2.4.3 · Linux (amd64)**
 
 [Baixar .deb](https://github.com/user-nome/guardinha/releases/latest/download/guardinha_amd64.deb)
 
 </div>
-
-<b> Esses links são antigos e não funcionam, estou lidando com a hospedagem do novo site primeiro, depois arrumo esse README </b>
 
 ---
 

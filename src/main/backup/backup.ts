@@ -104,21 +104,15 @@ export function restoreBackup(source: string): RestoreResult {
   const container = opened.files.find((file) => file.path === 'vault.zkv');
   if (container === undefined) throw new Error(currentMessages().errors.backupInvalid);
 
-  // a validação do container precisa vir antes do erase: o pacote inteiro é
-  // autofabricável (SHA-256 não é assinatura), então só a forma do `vault.zkv`
-  // separa um cofre restaurável de um monte de bytes que apagaria o atual
+  // Pacote autofabricável: validar a forma do vault.zkv antes do erase separa cofre de lixo.
   const parsed = unpackVaultContainer(container.data);
   if (!parsed.ok) throw new Error(currentMessages().errors.backupInvalid);
-  // `unpackVaultContainer` já exige master ou PIN; a checagem que sobra aqui é
-  // a do manifesto, porque um cofre sem selo não é um cofre restaurável
+  // O unpack já exige master ou PIN; falta conferir o manifesto, sem o qual não há cofre.
   if (parsed.data.manifest === null) {
     throw new Error(currentMessages().errors.backupInvalid);
   }
 
-  // P4: substituir um cofre existente exige a sessão aberta, ou seja, a
-  // credencial atual provada. O SHA-256 do pacote não é assinatura, então sem
-  // esta guarda um `.gbk` forjado trocaria o cofre de quem só clicou em
-  // restaurar. Máquina formatada (sem cofre) continua restaurando de graça.
+  // P4: restaurar sobre cofre existente exige sessão aberta, porque SHA-256 não é assinatura.
   if (vaultStorage.exists() && !vaultSession().isUnlocked()) {
     throw new Error(currentMessages().errors.vaultLocked);
   }
@@ -126,14 +120,11 @@ export function restoreBackup(source: string): RestoreResult {
   ensureStructure();
   vaultSession().wipe();
   vaultStorage.erase();
-  // o pacote é um cofre novo e íntegro: a guarda que barra recriar o contêiner
-  // depois de um erase sai da frente, senão o `writeVaultContainer` das próximas
-  // operações ficaria mudo e o cofre restaurado não selaria o manifesto
+  // Cofre novo e íntegro: a guarda do erase sai da frente para o manifesto poder ser selado.
   clearDestroyedFlag();
   ensureStructure();
 
-  // credenciais e tokens primeiro, contêiner por último: um crash no meio deixa
-  // um cofre sem chave (a tela pede criar), nunca um cofre aberto e pela metade
+  // Credenciais e tokens primeiro, container por último: crash deixa cofre sem chave, não aberto.
   for (const file of opened.files) {
     if (file.path === 'vault.zkv') continue;
     writeSecretFile(targetFor(file.path), file.data);

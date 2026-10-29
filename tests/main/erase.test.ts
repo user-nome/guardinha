@@ -189,8 +189,7 @@ describe('o container não ressuscita depois do erase', () => {
     eraseVault();
     expect(fs.existsSync(containerFile())).toBe(false);
 
-    // `writeAuthState` é read-modify-write do container; sem a guarda ele leria
-    // `null` e pararia, e isso precisa ser verdade por desenho e não por sorte
+    // `writeAuthState` é read-modify-write: sem a guarda ele leria `null` e pararia.
     writeAuthState({ attempts: 9, lockUntil: Date.now() + 1000, attemptsMaster: 3, nukeLimit: 50 });
 
     expect(fs.existsSync(containerFile())).toBe(false);
@@ -235,10 +234,7 @@ describe('varredura de temporários órfãos', () => {
   });
 
   it('apaga o temporário que sumiu no meio da varredura', () => {
-    // Se o `stat` falha, o arquivo já não pode ser lido, e sobra é sobra: a
-    // varredura o tenta apagar de qualquer jeito. Deixar o `stale` como falso
-    // quando o `stat` estoura transformaria um `.tmp` de uma escrita que
-    // morreu em curso num lixo permanente no diretório do cofre.
+    // `stat` que falha deixa a sobra apagável: deixar `stale` falso viraria lixo permanente.
     seedVault([]);
     const somem = path.join(entriesDir(), 'somem.zke.tmp');
     fs.writeFileSync(somem, 'conteudo', { mode: 0o600 });
@@ -257,8 +253,7 @@ describe('varredura de temporários órfãos', () => {
   });
 
   it('preserva o temporário que está exatamente no limite de idade', () => {
-    // O corte é `mtime < agora - maxAge`, estrito: um arquivo com a idade exata
-    // do limite ainda pode ser a escrita em curso que o teste quer preservar.
+    // O corte é `mtime < agora - maxAge`, estrito: a idade exata ainda pode ser escrita em curso.
     seedVault([]);
     const noLimite = path.join(entriesDir(), 'limite.zke.tmp');
     fs.writeFileSync(noLimite, 'conteudo', { mode: 0o600 });
@@ -287,9 +282,7 @@ describe('mensagem de cofre destruído', () => {
 });
 
 describe('panicDestroy com cofre de verdade (integração)', () => {
-  // `createVault` faz três derivações Argon2id (128 + 256 + 128 MB): é o teste
-  // mais caro da suíte e o que garante o caminho completo, do container real
-  // com chave embrulhada até o arquivo sumir do disco.
+  // `createVault` faz três Argon2id (128 + 256 + 128 MB): é o teste mais caro e o mais completo.
   it('zera a chave da RAM, apaga o disco e devolve o status de cofre novo', async () => {
     fs.rmSync(vaultDir(), { recursive: true, force: true });
     const created = await createVault({
@@ -323,9 +316,7 @@ describe('panicDestroy com cofre de verdade (integração)', () => {
   });
 
   it('conta como falha o temporário que sobrou depois da sobrescrita', () => {
-    // Um `.tmp` que o shred não consegue apagar (sem permissão de escrita) não
-    // pode passar por sucesso: o relatório de apagar o cofre tem de dizer que
-    // sobrou arquivo, porque é esse número que o `erase` devolve a quem decide.
+    // `.tmp` que o shred não apaga não é sucesso: o relatório precisa dizer que sobrou arquivo.
     seedVault([]);
     const preso = path.join(vaultDir(), 'preso.zkv.tmp');
     fs.writeFileSync(preso, 'conteudo', { mode: 0o000 });
@@ -334,8 +325,7 @@ describe('panicDestroy com cofre de verdade (integração)', () => {
 
     const result = cleanStaleTempFiles(60_000);
 
-    // sem permissão o shred falha e o arquivo continua lá: não foi removido, e
-    // também não foi contado como removido
+    // Sem permissão o shred falha e o arquivo continua lá, sem contar como removido.
     expect(result.removed).toBe(0);
     expect(fs.existsSync(preso)).toBe(true);
   });

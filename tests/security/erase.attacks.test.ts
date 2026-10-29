@@ -36,16 +36,14 @@ describe('a chave sai da memória antes do disco', () => {
 
     await expect(panicDestroy()).rejects.toThrow('falha de disco simulada');
 
-    // A chave do Buffer adotado e a da sessão têm de estar zeradas: o atacante
-    // com o mesmo usuário lê a memória do processo, e o disco pode falhar.
+    // A chave do Buffer adotado e a da sessão têm de estar zeradas: memória e disco podem falhar.
     expect(vaultKey.every((byte) => byte === 0)).toBe(true);
     expect(vaultSession().keyOrNull()).toBeNull();
     expect(vaultSession().isUnlocked()).toBe(false);
   });
 
   it('avisa no log quando o erase deixa arquivos para trás', async () => {
-    // uma falha de I/O não pode virar "destruído" na tela com a chave ainda no
-    // disco: o aviso é o único sinal de que o cofre pode abrir de novo
+    // Falha de I/O não vira "destruído" na tela com a chave ainda no disco.
     const vaultKey = randomBytes(32);
     await seedVault({
       vaultKey,

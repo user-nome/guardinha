@@ -199,8 +199,7 @@ async function createVaultNow(input: CreateVaultInput): Promise<VaultResult> {
   }
   const vaultKey = vaultStorage.createKey();
 
-  // um cofre novo é o usuário decidindo de propósito: só aqui a guarda de
-  // destruição é liberada, para que o `writeContainer` abaixo grave
+  // Cofre novo: só aqui a guarda de destruição é liberada para gravar o container.
   clearDestroyedFlag();
 
   // um embrulho por tipo de credencial (Factory Method), cada um com seu custo
@@ -219,8 +218,7 @@ async function createVaultNow(input: CreateVaultInput): Promise<VaultResult> {
     attemptsMaster: 0,
     nukeLimit: 0,
     methods,
-    // o selo inicial acontece antes de o arquivo existir: um container sem
-    // manifesto nunca é um cofre novo, é um cofre adulterado
+    // O selo vem antes do arquivo existir: container sem manifesto é adulterado, não novo.
     manifest: sealManifest(vaultKey, [], [], { entries: {}, auth: {} }),
   };
   vaultStorage.writeContainer(container);
@@ -264,15 +262,13 @@ async function methodMatchesCredential(
 /** PIN de coação: abre um cofre vazio e apaga o real, sem trava nem contagem. */
 async function tryPanicUnlock(input: UnlockInput, container: VaultContainerData): Promise<boolean> {
   const method = container.methods.panic;
-  // só faz sentido para algo no formato de PIN: uma senha mestra de 24
-  // caracteres nunca é o PIN de pânico, e o custo é o mesmo
+  // Só vale para algo no formato de PIN: senha mestra nunca é o PIN de pânico.
   if (method === undefined || input.kind !== 'pin' || !isPinFormat(input.credential)) {
     return false;
   }
   const pinMethod = container.methods.pin;
   if (pinMethod !== undefined && sameWrappedMethod(method, pinMethod)) {
-    // não é um PIN de pânico: é o método do PIN copiado para o slot de pânico.
-    // Segue o fluxo normal para o PIN abrir o cofre em vez de destruí-lo.
+    // Não é pânico, é o método do PIN copiado: segue o fluxo normal e abre o cofre.
     return false;
   }
   const unwrapper = keyUnwrapperFor('panic');
@@ -298,9 +294,7 @@ export function unlock(input: UnlockInput): Promise<VaultResult> {
 
 async function unlockNow(input: UnlockInput): Promise<VaultResult> {
   const m = currentMessages();
-  // Um cofre ilegível (de outra versão, ou danificado) não é erro de
-  // credencial: é o arquivo. Sem este catch a exceção sobe pelo handler do IPC e
-  // o renderer só mostra um `Error occurred in handler`, sem dizer o que houve.
+  // Cofre ilegível é erro de arquivo, não de credencial: sem catch, o IPC só mostra um Error.
   let container: VaultContainerData | null;
   try {
     container = vaultStorage.readContainer();
@@ -312,9 +306,7 @@ async function unlockNow(input: UnlockInput): Promise<VaultResult> {
   // antes de tudo, e sem respectar a trava: o PIN de pânico destrói o cofre
   if (await tryPanicUnlock(input, container)) {
     await panicDestroyNow();
-    // A pessoa sob coação precisa de um cofre aberto e vazio para mostrar, não
-    // de um erro que denuncie o mecanismo. A sessão decoy não guarda chave
-    // alguma (a real já saiu da RAM), então nada aqui decifra um `.zke`.
+    // Cofre decoy aberto e vazio para a coação; a sessão não guarda chave, nada decifra.
     vaultSession().adoptDecoy();
     return { ok: true, status: getStatus() };
   }
@@ -333,11 +325,9 @@ async function unlockNow(input: UnlockInput): Promise<VaultResult> {
      interno em vez de seguir com `undefined`. */
   if (vaultKey === undefined) return fail(m.errors.internal);
 
-  // a chave nova assume a sessão (zerando a anterior) no Singleton. O manifesto
-  // já foi selado na criação; re-selar aqui aceitaria exclusões feitas por fora.
+  // A chave nova assume a sessão; o manifesto já foi selado e não é re-selado aqui.
   vaultSession().adopt(vaultKey);
-  // cofre antigo não é migrado às escondidas: o login abre e a tela pede as
-  // outras credenciais. A exceção é o custo de Argon2id, que sobe na hora.
+  // Cofre antigo não migra às escondidas: o login abre e a tela pede as outras credenciais.
   if (hasLegacyFormat(container, vaultKey, context.legacyMethod === true)) {
     vaultSession().markMigrationPending();
   } else {
@@ -361,8 +351,7 @@ async function setPanicPinNow(input: PanicPinInput): Promise<VaultResult> {
   const container = vaultStorage.readContainer();
   if (container === null) return fail(m.errors.vaultMissing);
 
-  // o PIN de pânico não pode ser o PIN de verdade: um PIN que abre o cofre
-  // E o destrói não serve nem como cofre nem como proteção
+  // O PIN de pânico não pode ser o PIN que abre o cofre.
   if (await methodMatchesCredential('pin', container.methods.pin, input.pin)) {
     return fail(m.errors.panicPinSame);
   }
@@ -375,8 +364,7 @@ async function setPanicPinNow(input: PanicPinInput): Promise<VaultResult> {
 /** Remove o PIN de coação; o cofre volta a não ter caminho de pânico. */
 export function clearPanicPin(): Promise<VaultStatus> {
   return exclusive(() => {
-    // sem sessão aberta não há como distinguir o dono do cofre de um chamador
-    // qualquer do IPC; a remoção é permanente e exige a mesma prova que instalar
+    // Sem sessão aberta não há como distinguir o dono de um chamador qualquer do IPC.
     if (vaultStorage.exists() && !vaultSession().isUnlocked()) {
       throw new Error(currentMessages().errors.vaultLocked);
     }
@@ -415,8 +403,7 @@ export function setNukeLimit(limit: number): Promise<VaultResult> {
 
 function setNukeLimitNow(limit: number): VaultResult {
   const m = currentMessages();
-  // o campo é UInt32 no container: acima disso o `writeUInt32BE` lançaria
-  // `RangeError` no meio da gravação, em vez de devolver erro de domínio
+  // Campo UInt32: acima disso o writeUInt32BE lançaria RangeError no meio da gravação.
   if (!Number.isInteger(limit) || limit < 0 || limit > 0xffff_ffff) {
     return fail(m.errors.invalidNukeLimit);
   }
@@ -424,9 +411,7 @@ function setNukeLimitNow(limit: number): VaultResult {
 
   const container = vaultStorage.readContainer();
   if (container === null) return fail(m.errors.vaultMissing);
-  // o limite é permanente e decide se o cofre se apaga: exige a mesma sessão
-  // aberta que instalar o PIN de pânico, senão o IPC bloqueado vira um caminho
-  // para desarmar a proteção sem credencial
+  // O limite decide se o cofre se apaga: exige a mesma sessão aberta que instalar o pânico.
   if (!vaultSession().isUnlocked()) return fail(m.errors.vaultLocked);
   container.nukeLimit = limit;
   // um limite novo recomeça a contagem: a anterior foi medida contra outro teto
@@ -462,30 +447,22 @@ async function resetPinNow(input: ResetPinInput): Promise<VaultResult> {
       throw new Error(m.errors.shortPhrase);
     }
     const derived = await recovery.derive(method, phrase);
-    // a chave de trabalho sai da RAM mesmo se o desembrulho falhar, então o
-    // zero fica no `finally` e não no corpo feliz
+    // A chave sai da RAM mesmo se o desembrulho falhar: o zero fica no finally.
     try {
       const { vaultKey, legacy } = recovery.unwrapDetailed(method, derived);
-      // o novo PIN não pode ser o PIN de coação: `tryPanicUnlock` roda antes da
-      // cadeia normal, então o próximo login destruiria o cofre em vez de
-      // abri-lo. A checagem fica **depois** da frase, para que uma frase errada
-      // continue devolvendo `wrongRecovery` em vez de denunciar o PIN de pânico
-      // a quem ainda não provou posse da recuperação.
+      // O novo PIN não pode ser o de coação, mas a checagem vem depois da frase.
       if (await methodMatchesCredential('panic', container.methods.panic, input.newPin)) {
         return fail(m.errors.panicPinSame);
       }
       container.methods.pin = await keyUnwrapperFor('pin').wrap(vaultKey, input.newPin);
-      // a frase está na mão: sobe o custo do método e o reembrulha se ele ainda
-      // estiver no formato antigo
+      // Com a frase em mãos, sobe o custo do método e o reembrulha se ainda for antigo.
       if (legacy || !isKdfUpToDate('recovery', method)) {
         container.methods.recovery = await recovery.wrap(vaultKey, phrase);
       }
-      // a versão lida é preservada: a redefinição não substitui a migração
-      // explícita, que precisa das três credenciais
+      // A versão lida é preservada: a redefinição não substitui a migração explícita.
       vaultStorage.writeContainer(container);
 
-      // a chave nova assume a sessão (zerando a anterior) no Singleton; o
-      // manifesto já estava selado e não é re-selado por um desbloqueio
+      // A chave nova assume a sessão; o manifesto já selado não é re-selado no desbloqueio.
       vaultSession().adopt(vaultKey);
       if (hasLegacyFormat(container, vaultKey, legacy)) {
         vaultSession().markMigrationPending();
@@ -496,9 +473,7 @@ async function resetPinNow(input: ResetPinInput): Promise<VaultResult> {
       derived.fill(0);
     }
   } catch {
-    // a frase de recuperação não soma em `attemptsMaster`: o limite estrito é
-    // só da senha mestra, senão o caminho de recuperação seria um atalho para
-    // apagar o cofre
+    // A frase não soma em attemptsMaster: o limite estrito é só da senha mestra.
     const { state } = registerFailedAttempt('pin', container.nukeLimit);
     return { ok: false, error: m.errors.wrongRecovery, status: statusFrom(state, true, true) };
   }

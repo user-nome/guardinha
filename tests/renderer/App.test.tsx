@@ -38,10 +38,7 @@ describe('App', () => {
 
     render(<App />);
 
-    // `Home` começa em "abrindo o cofre" e só mostra o heading depois da
-    // lista; sob a suíte inteira rodando em paralelo esse IPC passa do segundo
-    // padrão do Testing Library. O limite alto só custa tempo no caminho da
-    // falha: enquanto o heading não aparece, a espera continua.
+    // O heading só aparece depois da lista; sob carga, a espera passa do padrão do Testing Library.
     await screen.findByRole('heading', { name: 'Senhas' }, { timeout: 15_000 });
     expect(await screen.findByText('GitHub')).toBeInTheDocument();
   });
@@ -82,8 +79,7 @@ describe('App', () => {
 });
 
 describe('polling de segurança do status', () => {
-  // `STATUS_POLL_MS` é privado do `App`; o valor está escrito aqui para que uma
-  // mudança de lado sem ajuste aqui apareça como falha de teste.
+  // `STATUS_POLL_MS` é privado do `App`: o valor fica aqui para uma mudança de lado falhar.
   const POLL_MS = 15_000;
 
   afterEach(() => {
@@ -91,11 +87,7 @@ describe('polling de segurança do status', () => {
   });
 
   it('reconsulta o cofre quando o auto-lock não chega', async () => {
-    // A rede de segurança: se o push do main se perder (renderizador recriado,
-    // `onAutoLocked` sem registro), quem tira a tela do cofre é o
-    // `setInterval`. Sem este teste, apagar o timer inteiro passava pela
-    // suíte, porque o efeito do Observer continua coberto pelo evento disparado
-    // à mão no teste acima.
+    // A rede de segurança: se o push do main se perder, o `setInterval` tira a tela do cofre.
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const api = installApi({ status: UNLOCKED, entries: [ENTRY] });
     const status = vi.fn().mockResolvedValue(UNLOCKED);
@@ -112,9 +104,7 @@ describe('polling de segurança do status', () => {
   });
 
   it('não consulta o cofre enquanto ele está travado', async () => {
-    // com o cofre travado o efeito nem cria o timer: uma tela de autenticação
-    // consultando o status a cada 15 s gastaria IPC com o usuário parado na
-    // frente dela
+    // Cofre travado não cria o timer: consultar o status a cada 15 s gastaria IPC à toa.
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const api = installApi({ status: LOCKED });
     const status = vi.fn().mockResolvedValue(LOCKED);
@@ -191,8 +181,7 @@ describe('botão de autodestruição', () => {
 
 describe('a tela de autodestruição só existe quando o usuário pede', () => {
   it('não abre sozinha com o cofre já aberto', async () => {
-    // `confirmDestroy` nasce falso: se nascesse verdadeiro, o app abriria pedindo
-    // a palavra de confirmação de uma autodestruição que ninguém pediu.
+    // `confirmDestroy` nasce falso: verdadeiro abriria o app pedindo confirmação de destruição.
     installApi({ status: UNLOCKED });
     render(<App />);
     await screen.findByRole('heading', { name: 'Senhas' });
@@ -211,8 +200,7 @@ describe('a tela de autodestruição só existe quando o usuário pede', () => {
     await screen.findByRole('button', { name: /Destruir cofre/i });
     await user.click(screen.getByRole('button', { name: /Cancelar/i }));
 
-    // o `setConfirmDestroy(false)` do cancelamento é o que tira a tela; sem ele
-    // a tela de confirmação ficaria na tela com o botão de ação habilitado
+    // O `setConfirmDestroy(false)` do cancelamento tira a tela com o botão de ação habilitado.
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /Destruir cofre/i })).not.toBeInTheDocument();
     });
