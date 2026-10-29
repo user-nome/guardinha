@@ -84,7 +84,7 @@ describe('App: estados do cofre e da tela', () => {
   });
 
   it('o status recarregado não devolve a tela para o Início', async () => {
-    // só volta ao Início quando o cofre some ou trava: recarregar o status não tira o usuário da aba
+    // só volta ao Início quando o cofre some ou trava: recarregar o status não troca a aba
     const user = userEvent.setup();
     const api = installApi({ status: UNLOCKED });
     api.vault.status = () => Promise.resolve({ ...UNLOCKED });
@@ -154,7 +154,7 @@ describe('App: aba de backup', () => {
   });
 
   it('trata diálogo cancelado como operação encerrada, sem toast de sucesso', async () => {
-    // `{ canceled: true }` não pode virar "backup salvo": mentir sobre o pendrive é o pior erro aqui
+    // `{ canceled: true }` não pode virar "backup salvo": mentir sobre o pendrive é o pior erro
     const user = userEvent.setup();
     installApi({
       status: UNLOCKED,

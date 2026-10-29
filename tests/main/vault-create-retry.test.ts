@@ -25,7 +25,7 @@ describe('retentativa de criação após setup privilegiado', () => {
   });
 
   it('usa erro interno se a falha de pasta não vier como Error', async () => {
-    // o valor lançado é `unknown` de propósito: `instanceof Error` precisa absorver sem vazar `undefined`
+    // o valor lançado é `unknown` de propósito: `instanceof Error` absorve sem vazar `undefined`
     const falhaSemError: unknown = ['sem', 'Error'];
     vi.spyOn(vaultStorage, 'exists').mockReturnValue(false);
     vi.spyOn(vaultStorage, 'ensureStructure').mockImplementationOnce(() => {
@@ -91,7 +91,7 @@ describe('retentativa de criação após setup privilegiado', () => {
   });
 
   it('segue para a criação quando a retentativa não acha cofre nenhum', async () => {
-    // `exists()` falso nos dois pontos deixa a criação seguir; `createKey` prova isso sem pagar Argon2id
+    // `exists()` falso nos dois pontos deixa a criação seguir, provado sem pagar Argon2id
     const m = currentMessages();
     const chegouAqui = new Error('a criação seguiu adiante');
     vi.spyOn(vaultStorage, 'exists').mockReturnValue(false);

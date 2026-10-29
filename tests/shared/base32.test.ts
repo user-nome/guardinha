@@ -66,7 +66,7 @@ describe('normalização', () => {
 });
 
 describe('vetores do RFC 4648', () => {
-  // Vetores fixos da RFC, não round-trip: um round-trip passaria com o acumulador errado dos dois lados
+  // Vetores fixos da RFC, não round-trip: o round-trip passaria com o acumulador errado.
   const casos: [string, string][] = [
     ['', ''],
     ['f', 'MY'],
