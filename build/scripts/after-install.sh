@@ -69,19 +69,19 @@ fi
 # O AppArmor não tem compilação condicional por versão (não existe `if` de
 # abi no perfil), então a compatibilidade se resolve por teste em vez de
 # sintaxe: o perfil só é instalado quando o parser instalado o aceita.
-# https://askubuntu.com/questions/1517272/writing-a-backwards-compatible-apparmor-profile
+# https://apparmor.net/man/4.0/apparmor.d/#Feature-ABI
 if apparmor_status --enabled >/dev/null 2>&1; then
     APPARMOR_PROFILE_SOURCE='/opt/${sanitizedProductName}/resources/apparmor-profile'
     APPARMOR_PROFILE_TARGET='/etc/apparmor.d/${executable}'
 
-    # `--skip-kernel-load` é o dry run do wiki (AppArmor/HowToUse, "Dumping
-    # profiles"): compila sem carregar no kernel. O `-K` deixa a compilação
+    # `--skip-kernel-load` é o dry run do manual em apparmor_parser(8), seção
+    # OPTIONS: compila sem carregar no kernel. O `-K` deixa a compilação
     # sem tocar no cache, que pertence ao carregamento de verdade; sem ele o
     # dry run falha por causa do cache em /var/cache/apparmor e não do perfil.
     # As bandeiras `rule-not-enforced` e `rule-downgraded` são a única notícia
     # de que uma regra morreu no kernel atual (o parser ignora em silêncio o
     # que a versão não suporta), então vão para o log do apt em vez de sumirem.
-    # https://wiki.debian.org/AppArmor/HowToUse#Dumping_profiles
+    # https://apparmor.net/man/4.0/apparmor_parser/#OPTIONS
     if ! APPARMOR_REPORT="$(apparmor_parser --skip-kernel-load -K \
         --warn=rule-not-enforced --warn=rule-downgraded \
         "$APPARMOR_PROFILE_SOURCE" 2>&1)"; then
@@ -103,7 +103,7 @@ if apparmor_status --enabled >/dev/null 2>&1; then
             if ! { [ -x '/usr/bin/ischroot' ] && /usr/bin/ischroot; } && hash apparmor_parser 2>/dev/null; then
                 # Extra flags taken from dh_apparmor:
                 # > By using '-W -T' we ensure that any abstraction updates are also pulled in.
-                # https://wiki.debian.org/AppArmor/Contribute/FirstTimeProfileImport
+                # https://manpages.ubuntu.com/manpages/noble/man1/dh_apparmor.1.html
                 # São também as bandeiras que escrevem o cache do perfil, e é o
                 # cache que evita recompilar a política a cada boot.
                 if ! apparmor_parser --replace --write-cache --skip-read-cache "$APPARMOR_PROFILE_TARGET"; then
@@ -151,7 +151,7 @@ POLKIT_DIR='/usr/share/polkit-1/actions'
 if [ -d "$POLKIT_DIR" ] && POLKIT_TMP="$(mktemp "$POLKIT_DIR/.com.guardinha.keypass.XXXXXX")"; then
     cat > "$POLKIT_TMP" <<'POLICY_EOF'
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN" "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD polkit Policy Configuration 1.0//EN" "http://www.freedesktop.org/software/polkit/policyconfig-1.dtd">
 <policyconfig>
   <vendor>Guardinha</vendor>
   <action id="com.guardinha.keypass.setup-vault">

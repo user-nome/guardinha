@@ -165,6 +165,9 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
+          # O JS vai em aspas simples de propósito (o shell não deve expandir
+          # `$` e `${}` do programa); o shellcheck não sabe que é JS.
+          # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
             const file = "coverage/coverage-summary.json";
@@ -316,6 +319,9 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
+          # O JS vai em aspas simples de propósito (o shell não deve expandir
+          # `$` e `${}` do programa); o shellcheck não sabe que é JS.
+          # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
             const file = "mutation/results.json";
