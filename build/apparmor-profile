@@ -14,14 +14,14 @@
 # carregamento, o arquivo sai de `/etc/apparmor.d` em vez de derrubar o
 # `apparmor.service` no próximo boot. O AppArmor não tem compilação condicional
 # por versão, então compatibilidade aqui é teste, não sintaxe.
-# https://askubuntu.com/questions/1517272/writing-a-backwards-compatible-apparmor-profile
+# https://apparmor.net/man/4.0/apparmor.d/#Feature-ABI
 #
 # Ciclo de teste: carregar em complain (`apparmor_parser -C -r`), rodar o app,
 # ler as negações no `/var/log/kern.log` e repetir até não sobrar negação de
 # operação legítima; só então promover a enforce (`apparmor_parser -r`).
 # `apparmor_parser --preprocess` achata os `#include` e
 # `apparmor_parser --skip-kernel-load --debug` mostra o que iria para o kernel:
-# https://wiki.debian.org/AppArmor/HowToUse#Dumping_profiles
+# https://apparmor.net/man/4.0/apparmor_parser/#OPTIONS
 #
 # A negação é padrão do AppArmor: só entra aqui o que o app realmente precisa.
 

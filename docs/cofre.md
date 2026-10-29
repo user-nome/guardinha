@@ -192,7 +192,7 @@ mantém a lista de nomes, mas muda o digest e é recusado antes da leitura.
   (`src/main/auth.ts`).
 - Sucesso zera as tentativas; o contador também pode ser zerado por teste ou
   pela redefinição de PIN.
-- Sem atividade por 5 minutos a chave é zerada e o cofre bloqueia
+- Sem atividade por 2 minutos a chave é zerada e o cofre bloqueia
   (`IDLE_LOCK_MS` em `src/main/activity.ts`). O main notifica o renderer pelo
   evento `vault:auto-locked`; a consulta de status a cada 15 s é apenas uma
   rede de segurança.

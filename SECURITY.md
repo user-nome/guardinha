@@ -88,7 +88,7 @@ contrário).
   fraco, com 10^8 candidatas, então o mais caro) e **senha mestra / frase de
   recuperação com 128 MB, t=3, p=4**. Elas vivem só na memória do processo
   main, dentro do `VaultSessionManager` (Singleton, `src/main/session.ts`),
-  que zera o Buffer no lock, no auto-lock de 5 minutos (temporizador do
+  que zera o Buffer no lock, no auto-lock de 2 minutos (temporizador do
   `ActivityMonitor`, em `src/main/activity.ts`) e no encerramento do
   app; nunca passam por IPC e nunca aparecem em log. Erros do cofre não ecoam
   senha, PIN ou frase, e o desbloqueio é uma cadeia (`src/main/unlock.ts`) em
@@ -146,10 +146,10 @@ contrário).
   `npm run lint:shell` varre os scripts de empacotamento; o CodeQL roda no CI
   (push/PR para `main` e semanalmente).
 - **Publicação sob gate de qualidade**: o workflow que gera e publica o `.deb`
-  tem um job **Verificar qualidade** (`npm run check` + `npm test`) e o job de
-  publicação só roda se ele passar. Erro de tipo, lint, formato, auditoria OSV,
-  shellcheck ou teste reprovado interrompe a Release, então nada quebrado chega
-  ao `.deb` que o usuário instala.
+  chama o `quality.yml` como workflow reutilizável (`npm run check`, cobertura de
+  100% e E2E) e o job de publicação só roda se ele passar. Erro de tipo, lint,
+  formato, auditoria OSV, shellcheck ou teste reprovado interrompe a Release,
+  então nada quebrado chega ao `.deb` que o usuário instala.
 - **Sem servidor intermediário**: o app não abre conexão de rede alguma: não
   há endpoint do Guardinha a atacar; credenciais nunca saem da máquina.
 - **Confinamento AppArmor**: o `.deb` inclui um perfil restritivo em
@@ -208,7 +208,7 @@ contrário).
   qualquer código rodando como o mesmo usuário lê `/proc/<pid>/mem` e
   recupera a chave de 32 bytes. Inerente a aplicativo desktop com cofre local
   (não há TPM nem cofre de hardware no alvo). Mitigado por zerar a chave no
-  lock manual e no auto-lock de 5 minutos, o que limita a janela de exposição;
+  lock manual e no auto-lock de 2 minutos, o que limita a janela de exposição;
   rodar como outro usuário já está fora do escopo (abaixo).
 - **Pacote `.gbk` sem assinatura**: o SHA-256 do backup prova integridade, não
   origem. Restaurar por cima de um cofre existente exige a sessão aberta,

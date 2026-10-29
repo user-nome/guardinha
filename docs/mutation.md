@@ -168,16 +168,16 @@ Duas, e as duas importam:
 A varredura roda no `quality.yml`, no job **Testes de mutação**, em outro ritmo
 do resto do workflow:
 
-| Quando dispara               | Por quê                                   |
-| ---------------------------- | ----------------------------------------- |
-| push na `developer`          | a `developer` é onde o código se move     |
-| dia 1 de cada mês, 04:17 UTC | rede de segurança quando ninguém fez push |
-| disparo manual               | remediar um arquivo sem esperar o mês     |
+| Quando dispara               | Por quê                                       |
+| ---------------------------- | --------------------------------------------- |
+| dia 1 de cada mês, 04:17 UTC | rede de segurança quando ninguém pediu na mão |
+| disparo manual               | remediar um arquivo sem esperar o mês         |
 
-Ela **não** roda em pull request nem em push para a `main`. A varredura leva
-horas e o número que ela mede só muda quando alguém escreve teste novo; a única
-coisa que ela faz por um PR é mudar de verde para vermelho sem dizer nada sobre o
-PR. Reprova abaixo de **65%**, com o número medido hoje em 95,7%.
+Ela **não** roda em push nem em pull request, e o `publish.yml` chama o
+`quality.yml` com `run_mutation: false`. A varredura leva horas e o número que
+ela mede só muda quando alguém escreve teste novo; a única coisa que ela faz por
+um PR é mudar de verde para vermelho sem dizer nada sobre o PR. Reprova abaixo de
+**65%**, com o número medido hoje em 95,7%.
 
 | Input           | Efeito                                                      |
 | --------------- | ----------------------------------------------------------- |
@@ -185,8 +185,8 @@ PR. Reprova abaixo de **65%**, com o número medido hoje em 95,7%.
 | `mutation_file` | mede só esses arquivos de `src/`, separados por vírgula     |
 
 O gating é um `if:` no **job**, não no `on:` do workflow, porque "Verificar
-qualidade" e "Testes e cobertura" continuam no ritmo normal de push e PR. Job
-pulado aparece como _Skipped_ na aba de checks, que é o esperado aqui.
+qualidade", "Testes e cobertura" e "Testes E2E" continuam no ritmo normal de push
+e PR. Job pulado aparece como _Skipped_ na aba de checks, que é o esperado aqui.
 
 A folga entre o piso e o número medido é de propósito. O score depende da
 máquina: mutante que estoura os 240 s vira `timeout` e sai do denominador, e o
@@ -195,14 +195,14 @@ piso colado no número medido daria build vermelho por causa do runner, não do
 código.
 
 O job **não é status check obrigatório** (as regras de proteção exigem só
-"Verificar qualidade" e "Testes e cobertura"). Ele informa e reprova sozinho,
-mas não segura o merge: prender todo PR a uma varredura de horas, para punir uma
-queda de duas décimas, não serve para ninguém.
+"Verificar qualidade", "Testes e cobertura" e "Testes E2E"). Ele informa e reprova
+sozinho, mas não segura o merge: prender todo PR a uma varredura de horas, para
+punir uma queda de duas décimas, não serve para ninguém.
 
 Ele também tem **grupo de concorrência próprio** (`mutacao-...`), separado do
-`qualidade-...` do workflow. No grupo do workflow, todo push cancela a execução
-anterior, o que mataria uma varredura de horas no meio sem ninguém ter tocado em
-nada.
+`qualidade-...` do workflow. Assim uma execução agendada ou manual não entra no
+grupo que cancela a cada push, onde uma varredura de horas morreria no meio sem
+ninguém ter tocado em nada.
 
 ## Arquivos
 
