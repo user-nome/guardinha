@@ -16,7 +16,7 @@ const pt = messages('pt-BR');
 const en = messages('en');
 
 /** Trava automática do app (`IDLE_LOCK_MS`) com folga para o aviso do main chegar. */
-const AUTOLOCK_TIMEOUT_MS = 6 * 60 * 1000;
+const AUTOLOCK_TIMEOUT_MS = 3 * 60 * 1000;
 
 /** Credenciais do cofre de teste: PIN não previsível e frase de 12 palavras. */
 export const VAULT = {

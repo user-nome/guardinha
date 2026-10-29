@@ -101,7 +101,7 @@ existe com tipo em `src/types/` e linha em `api.md`.
 | Bloqueado         | `AuthModal` no modo de desbloqueio (PIN; mestra após 3 falhas)                            |
 | Desbloqueado      | Chave do cofre no `VaultSessionManager` (Singleton), telas liberadas                      |
 | Trava exponencial | Falhas contam no disco; espera crescente bloqueia o desbloqueio                           |
-| Auto-lock         | 5 minutos ocioso zeram a chave na memória e bloqueiam; o main empurra `vault:auto-locked` |
+| Auto-lock         | 2 minutos ocioso zeram a chave na memória e bloqueiam; o main empurra `vault:auto-locked` |
 | Encerramento      | `before-quit` bloqueia o cofre e solta o temporizador do clipboard                        |
 
 O auto-lock é um Observer: o `ActivityMonitor` (`activity.ts`) dispara o

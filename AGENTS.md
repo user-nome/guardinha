@@ -85,7 +85,7 @@ Camadas:
   `docs/autenticador.md`.
 - A chave do cofre vive em memória no main, dentro do Singleton
   `VaultSessionManager` (`session.ts`); ele zera o Buffer no lock, no auto-lock
-  de 5 minutos e no encerramento do app. O temporizador de ociosidade mora no
+  de 2 minutos e no encerramento do app. O temporizador de ociosidade mora no
   `ActivityMonitor` (`activity.ts`): no evento de idle o Singleton zera a chave
   e o entrypoint empurra `vault:auto-locked` para o renderer (o polling de
   15 s em `App.tsx` fica como rede de segurança). O desbloqueio passa pela
@@ -193,9 +193,9 @@ Camadas:
 - `npm run test:mutation` (ou `test:mutation:plan`): teste de mutação em
   `tools/mutation/`; ver `docs/mutation.md`. É lento (cerca de 90 min) e não
   entra no `check`. No CI é o job "Testes de mutação" do `quality.yml`, em ritmo
-  próprio: push na `developer`, uma vez por mês no agendamento e no disparo
-  manual, **não** em pull request nem em push para a `main`. Reprova abaixo de
-  65% e não é status check obrigatório.
+  próprio: uma vez por mês no agendamento e no disparo manual, **não** em push
+  nem em pull request. Reprova abaixo de 65% e não é status check obrigatório.
+  O `publish.yml` chama o `quality.yml` com `run_mutation: false`.
 - `npm run dev` / `build` / `dist`: desenvolvimento, build, `.deb`.
 - `python3 build/make-icon.py`: regenera `build/icon.png` (PIL); é o `icon`
   do electron-builder e da janela.

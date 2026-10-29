@@ -11,17 +11,19 @@ name: Publicar .deb
 # tag só é criada antes do upload. O `concurrency` serializa as publicações para
 # duas corridas na `main` não publicarem a mesma versão duas vezes.
 #
-# Gate de qualidade: "Verificar qualidade" (`npm run check` + `npm test`) roda
-# em paralelo a "Verificar versão", e "Gerar e publicar" só começa se os dois
-# passarem.
+# Gate de qualidade: o job "Qualidade" chama o `quality.yml` como workflow
+# reutilizável, então check, cobertura e E2E são exatamente os mesmos da branch
+# de trabalho. Ele só roda quando há algo a publicar, e "Gerar e publicar" só
+# começa depois do gate. Assim a `main` não dispara uma segunda cópia dos jobs
+# de qualidade além da que a publicação já usa.
 #
 # Actions fixadas por SHA completo (com a tag no comentário); o Dependabot
 # (`github-actions`) atualiza os pins. O passo a passo está em `docs/build.md`.
 #
-# Runner fixado em `ubuntu-24.04` (não `ubuntu-latest`) nos três jobs: em
-# 19/10/2026 o `ubuntu-latest` do GitHub passa a apontar para Ubuntu 26.04
-# (actions/runner-images#14748), e o `.deb` deste workflow é o artefato que o
-# usuário instala. Como sair do 24.04 está em `docs/build.md`.
+# Runner fixado em `ubuntu-24.04` (não `ubuntu-latest`) nos jobs deste arquivo
+# e no `quality.yml`: em 19/10/2026 o `ubuntu-latest` do GitHub passa a apontar
+# para Ubuntu 26.04 (actions/runner-images#14748), e o `.deb` deste workflow é o
+# artefato que o usuário instala. Como sair do 24.04 está em `docs/build.md`.
 
 on:
   push:
@@ -118,44 +120,14 @@ jobs:
           echo "publicar=$PUBLICAR" >> "$GITHUB_OUTPUT"
 
   qualidade:
-    name: Verificar qualidade
-    # Runner fixado: ver o comentário no topo do arquivo.
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: npm
-
-      - run: npm ci
-
-      - name: Ferramentas de auditoria (binários fora do git; versões fixadas)
-        run: |
-          set -euo pipefail
-          # `bin/osv-scanner` e `bin/shellcheck` são gitignored: a pasta não
-          # existe no checkout do CI e o curl falharia com exit 23. `mkdir -p`
-          # antes. Mesmas versões do `quality.yml` e de `docs/build.md`.
-          mkdir -p bin
-          curl -fsSL -o bin/osv-scanner \
-            https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64
-          curl -fsSL -o /tmp/shellcheck.tar.xz \
-            https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
-          chmod +x bin/osv-scanner
-          # O tarball tem shellcheck-v0.11.0/shellcheck; `--strip-components=1`
-          # joga o diretório fora e o tarball vai para /tmp (fora da pasta que o
-          # `npm run check` lê, para não sobrar lixo no workspace).
-          tar -xJf /tmp/shellcheck.tar.xz --strip-components=1 -C bin shellcheck-v0.11.0/shellcheck
-          rm -f /tmp/shellcheck.tar.xz
-          bin/osv-scanner --version
-          bin/shellcheck --version | head -2
-
-      - name: Typecheck + lint + formato + auditoria OSV + shellcheck
-        run: npm run check
-
-      - name: Testes (Vitest)
-        run: npm test
+    name: Qualidade
+    needs: resolver-versao
+    # Push na `main` sem nada a publicar não paga o gate de novo: o
+    # `quality.yml` já confere cada push na `ajustes`.
+    if: needs.resolver-versao.outputs.publicar == 'true'
+    uses: ./.github/workflows/quality.yml
+    with:
+      run_mutation: false
 
   build-deb:
     name: Gerar e publicar

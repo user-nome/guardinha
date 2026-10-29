@@ -11,7 +11,7 @@ quem precisa mexer no código saber onde cada medida mora e o que ela protege.
 | Recusa de credencial previsível na criação e no reset    | `src/shared/strength.ts`, `src/shared/strategy.ts`, `src/main/vault.ts`     |
 | Argon2id com custo por método (256 MiB para o PIN)       | `src/main/crypto.ts`, `src/main/unwrapping.ts`                              |
 | Formato do `vault.zkv` e faixa de leitura do KDF         | `src/main/container.ts`                                                     |
-| Chave só em memória, lock e auto-lock de 5 min           | `src/main/session.ts` (`VaultSessionManager`), `src/main/activity.ts`       |
+| Chave só em memória, lock e auto-lock de 2 min           | `src/main/session.ts` (`VaultSessionManager`), `src/main/activity.ts`       |
 | Cadeia de desbloqueio (trava, formato, KDF, integridade) | `src/main/unlock.ts`, `src/main/vault.ts`                                   |
 | Trava exponencial (10 s até 24 h) persistida no cofre    | `src/main/auth.ts`, `src/main/storage.ts`                                   |
 | AES-256-GCM por registro e HKDF-SHA512 por arquivo       | `src/main/crypto.ts`                                                        |

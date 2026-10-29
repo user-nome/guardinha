@@ -60,7 +60,7 @@ não entra no pacote.
    pasta em `/var/lib`, com a senha de administrador digitada no sistema).
 2. Desbloqueio: PIN normalmente; a senha mestra só aparece após 3 falhas de PIN.
 3. Uso: listar, criar, editar e apagar credenciais, copiar, abrir o site.
-4. Bloqueio: botão de bloqueio, inatividade de 5 minutos ou falha de tentativa
+4. Bloqueio: botão de bloqueio, inatividade de 2 minutos ou falha de tentativa
    (trava exponencial de 10 s até 24 h).
 5. Destruição: pelo botão de autodestruição, pelo PIN de coação ou (opcional)
    por excesso de tentativas da senha mestra. Em todos os casos a chave sai da

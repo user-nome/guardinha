@@ -1,23 +1,25 @@
 name: Qualidade
 
-# Gate de qualidade da branch de trabalho. O `publish.yml` só roda na `main`,
-# no momento em que a versão sai: sem este arquivo, um push na `developer`
-# com erro de tipo, formatação quebrada, dependência vulnerável ou teste
-# vermelho só seria descoberto depois de mesclar.
+# Gate de qualidade da branch de trabalho. Roda na `ajustes` e é chamado pelo
+# `publish.yml` como workflow reutilizável (`workflow_call`): a definição do
+# gate fica num arquivo só, e a `main` não dispara uma segunda execução de
+# qualidade além da que a publicação já usa.
 #
 # Gatilhos:
-# - push na `developer`: a série de commits é conferida enquanto ela cresce;
-# - pull_request para `main` e `developer`: é a verificação que precisa estar
-#   verde para o merge acontecer;
+# - push e pull_request na `ajustes`: a série de commits é conferida enquanto
+#   ela cresce;
+# - workflow_call: o `publish.yml` reaproveita estes jobs antes de publicar;
+# - schedule: a varredura mensal de mutação, que não faz sentido a cada push;
 # - workflow_dispatch: para rodar na mão quando um passo local ficou duvidoso.
 #
 # A porta de 100% de cobertura mora em `vitest.config.mts` (`thresholds`), não
 # aqui: assim o número é o mesmo para quem roda localmente e para o CI, e
 # `npm run test:coverage` sozinho já reprova abaixo da meta.
 #
-# Para o merge ficar realmente travado, marque "Verificar qualidade", "Testes e
-# cobertura" e "Testes E2E" como status checks obrigatórios nas regras de
-# proteção da `main` (Settings > Branches > Branch protection rules).
+# Para a `ajustes` ficar realmente travada, marque "Verificar qualidade",
+# "Testes e cobertura" e "Testes E2E" como status checks obrigatórios nas regras
+# de proteção dela (Settings > Branches > Branch protection rules). Na `main` a
+# trava é o próprio `publish.yml`, que só publica depois deste gate.
 #
 # "Testes E2E" sobe o app compilado e o payload do `.deb` de verdade
 # (`docs/e2e.md`): compila com `dist:dir`, roda sob `xvfb` e instala o pacote
@@ -26,9 +28,10 @@ name: Qualidade
 #
 # "Testes de mutação" roda em outro ritmo, porque a varredura completa leva
 # horas e o número que ela mede só muda quando alguém escreve teste novo: ela
-# dispara em push para a `developer`, uma vez por mês no agendamento e no disparo
-# manual, e **não** em pull request nem em push para a `main`. Reprova abaixo de
-# 65% (piso ajustável pelo disparo manual), então a queda real aparece como build
+# dispara no agendamento mensal e no disparo manual, e **não** em push nem em
+# pull request. O `publish.yml` chama este workflow com `run_mutation: false`,
+# então a publicação nunca paga a varredura. Reprova abaixo de 65% (piso
+# ajustável pelo disparo manual), então a queda real aparece como build
 # vermelho sem virar trava de branch.
 #
 # Actions fixadas por SHA completo (com a tag na comentário) para não depender de
@@ -37,12 +40,10 @@ name: Qualidade
 on:
   push:
     branches:
-      - main
       - ajustes
   pull_request:
     branches:
-      - main
-      - developer
+      - ajustes
   schedule:
     # Dia 1 de cada mês, 04:17 UTC. Fora da hora cheia de propósito: as
     # execuções agendadas do GitHub se concentram em :00 e a fila nesse minuto é
@@ -59,6 +60,28 @@ on:
         description: 'Medir só este arquivo de src/ (repete o passo por vírgula)'
         required: false
         type: string
+      run_mutation:
+        description: 'Rodar também a varredura de mutação'
+        required: false
+        default: true
+        type: boolean
+  workflow_call:
+    inputs:
+      min_score:
+        description: 'Piso de reprovação do score de mutação (%). Padrão: 65'
+        required: false
+        default: '65'
+        type: string
+      mutation_file:
+        description: 'Medir só este arquivo de src/ (repete o passo por vírgula)'
+        required: false
+        default: ''
+        type: string
+      run_mutation:
+        description: 'Rodar também a varredura de mutação'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -227,26 +250,23 @@ jobs:
   mutacao:
     name: Testes de mutação
     # A varredura completa leva horas, e o que ela mede muda devagar: só quando
-    # alguém escreve teste novo. Então ela **não** roda em pull request e nem em
-    # push para a `main`: roda quando a `developer` recebe um push (para não
-    # passar meses com o número velho), uma vez por mês no agendamento, e no
-    # disparo manual, que é a válvula de escape quando se quer remediar um
-    # arquivo específico sem esperar o mês.
+    # alguém escreve teste novo. Então ela **não** roda em push nem em pull
+    # request: roda no agendamento mensal e no disparo manual, que é a válvula
+    # de escape para remediar um arquivo específico. O `publish.yml` chama com
+    # `run_mutation: false`, então a release não paga a varredura.
     #
     # Este `if` é do job, e não do `on:` do workflow, porque "Verificar
-    # qualidade" e "Testes e cobertura" continuam no ritmo normal de push e PR.
-    # Job pulado aparece como *Skipped* na aba de checks, o que é o esperado
-    # aqui: não é status check obrigatório.
+    # qualidade", "Testes e cobertura" e "Testes E2E" continuam no ritmo normal
+    # de push e PR. Job pulado aparece como *Skipped* na aba de checks, o que é
+    # o esperado aqui: não é status check obrigatório.
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/developer')
-      || github.event_name == 'schedule'
-      || github.event_name == 'workflow_dispatch'
+      github.event_name == 'schedule'
+      || inputs.run_mutation
     runs-on: ubuntu-24.04
     # Grupo próprio, e não o do workflow: lá, todo push cancela a execução
-    # anterior, o que mataria uma varredura de horas no meio sem que ninguém
-    # tenha tocado em nada. Aqui só uma varredura anterior da mesma branch é
-    # cancelada, e ainda assim só por push (pull request nunca é cancelado, para
-    # o status não ficar indefinido enquanto o autor corrige).
+    # anterior. A varredura só roda no agendamento e no disparo manual, então o
+    # grupo separado evita que uma execução de horas seja cancelada por um push
+    # que nada tem a ver com ela.
     concurrency:
       group: mutacao-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: ${{ github.event_name == 'push' }}

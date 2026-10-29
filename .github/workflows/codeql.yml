@@ -13,7 +13,6 @@ on:
   pull_request:
     branches:
       - developer
-      - main
   schedule:
     - cron: '17 4 * * 1'
 
