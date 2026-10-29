@@ -10,9 +10,10 @@ import { Credits } from '@zero/renderer/components/Credits';
 import { Settings } from '@zero/renderer/components/Settings';
 import { AuthModal } from '@zero/renderer/components/AuthModal';
 import { DestroyModal } from '@zero/renderer/components/DestroyModal';
+import { MigrationModal } from '@zero/renderer/components/MigrationModal';
 import { Toast } from '@zero/renderer/components/Toast';
 import { STATUS_POLL_MS } from '@zero/shared/auth-constants';
-import type { Language, TabType, VaultStatus } from '@zero/types';
+import type { Language, TabType, VaultMigrationStatus, VaultStatus } from '@zero/types';
 
 interface ShellProps {
   status: VaultStatus | null;
@@ -26,14 +27,44 @@ function Shell({ status, language, onLanguageChange, onRefresh }: ShellProps): J
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDestroy, setConfirmDestroy] = useState(false);
+  const [migration, setMigration] = useState<VaultMigrationStatus | null>(null);
+  const [showMigration, setShowMigration] = useState(false);
 
   const closeToast = useCallback((): void => setToast(null), []);
   const askDestroy = useCallback((): void => setConfirmDestroy(true), []);
   const cancelDestroy = useCallback((): void => setConfirmDestroy(false), []);
 
+  const unlocked = status !== null && status.exists && !status.locked;
+
+  const refreshMigration = useCallback(async (): Promise<void> => {
+    try {
+      const next = await window.api.vault.migrationStatus();
+      setMigration(next);
+      setShowMigration(next.needed);
+    } catch (error) {
+      console.error('Falha ao consultar a migração do cofre:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (status === null || !status.exists || status.locked) setActiveTab('home');
   }, [status]);
+
+  // o aviso de formato antigo só aparece depois do login, quando a chave já pode conferir o manifesto
+  useEffect(() => {
+    if (!unlocked) {
+      setMigration(null);
+      setShowMigration(false);
+      return;
+    }
+    void refreshMigration();
+  }, [unlocked, refreshMigration]);
+
+  const handleMigrated = async (): Promise<void> => {
+    await onRefresh();
+    await refreshMigration();
+    setToast(m.migration.success);
+  };
 
   const handleLock = async (): Promise<void> => {
     await window.api.vault.lock();
@@ -88,6 +119,13 @@ function Shell({ status, language, onLanguageChange, onRefresh }: ShellProps): J
         </div>
       </main>
       {confirmDestroy && <DestroyModal onClose={cancelDestroy} onDestroyed={handleDestroyed} />}
+      {showMigration && migration !== null && migration.needed && (
+        <MigrationModal
+          status={migration}
+          onLater={() => setShowMigration(false)}
+          onDone={handleMigrated}
+        />
+      )}
       <Toast message={toast} onClose={closeToast} />
     </div>
   );

@@ -88,6 +88,26 @@ export const ko: Messages = {
     backToPin: 'PIN으로 돌아가기',
   },
 
+  /** Atualização do formato do cofre depois de uma atualização do app. */
+  migration: {
+    title: '금고 업데이트',
+    subtitle:
+      '이 버전은 금고를 더 새로운 형식으로 저장합니다. 업데이트는 여기에서 ' +
+      '자격 증명으로 진행되며, 어떤 데이터도 컴퓨터 밖으로 나가지 않습니다.',
+    version: (from: number, to: number): string => `현재 형식: v${from}. 새 형식: v${to}.`,
+    summary: (entries: number, tokens: number): string =>
+      `자격 증명 ${entries}개와 2FA 토큰 ${tokens}개를 금고 키로 다시 씁니다.`,
+    methodsHint: '금고를 여는 각 자격 증명을 입력하세요. 어느 것도 저장되지 않습니다.',
+    masterLabel: '마스터 비밀번호',
+    pinLabel: 'PIN',
+    recoveryLabel: '복구 문구',
+    action: '금고 업데이트',
+    working: '업데이트하는 중…',
+    later: '나중에',
+    warning: '업데이트할 때까지 금고는 이전 형식으로 남습니다.',
+    success: '금고를 업데이트했습니다.',
+  },
+
   /** Medidor de força: rótulos e motivos do medidor (o bloqueio é em `errors`). */
   strength: {
     label: '강도',
@@ -363,6 +383,8 @@ export const ko: Messages = {
         ? '이 백업은 다른 버전의 Guardinha에서 만들어졌으며 이 버전은 더 이상 그 형식을 읽지 않습니다.'
         : `이 백업은 다른 버전의 Guardinha(형식 v${version})에서 만들어졌으며 이 버전은 더 이상 그 형식을 읽지 않습니다.`,
     backupWriteFailed: '대상에 파일을 쓰지 못했습니다.',
+    migrationIncomplete: '금고를 업데이트하려면 모든 자격 증명을 입력하세요.',
+    migrationFailed: '금고를 업데이트하지 못했습니다.',
     internal: '금고 내부 오류.',
     /** Guarda de origem do IPC: o emissor não é a página oficial do app. */
     foreignFrame: 'IPC 차단: 요청이 앱 페이지에서 오지 않았습니다.',

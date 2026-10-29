@@ -71,6 +71,8 @@ describe('guarda de origem dos canais', () => {
     'vault:clear-panic-pin',
     'vault:set-nuke-limit',
     'vault:panic-status',
+    'vault:migration-status',
+    'vault:migrate',
     'shell:open-domain',
     'clipboard:copy',
     'entries:list',

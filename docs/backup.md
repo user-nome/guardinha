@@ -49,7 +49,8 @@ ser tocado.
 O pacote tem uma versão só (a `1`) e não há migração do próprio formato de
 backup: uma versão desconhecida é recusada com `backupUnsupportedVersion`. O
 container do cofre dentro dele pode estar em qualquer versão que o app leia, e
-a migração acontece no primeiro desbloqueio depois da restauração.
+o primeiro login depois da restauração oferece a migração explícita descrita em
+`docs/cofre.md`.
 
 ## Exportação
 
@@ -94,9 +95,9 @@ abre com as credenciais do backup.
 
 Um `.gbk` gravado por uma versão anterior pode trazer um container v5. A
 restauração copia os bytes como estão (ela não tem a chave para migrar), e o
-primeiro desbloqueio faz a migração para a v6 descrita em `docs/cofre.md`. O
-`vault.zkv.v5.bak` do snapshot de downgrade não entra no pacote: ele é um
-arquivo de segurança da instalação, não parte do cofre.
+primeiro login depois da restauração oferece a migração para a v6 descrita em
+`docs/cofre.md`. Nenhum snapshot de downgrade entra no pacote: o `.gbk` é o
+cofre, não um arquivo de segurança da instalação.
 
 ## Como restaurar depois de formatar
 

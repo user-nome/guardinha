@@ -64,6 +64,8 @@ describe('preload: montagem da ponte window.api', () => {
       'create',
       'destroy',
       'lock',
+      'migrate',
+      'migrationStatus',
       'onAutoLocked',
       'panicStatus',
       'resetPin',
@@ -87,6 +89,7 @@ describe('preload: canais do cofre', () => {
     ['destroy', 'vault:destroy'],
     ['clearPanicPin', 'vault:clear-panic-pin'],
     ['panicStatus', 'vault:panic-status'],
+    ['migrationStatus', 'vault:migration-status'],
   ] as const)('%s vai para %s', async (method, channel) => {
     await callVault(loaded.api, method);
     expect(loaded.last()[0]).toBe(channel);
@@ -98,6 +101,7 @@ describe('preload: canais do cofre', () => {
     ['resetPin', 'vault:resetPin'],
     ['setPanicPin', 'vault:set-panic-pin'],
     ['setNukeLimit', 'vault:set-nuke-limit'],
+    ['migrate', 'vault:migrate'],
   ] as const)('%s leva o payload para %s', async (method, channel) => {
     const payload = { sentinela: method };
     await callVault(loaded.api, method, payload);

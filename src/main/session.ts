@@ -10,6 +10,9 @@ export class VaultSessionManager {
   /** Sessão decoy: cofre destruído, sem chave na RAM, mas com a tela de cofre vazio. */
   private decoy = false;
 
+  /** A sessão abriu um cofre que ainda precisa da migração explícita. */
+  private migrationPending = false;
+
   private constructor() {
     activityMonitor.subscribe(() => {
       this.wipe();
@@ -38,6 +41,21 @@ export class VaultSessionManager {
   /** true se a sessão é a de coação (cofre vazio, sem chave real). */
   public isDecoy(): boolean {
     return this.decoy;
+  }
+
+  /** Marca que esta sessão abriu um cofre no formato antigo (o aviso aparece no login). */
+  public markMigrationPending(): void {
+    this.migrationPending = true;
+  }
+
+  /** true enquanto o cofre aberto ainda não passou pela migração explícita. */
+  public isMigrationPending(): boolean {
+    return this.migrationPending;
+  }
+
+  /** A migração terminou: o aviso não volta até o próximo desbloqueio de cofre antigo. */
+  public clearMigrationPending(): void {
+    this.migrationPending = false;
   }
 
   /** Chave corrente; lança o erro localizado se o cofre estiver bloqueado. */
@@ -70,6 +88,7 @@ export class VaultSessionManager {
       this.key = null;
     }
     this.decoy = false;
+    this.migrationPending = false;
     activityMonitor.stop();
   }
 }

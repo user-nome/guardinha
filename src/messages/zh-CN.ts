@@ -88,6 +88,25 @@ export const zhCN: Messages = {
     backToPin: '返回 PIN 码',
   },
 
+  /** Atualização do formato do cofre depois de uma atualização do app. */
+  migration: {
+    title: '升级密码库',
+    subtitle:
+      '此版本以更新的格式保存密码库。升级在这里使用你的凭据完成，不会有任何数据离开这台电脑。',
+    version: (from: number, to: number): string => `当前格式：v${from}。新格式：v${to}。`,
+    summary: (entries: number, tokens: number): string =>
+      `将使用密码库密钥重写 ${entries} 条凭据和 ${tokens} 个 2FA 令牌。`,
+    methodsHint: '请输入每个仍能打开密码库的凭据。它们都不会被保存。',
+    masterLabel: '主密码',
+    pinLabel: 'PIN 码',
+    recoveryLabel: '恢复短语',
+    action: '升级密码库',
+    working: '正在升级…',
+    later: '稍后',
+    warning: '在升级之前，密码库会保持旧格式。',
+    success: '密码库已升级。',
+  },
+
   /** Medidor de força: rótulos e motivos do medidor (o bloqueio é em `errors`). */
   strength: {
     label: '强度',
@@ -346,6 +365,8 @@ export const zhCN: Messages = {
         ? '此备份由另一版本的 Guardinha 创建，当前版本已不再读取该格式。'
         : `此备份由另一版本的 Guardinha 创建（格式 v${version}），当前版本已不再读取该格式。`,
     backupWriteFailed: '无法把文件写入目标位置。',
+    migrationIncomplete: '请输入所有凭据以升级密码库。',
+    migrationFailed: '无法升级密码库。',
     internal: '密码库内部错误。',
     /** Guarda de origem do IPC: o emissor não é a página oficial do app. */
     foreignFrame: 'IPC 已阻止：请求并非来自应用页面。',

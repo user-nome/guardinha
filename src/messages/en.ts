@@ -90,6 +90,26 @@ export const en: Messages = {
     backToPin: 'Back to PIN',
   },
 
+  /** Upgrade of the vault format after an app update. */
+  migration: {
+    title: 'Upgrade the vault',
+    subtitle:
+      'This version stores the vault in a newer format. The upgrade happens here, ' +
+      'with your credentials: nothing leaves the computer.',
+    version: (from: number, to: number): string => `Current format: v${from}. New format: v${to}.`,
+    summary: (entries: number, tokens: number): string =>
+      `${entries} credential(s) and ${tokens} 2FA token(s) will be rewritten with the vault key.`,
+    methodsHint: 'Enter each credential that still opens the vault. None of them is stored.',
+    masterLabel: 'Master password',
+    pinLabel: 'PIN',
+    recoveryLabel: 'Recovery phrase',
+    action: 'Upgrade vault',
+    working: 'Upgrading…',
+    later: 'Later',
+    warning: 'Until you upgrade, the vault stays in the old format.',
+    success: 'Vault upgraded.',
+  },
+
   strength: {
     label: 'Strength',
     levels: {
@@ -369,6 +389,8 @@ export const en: Messages = {
         ? 'This backup was created by another version of Guardinha, whose format this version no longer reads.'
         : `This backup was created by another version of Guardinha (format v${version}), which this version no longer reads.`,
     backupWriteFailed: 'Could not write the file to the destination.',
+    migrationIncomplete: 'Enter every credential to upgrade the vault.',
+    migrationFailed: 'Could not upgrade the vault.',
     internal: 'Internal vault error.',
     /** Guarda de origem do IPC: o emissor não é a página oficial do app. */
     foreignFrame: 'IPC blocked: the request did not come from the app page.',

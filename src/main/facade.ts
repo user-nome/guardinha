@@ -14,7 +14,6 @@ import {
 } from '@zero/main/entries-store';
 import { deleteAuth, listAuthIds, readAuthPayload, writeAuthPayload } from '@zero/main/auth-store';
 import {
-  backupContainer,
   manifestFromDirectory,
   readAuthState,
   readVaultContainer,
@@ -151,11 +150,6 @@ export class VaultStorageFacade {
     writeVaultContainer(data);
   }
 
-  /** Snapshot 0600 do container antigo, para o downgrade após uma migração. */
-  public backupContainer(version: number): void {
-    backupContainer(version);
-  }
-
   /** Estado de tentativas e trava; nunca lança, devolve o neutro se o cofre falta. */
   public readAuthState(): PersistedAuthState {
     return readAuthState();
@@ -239,6 +233,15 @@ export class VaultStorageFacade {
   public removeAuthSecret(id: string, vaultKey: Buffer): void {
     deleteAuth(id);
     updateManifest(vaultKey);
+  }
+
+  /** Decifra e regrava todos os arquivos com a mesma chave, em salt e IV novos. */
+  public reencryptRecords(vaultKey: Buffer): void {
+    // tudo é lido antes da primeira gravação: arquivo adulterado aborta sem meio lote gravado
+    const entries = this.listIds().map((id) => this.readRecord(id, vaultKey));
+    const auth = this.listAuthIds().map((id) => this.readAuthSecret(id, vaultKey));
+    for (const record of entries) this.writeRecord(record, vaultKey);
+    for (const secret of auth) this.writeAuthSecret(secret, vaultKey);
   }
 
   /** Cryptographic Erase cru: apaga o container e as entradas, quem chama decide. */

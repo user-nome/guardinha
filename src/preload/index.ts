@@ -14,6 +14,8 @@ const api: ElectronApi = {
     clearPanicPin: () => ipcRenderer.invoke('vault:clear-panic-pin'),
     setNukeLimit: (limit) => ipcRenderer.invoke('vault:set-nuke-limit', limit),
     panicStatus: () => ipcRenderer.invoke('vault:panic-status'),
+    migrationStatus: () => ipcRenderer.invoke('vault:migration-status'),
+    migrate: (input) => ipcRenderer.invoke('vault:migrate', input),
     onAutoLocked: (listener) => {
       const handler = (_event: IpcRendererEvent, status: Parameters<typeof listener>[0]): void =>
         listener(status);

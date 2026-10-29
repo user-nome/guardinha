@@ -15,9 +15,11 @@ import { clearDestroyedFlag } from '@zero/main/erasure-state';
 import { decoyKey, isKdfUpToDate, keyUnwrapperFor } from '@zero/main/unwrapping';
 import { runUnlockChain } from '@zero/main/unlock';
 import {
-  migrateAndPersist,
-  migrateContainerBestEffort,
-  persistMigration,
+  buildMigratedContainer,
+  hasLegacyFormat,
+  migrationStatusFor,
+  persistMigratedContainer,
+  refreshMethodKdf,
 } from '@zero/main/migration';
 import type { UnlockContext } from '@zero/main/unlock';
 import {
@@ -39,6 +41,8 @@ import type {
   PanicStatus,
   ResetPinInput,
   UnlockInput,
+  VaultMigrationInput,
+  VaultMigrationStatus,
   VaultResult,
   VaultStatus,
 } from '@zero/types';
@@ -62,6 +66,38 @@ export function getStatus(): VaultStatus {
 
 export function isUnlocked(): boolean {
   return vaultSession().isUnlocked();
+}
+
+/** O que falta para o cofre aberto estar no formato atual; a tela pergunta no login. */
+export function getMigrationStatus(): VaultMigrationStatus {
+  return migrationStatusFor(vaultStorage.readContainer(), vaultSession().isMigrationPending());
+}
+
+/** Migra o cofre de uma vez, com todas as credenciais que a tela pediu no login. */
+export function migrateVault(input: VaultMigrationInput): Promise<VaultResult> {
+  return exclusive(() => migrateVaultNow(input));
+}
+
+async function migrateVaultNow(input: VaultMigrationInput): Promise<VaultResult> {
+  const m = currentMessages();
+  // a sessão decoy não tem chave real: migrar ali só produziria um container falso
+  if (!vaultSession().isUnlocked() || vaultSession().isDecoy()) return fail(m.errors.vaultLocked);
+  const container = vaultStorage.readContainer();
+  if (container === null) return fail(m.errors.vaultMissing);
+  const vaultKey = vaultSession().requireKey();
+  try {
+    const migrated = await buildMigratedContainer(
+      container,
+      vaultKey,
+      input,
+      vaultSession().isMigrationPending(),
+    );
+    if (migrated !== null) persistMigratedContainer(migrated);
+    vaultSession().clearMigrationPending();
+    return { ok: true, status: getStatus() };
+  } catch (error) {
+    return fail(errorMessage(error, m.errors.migrationFailed));
+  }
 }
 
 /** Rearma a trava automática (chamado a cada operação bem-sucedida). */
@@ -297,17 +333,16 @@ async function unlockNow(input: UnlockInput): Promise<VaultResult> {
      interno em vez de seguir com `undefined`. */
   if (vaultKey === undefined) return fail(m.errors.internal);
 
-  // o método usado e o manifesto migram agora; os outros métodos esperam o
-  // desbloqueio de cada credencial, que é quando ela fica disponível
-  await migrateAndPersist(container, vaultKey, {
-    kind: input.kind,
-    credential: input.credential,
-    legacyMethod: context.legacyMethod === true,
-  });
-
   // a chave nova assume a sessão (zerando a anterior) no Singleton. O manifesto
   // já foi selado na criação; re-selar aqui aceitaria exclusões feitas por fora.
   vaultSession().adopt(vaultKey);
+  // cofre antigo não é migrado às escondidas: o login abre e a tela pede as
+  // outras credenciais. A exceção é o custo de Argon2id, que sobe na hora.
+  if (hasLegacyFormat(container, vaultKey, context.legacyMethod === true)) {
+    vaultSession().markMigrationPending();
+  } else {
+    await refreshMethodKdf(container, vaultKey, input.kind, input.credential);
+  }
   resetAttempts();
   return { ok: true, status: getStatus() };
 }
@@ -445,21 +480,16 @@ async function resetPinNow(input: ResetPinInput): Promise<VaultResult> {
       if (legacy || !isKdfUpToDate('recovery', method)) {
         container.methods.recovery = await recovery.wrap(vaultKey, phrase);
       }
-      // a redefinição também é um desbloqueio: aproveita para migrar o resto
-      // (versão, manifesto e o método de recuperação já reembrulhado acima)
-      const migrated = await migrateContainerBestEffort(container, vaultKey, {
-        kind: 'recovery',
-        credential: phrase,
-        legacyMethod: legacy,
-        methodAlreadyWrapped: true,
-      });
-      // o PIN novo já está embrulhado: grava mesmo se o snapshot de downgrade
-      // não puder ser criado (a falha fica no log, não vira "frase errada")
-      persistMigration(container, migrated, false);
+      // a versão lida é preservada: a redefinição não substitui a migração
+      // explícita, que precisa das três credenciais
+      vaultStorage.writeContainer(container);
 
       // a chave nova assume a sessão (zerando a anterior) no Singleton; o
       // manifesto já estava selado e não é re-selado por um desbloqueio
       vaultSession().adopt(vaultKey);
+      if (hasLegacyFormat(container, vaultKey, legacy)) {
+        vaultSession().markMigrationPending();
+      }
       resetAttempts();
       return { ok: true, status: getStatus() };
     } finally {

@@ -2,9 +2,11 @@ import { Menu, app, BrowserWindow, dialog, ipcMain, session, shell } from 'elect
 import type { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import {
   createVault,
+  getMigrationStatus,
   getStatus,
   isVaultLockedError,
   lock,
+  migrateVault,
   panicDestroy,
   resetPin,
   setNukeLimit,
@@ -56,6 +58,7 @@ import type {
   PanicPinInput,
   ResetPinInput,
   UnlockInput,
+  VaultMigrationInput,
 } from '@zero/types';
 
 // o Electron exige o scheme declarado antes de ficar pronto, então roda no topo do módulo
@@ -206,6 +209,14 @@ function registerIpc(): void {
   ipcMain.handle('vault:panic-status', (event) => {
     assertAppFrame(event);
     return panicStatus();
+  });
+  ipcMain.handle('vault:migration-status', (event) => {
+    assertAppFrame(event);
+    return getMigrationStatus();
+  });
+  ipcMain.handle('vault:migrate', (event, input: VaultMigrationInput) => {
+    assertAppFrame(event);
+    return migrateVault(input);
   });
 
   /** Abre o domínio da credencial no navegador padrão (só http/https). */

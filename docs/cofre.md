@@ -88,11 +88,12 @@ adulterado: a faixa existe para um `vault.zkv` adulterado não conseguir exigir
 memória ou CPU ilimitadas, não como garantia mínima de segurança.
 
 Um método gravado com um perfil mais barato é reembrulhado com o perfil atual
-**no desbloqueio em que a própria credencial dele é usada**. Só quem já tem a
-credencial consegue fazer isso, e o custo sobe sem nunca derrubar o
-desbloqueio (`prepareMigration`, em `migration.ts`; best-effort quando falta
-permissão de escrita). A mesma passagem cuida da migração de formato, porque as
-duas coisas exigem a credencial em mãos.
+**no desbloqueio em que a própria credencial dele é usada**, desde que o cofre
+já esteja na versão atual. Só quem tem a credencial consegue fazer isso, e o
+custo sobe sem nunca derrubar o desbloqueio (`refreshMethodKdf`, em
+`migration.ts`; best-effort quando falta permissão de escrita). Cofre de formato
+antigo não passa por aqui: o login só avisa e a migração explícita reembrulha
+todos os métodos de uma vez, com o custo atual.
 
 ## Destruição do cofre
 
@@ -201,33 +202,45 @@ mantém a lista de nomes, mas muda o digest e é recusado antes da leitura.
 A v5 e a v6 têm o mesmo layout binário; o que mudou foi o **embrulho de cada
 método** (HKDF e AAD com o papel do método, `guardinha-method-<tipo>-v1`) e o
 **manifesto** (v2, só ids; v3, ids e SHA-256 de cada arquivo). Reembrulhar um
-método exige a credencial que o protege, e o desbloqueio só tem uma na mão. Por
-isso a migração é **incremental**:
+método exige a credencial que o protege, e uma sessão aberta só tem uma. Por
+isso a migração é **explícita**: o desbloqueio de um cofre v5 abre normalmente,
+sem tocar no formato, e o renderer mostra o `MigrationModal` logo depois.
 
-1. No desbloqueio (ou na redefinição de PIN, que também prova a frase), o
-   método usado é reembrulhado na v6 e o manifesto é re-selado na v3.
-2. O container sobe para a v6 nessa mesma gravação.
-3. Os outros métodos continuam no embrulho da v5 e migram no desbloqueio de
-   cada credencial. A leitura tenta o embrulho atual e, se o GCM recusar, o da
-   v5, então um cofre meio migrado abre normalmente (`unwrapDetailed`, em
-   `unwrapping.ts`).
-4. A gravação incidental (trava exponencial, troca de PIN) preserva a versão
-   lida: uma tentativa de PIN não promove o container sem migrar os métodos e o
-   manifesto.
+O aviso nasce de `vault:migration-status` (`getMigrationStatus`, em `vault.ts`):
+`needed` é verdadeiro quando a versão lida é menor que a atual (`6`) ou quando a
+sessão carrega a marca de migração pendente. A marca é só de memória e cobre o
+cofre que o fluxo incremental antigo deixou na v6 com método ou manifesto ainda
+no formato velho (`hasLegacyFormat`, em `migration.ts`).
 
-Antes da primeira gravação que muda o formato, `storage.ts` guarda
-`vault.zkv.v<versão>.bak` em `0600` (por exemplo, `vault.zkv.v5.bak`). É o
-**caminho de downgrade**: se a versão nova tiver um defeito, basta restaurar o
-snapshot por cima do `vault.zkv` e abrir com o app antigo. O snapshot nunca é
-sobrescrito (o primeiro, da versão mais antiga, é o que preserva a volta) e o
-Cryptographic Erase o apaga junto com o resto.
+A tela pede a **senha mestra, o PIN e a frase de recuperação** presentes no
+container; o PIN de coação fica de fora de propósito, porque a chave dele é
+decoy e o cofre não precisa dele para migrar. Quem clica em **Depois** fecha o
+aviso e continua no formato antigo; o aviso volta no próximo desbloqueio.
 
-A migração é **best-effort**: manifesto que não confere com o diretório ou falha
-de escrita adia a migração, deixa o container antigo intacto e não derruba o
-desbloqueio. No desbloqueio, se o snapshot não puder ser criado, a migração é
-abortada (sem snapshot não há volta). Na redefinição de PIN o novo PIN já foi
-embrulhado, então a gravação acontece mesmo sem snapshot, com um aviso no log.
-`migrateAndPersist` e `persistMigration` moram em `src/main/migration.ts`.
+Ao confirmar, `buildMigratedContainer` monta tudo em memória e só depois uma
+única gravação substitui o `vault.zkv`:
+
+1. confere o manifesto contra `.entries` e `.auth` (`verifyManifestData`);
+2. verifica cada credencial: a chave desembrulhada precisa ser **a mesma** que
+   está na sessão, então uma credencial de outro cofre não passa;
+3. reembrulha todos os métodos com o custo atual de Argon2id;
+4. reescreve cada `.zke` e `.zka` com a chave derivada do cofre e o rótulo de
+   HKDF atual (`reencryptRecords`, na fachada);
+5. re-sela o manifesto na v3 com os hashes do diretório e marca o container
+   como v6.
+
+A migração é **tudo ou nada** para os métodos: credencial errada, manifesto que
+não confere ou arquivo adulterado lançam antes de qualquer gravação, o
+`vault.zkv` antigo permanece intacto e a sessão continua aberta. Falha de disco
+no meio da regravação dos registros também não troca o container, e o que já foi
+regravado continua legível com a mesma chave. Depois de uma migração bem-sucedida
+a marca pendente é limpa e o toast confirma o fim. A gravação única passa por
+`writeVaultContainer`, então o erase continua barrando um cofre destruído.
+
+O snapshot de downgrade (`vault.zkv.v<versão>.bak`) e o caminho incremental
+foram removidos: não há mais como abrir um cofre migrado com o app antigo, e a
+atualização passa a ser uma decisão do usuário, com as credenciais em mãos, em
+vez de uma promoção silenciosa no meio do login.
 
 ### Formatos anteriores à v5
 
@@ -240,8 +253,9 @@ tinha usuário para proteger.
 
 O **custo do Argon2id por método** sobe sozinho: um método gravado com perfil
 mais barato é reembrulhado no próximo desbloqueio feito com essa credencial,
-porque só quem tem a credencial consegue reembrulhar. A migração de formato usa
-a mesma passagem, então subir o custo e migrar o embrulho custam um Argon2id só.
+porque só quem tem a credencial consegue reembrulhar. A migração explícita de
+formato reembrulha todos os métodos de uma vez, então subir o custo e migrar o
+embrulho acontecem na mesma passagem, com um Argon2id por método.
 
 ## Variáveis de ambiente
 

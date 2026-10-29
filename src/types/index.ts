@@ -22,6 +22,7 @@ export type {
   CredentialInput,
   EraseResult,
   FailedAttemptResult,
+  MigrationMethod,
   PanicPinInput,
   PanicStatus,
   PersistedAuthState,
@@ -29,6 +30,8 @@ export type {
   TempCleanupResult,
   UnlockInput,
   UnlockKind,
+  VaultMigrationInput,
+  VaultMigrationStatus,
   VaultResult,
   VaultStatus,
 } from '@zero/types/vault';
