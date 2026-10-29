@@ -4,10 +4,7 @@ import type { JSX } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { SelectField } from '@zero/renderer/components/SelectField';
 
-/**
- * O seletor tem menu próprio no lugar do `<select>` nativo, então setas, Home, End e Escape são
- * código nosso, e o foco precisa voltar ao gatilho quando o menu fecha.
- */
+/** Menu próprio no lugar do `<select>`: setas, Home, End, Escape e volta do foco. */
 
 const OPCOES = [
   { value: 'a', label: 'Opção A' },
@@ -41,12 +38,7 @@ function opcao(indice: number): HTMLElement {
   return achada;
 }
 
-/**
- * Executa o roteiro e devolve os erros que o navegador reportou na janela. React
- * engole a exceção de um manipulador de evento e a reemite como erro de janela,
- * então é assim que se enxerga um `null.focus()` que, de outra forma, passaria
- * batido: o estado da tela fica igual, mas o erro aconteceu.
- */
+/** Devolve os erros de janela: React reemite a exceção do manipulador. */
 function errosDeJanelaDurante(roteiro: () => void): unknown[] {
   const erros: unknown[] = [];
   const aoErro = (event: ErrorEvent): void => {
@@ -61,12 +53,7 @@ function errosDeJanelaDurante(roteiro: () => void): unknown[] {
   return erros;
 }
 
-/**
- * Irmão que dispara um `mousedown` no documento ao ser desmontado, depois que as
- * refs do campo já foram soltas. Reproduz o clique que chega justo enquanto o
- * campo sai da tela, quando o `containerRef` já é nulo mas o ouvinte de
- * `mousedown` ainda não foi removido pelo efeito passivo.
- */
+/** `mousedown` no documento com as refs já soltas, no desmonte do campo. */
 function SondaDeDesmontagem(): JSX.Element {
   useLayoutEffect(() => {
     return () => {

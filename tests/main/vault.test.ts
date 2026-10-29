@@ -340,13 +340,7 @@ describe('ciclo de vida do cofre (integração)', () => {
   }, 120_000);
 });
 
-/**
- * Cryptographic Erase da chave de trabalho. São três `fill(0)` em `vault.ts`
- * (desbloqueio de pânico, definição do PIN de pânico e redefinição por frase) e
- * nenhum deles tinha teste: a suíte conferia o resultado da chamada, que é o
- * mesmo com a chave zerada ou com `0x01` no lugar. O Buffer derivado é capturado
- * por referência, então continua observável depois do `finally`.
- */
+/** Os três `fill(0)` da chave de trabalho, capturada por referência. */
 describe('apaga a chave derivada de trabalho', () => {
   it('no desbloqueio pelo PIN de pânico', async () => {
     await garanteDesbloqueado();
@@ -395,11 +389,7 @@ describe('apaga a chave derivada de trabalho', () => {
   }, 120_000);
 });
 
-/**
- * O limite estrito é só da senha mestra. A frase de recuperação é o caminho que
- * redesenha o PIN depois de uma coação, então ela não pode virar atalho para
- * apagar o cofre: uma frase errada soma em `attempts`, e não em `attemptsMaster`.
- */
+/** O limite estrito é só da senha mestra: frase errada soma em `attempts`. */
 describe('a frase de recuperação não arma a autodestruição', () => {
   it('conta tentativa comum, nunca a estrita', async () => {
     await garanteDesbloqueado();
@@ -426,10 +416,7 @@ describe('a frase de recuperação não arma a autodestruição', () => {
   }, 120_000);
 });
 
-/**
- * O PIN de pânico não pode ser o PIN de verdade: um PIN que abre o cofre e o
- * destrói não serve nem como cofre nem como proteção.
- */
+/** O PIN de pânico não pode ser o PIN que abre o cofre. */
 describe('o PIN de pânico recusa ser o PIN real', () => {
   it('recusa, não instala e não deixa caminho de pânico', async () => {
     // o teste anterior falhou de propósito e deixou trava exponencial
@@ -460,11 +447,7 @@ describe('o PIN de pânico recusa ser o PIN real', () => {
   }, 120_000);
 });
 
-/**
- * O arquivo é stateful e o teste 8 redefine o PIN, então `PIN` deixa de abrir o
- * cofre a partir dali. O helper tenta o PIN atual e o anterior, sem pagar
- * Argon2id duas vezes: só cai no segundo quando o primeiro é recusado.
- */
+/** O teste 8 troca o PIN, então o helper tenta o atual e o anterior. */
 async function garanteDesbloqueado(): Promise<void> {
   if (isUnlocked()) return;
   resetAttempts();
@@ -493,11 +476,7 @@ function derivacaoFalha(kind: 'pin' | 'recovery' | 'panic'): void {
   vi.spyOn(keyUnwrapperFor(kind), 'derive').mockRejectedValue(new Error('derivação falhou'));
 }
 
-/**
- * A trava exponencial vale antes de qualquer coisa, inclusive quando falta um
- * milissegundo para ela acabar. Com a comparação frouxa, uma redefinição que
- * espere o último instante passaria direto pela trava.
- */
+/** A trava vale no último milissegundo, inclusive com 1 ms restando. */
 describe('a trava de redefinição de PIN é estrita', () => {
   it('bloqueia a redefinição com 1 ms de espera restante', async () => {
     await garanteDesbloqueado();
@@ -520,12 +499,7 @@ describe('a trava de redefinição de PIN é estrita', () => {
   }, 120_000);
 });
 
-/**
- * O `?.` do `finally` é o que deixa a limpeza da chave de trabalho sobreviver a
- * uma derivação que já falhou: sem ele, um `TypeError` em `null.fill(0)`
- * substitui a resposta de "credencial errada" e derruba a tela de autenticação
- * com uma exceção que ninguém entende.
- */
+/** O `?.` do `finally` sobrevive a uma derivação que já falhou. */
 describe('falha de derivação não vira exceção', () => {
   it('no desbloqueio com PIN de pânico instalado', async () => {
     await garanteDesbloqueado();
@@ -563,11 +537,7 @@ describe('falha de derivação não vira exceção', () => {
   }, 120_000);
 });
 
-/**
- * Sem cofre no disco, os dois pontos que leem o container devolvem "não há PIN
- * de pânico" em vez de estourar. É o estado logo depois do Cryptographic Erase,
- * que é quando o usuário ainda está na tela de autenticação.
- */
+/** Sem cofre no disco, os dois pontos devolvem "sem pânico" em vez de estourar. */
 describe('estado sem cofre na tela', () => {
   it('hasPanicPin e panicStatus respondem sem container', () => {
     const leitura = vi.spyOn(vaultStorage, 'readContainer').mockReturnValue(null);
@@ -591,11 +561,7 @@ describe('estado sem cofre na tela', () => {
   });
 });
 
-/**
- * A subida do custo do Argon2id só vale quando o método gravado está mais fraco
- * que o perfil atual. Um método já atual não pode ser reembrulhado: o salt novo
- * invalidaria o embrulho à toa (e gastaria Argon2id sem motivo).
- */
+/** Custo do Argon2id só sobe; método já atual não é reembrulhado à toa. */
 describe('o reembrulho do método é só quando o custo está defasado', () => {
   it('desbloquear não troca o salt de um método já no custo atual', async () => {
     resetAttempts();
@@ -609,11 +575,7 @@ describe('o reembrulho do método é só quando o custo está defasado', () => {
   }, 120_000);
 });
 
-/**
- * A trava de redefinição é estrita no último milissegundo. A espera restante é
- * um inteiro de milissegundos, então `> 0` e `> 1` só divergem em `1`: aqui ela
- * tem que bloquear, e o mutante que afrouxa a comparação deixa passar.
- */
+/** Trava estrita: `> 0` e `> 1` só divergem em 1 ms, e aqui ela bloqueia. */
 describe('a trava de redefinição de PIN bloqueia no último milissegundo', () => {
   it('recusa com 1 ms de espera restante, em vez de abrir a redefinição', async () => {
     vi.useFakeTimers();
@@ -631,11 +593,7 @@ describe('a trava de redefinição de PIN bloqueia no último milissegundo', () 
   }, 120_000);
 });
 
-/**
- * A frase de recuperação tem um mínimo de palavras conferido **antes** do
- * Argon2id. A checagem usa `split(' ')`; com `split('')`, uma palavra longa
- * passaria como se tivesse palavras suficientes e pagaria a derivação à toa.
- */
+/** Mínimo de palavras conferido antes do Argon2id, com `split(' ')`. */
 describe('frase de recuperação curta não paga Argon2id', () => {
   it('recusa antes de derivar quando a frase não tem o mínimo de palavras', async () => {
     resetAttempts();

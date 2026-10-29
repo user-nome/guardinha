@@ -20,10 +20,7 @@ import { readAuthState, writeAuthState } from '@zero/main/storage';
 import { containerFile } from '@zero/main/layout';
 import type { PersistedAuthState } from '@zero/types';
 
-/**
- * Caminhos de decisão que os testes de fluxo não alcançam: estados ausentes, limites fora da
- * faixa e autodestruição por tentativas.
- */
+/** Caminhos que o fluxo não alcança: estados ausentes, limites e autodestruição. */
 
 const MASTER = 'senha-mestra-guardinha24';
 const PIN = '49201733';

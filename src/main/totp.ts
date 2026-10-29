@@ -2,10 +2,7 @@ import crypto from 'node:crypto';
 import { currentMessages } from '@zero/main/i18n';
 import type { OtpAlgorithm } from '@zero/shared';
 
-/**
- * HOTP (RFC 4226) e TOTP (RFC 6238) no main, onde o segredo existe em memória;
- * o renderer recebe o código pronto.
- */
+/** HOTP (RFC 4226) e TOTP (RFC 6238) no main; o renderer recebe o código pronto. */
 
 /** Lê um byte do digest sem espalhar `!` pelo código (o corte é sempre válido). */
 function byteAt(data: Buffer, index: number): number {

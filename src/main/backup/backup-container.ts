@@ -2,10 +2,7 @@ import crypto from 'node:crypto';
 import { currentMessages } from '@zero/main/i18n';
 import { isRecord } from '@zero/shared/record';
 
-/**
- * Formato binário do backup (`.gbk`): cabeçalho, manifesto JSON, payload já
- * cifrado e SHA-256 no fim. Não tem a chave e não decifra nada.
- */
+/** Formato do `.gbk`: cabeçalho, manifesto, payload já cifrado e SHA-256 no fim. */
 
 const BACKUP_MAGIC = Buffer.from('ZKBACKUP', 'ascii');
 const BACKUP_VERSION = 1;

@@ -5,12 +5,7 @@ import { MessagesProvider } from '@zero/renderer/i18n';
 import { Generator } from '@zero/renderer/components/Generator';
 import { installApi } from '../mocks/api.ts';
 
-/**
- * O gerador de senha é a tela que mais depende do main (a entropia sai do
- * `crypto.randomBytes` do Node, não do `Math.random` do renderer). Os testes
- * conferem o contrato com o cofre: o que a tela pede e o que ela faz com a
- * resposta.
- */
+/** Contrato da tela com o main: o que ela pede e o que faz com a resposta. */
 
 function open(): ReturnType<typeof vi.fn> {
   const onToast = vi.fn<(message: string) => void>();

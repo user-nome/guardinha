@@ -6,13 +6,7 @@ export function formatCountdown(ms: number): string {
   return minutes > 0 ? `${minutes}:${String(seconds).padStart(2, '0')}` : `${seconds}s`;
 }
 
-/**
- * Texto de um erro que atravessa o IPC: o main lança `Error` com a mensagem já
- * localizada, e o renderer a mostra como está. O `fallback` é o texto do bundle
- * do próprio renderer, para o erro não localizado ou a falha de transporte.
- *
- * Vive aqui porque os dois processos precisam dele, e cada um tinha a sua cópia.
- */
+/** Mensagem de erro que atravessa o IPC, com fallback do bundle do renderer. */
 export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message !== '' ? error.message : fallback;
 }

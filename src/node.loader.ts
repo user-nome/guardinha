@@ -3,13 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-/**
- * Hooks de resolução síncronos (mesma thread) para os aliases `@zero/*` quando
- * um `.ts` roda direto no Node, sem bundler. Espelha `paths` de
- * `tsconfig.base.json` e o mapa de `electron.vite.config.mts`.
- *
- *   node --import ./src/node.loader.ts caminho/para/arquivo.ts
- */
+/** Hooks de resolução dos aliases `@zero/*` para rodar `.ts` direto no Node. */
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 

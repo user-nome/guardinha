@@ -5,13 +5,7 @@ import { ko } from '@zero/messages/ko';
 import { ptBR } from '@zero/messages/pt-BR';
 import { zhCN } from '@zero/messages/zh-CN';
 
-/**
- * O teste de paridade (`parity.test.ts`) confere chaves, tipos e aridade, mas
- * nunca **chama** as funções de mensagem. Um `${n}` que o tradutor perdeu ao
- * reescrever a frase passaria pela paridade e apareceria na tela como
- * "caracteres" sem número. Aqui toda função é chamada nos dois idiomas e cada
- * argumento precisa reaparecer no texto.
- */
+/** A paridade não chama as funções: aqui cada argumento precisa reaparecer no texto. */
 
 /** Valores representativos, alternando número e texto para cobrir as duas formas. */
 const SAMPLE = [42, 'EXEMPLO', 7, 'OUTRO'] as const;

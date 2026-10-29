@@ -87,6 +87,26 @@ export const ptBR = {
     backToPin: 'Voltar para o PIN',
   },
 
+  /** Atualização do formato do cofre depois de uma atualização do app. */
+  migration: {
+    title: 'Atualizar o cofre',
+    subtitle:
+      'Esta versão guarda o cofre em um formato mais novo. A atualização acontece ' +
+      'aqui, com as suas credenciais: nada sai do computador.',
+    version: (from: number, to: number): string => `Formato atual: v${from}. Formato novo: v${to}.`,
+    summary: (entries: number, tokens: number): string =>
+      `${entries} credencial(is) e ${tokens} token(s) de 2FA serão regravados com a chave do cofre.`,
+    methodsHint: 'Informe cada credencial que ainda abre o cofre. Nenhuma delas é guardada.',
+    masterLabel: 'Senha mestra',
+    pinLabel: 'PIN',
+    recoveryLabel: 'Frase de recuperação',
+    action: 'Atualizar cofre',
+    working: 'Atualizando…',
+    later: 'Depois',
+    warning: 'Enquanto não atualizar, o cofre continua no formato antigo.',
+    success: 'Cofre atualizado.',
+  },
+
   /** Medidor de força: rótulos e motivos do medidor (o bloqueio é em `errors`). */
   strength: {
     label: 'Força',
@@ -367,6 +387,8 @@ export const ptBR = {
         ? 'Este backup foi criado por outra versão do Guardinha, cujo formato esta versão não lê mais.'
         : `Este backup foi criado por outra versão do Guardinha (formato v${version}), que esta versão não lê mais.`,
     backupWriteFailed: 'Não foi possível gravar o arquivo no destino.',
+    migrationIncomplete: 'Informe todas as credenciais para atualizar o cofre.',
+    migrationFailed: 'Não foi possível atualizar o cofre.',
     internal: 'Erro interno do cofre.',
     /** Guarda de origem do IPC: o emissor não é a página oficial do app. */
     foreignFrame: 'IPC bloqueado: a requisição não veio da página do app.',

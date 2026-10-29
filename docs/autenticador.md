@@ -117,12 +117,12 @@ O manifesto cifrado do cofre está na versão 3 e lista as duas coisas: `ids`
 
 O código atual grava `v: 3`, com `ids`, `authIds` e os dois mapas de hash. A
 única leitura antiga é a v2, que acompanha o container v5 e só tem `ids` e
-`authIds`: ela serve à migração, que re-sela o manifesto na v3 assim que a chave
-está na mão. Não há compatibilidade com manifestos v1. O container aceita as
-versões 5 e 6: a 5 é lida para migrar e a 6 é a única que o app grava. Uma versão
-fora dessas duas é recusada como formato incompatível antes de o manifesto ser
-aberto. O campo `v` fica dentro do blob AES-256-GCM e não altera o cabeçalho do
-container.
+`authIds`: ela serve à migração explícita, que re-sela o manifesto na v3 quando
+o usuário confirma a atualização com as credenciais. Não há compatibilidade com
+manifestos v1. O container aceita as versões 5 e 6: a 5 é lida para migrar e a
+6 é a única que o app grava. Uma versão fora dessas duas é recusada como formato
+incompatível antes de o manifesto ser aberto. O campo `v` fica dentro do blob
+AES-256-GCM e não altera o cabeçalho do container.
 
 O motivo de cobrir os tokens: sem isso, apagar um `.zka` ou plantar o seu
 próprio passaria despercebido. O segredo TOTP trocado em silêncio é exatamente

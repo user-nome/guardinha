@@ -300,11 +300,7 @@ describe('o PIN de pânico não pode ser medido pelo atacante', () => {
   });
 });
 
-/**
- * `setPanicPin` compara o PIN de pânico com o PIN real **quando ele existe**. Se
- * o container não tem método de PIN, não há o que comparar, e a instalação
- * segue sem tocar no derivador do PIN.
- */
+/** Sem método de PIN no container, a instalação não toca no derivador do PIN. */
 describe('setPanicPin sem PIN real gravado', () => {
   it('não deriva com o método de PIN quando ele não existe no container', async () => {
     const container = readVaultContainer();

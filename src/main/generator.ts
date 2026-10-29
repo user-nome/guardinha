@@ -4,10 +4,7 @@ import { manualCharacterLimit, PASSWORD_CHARACTER_SETS } from '@zero/shared';
 import { MAX_GENERATOR_LENGTH } from '@zero/shared/generator-constants';
 import type { GeneratorOptions } from '@zero/types';
 
-/**
- * Gerador de senha aleatória: só usa o `crypto` do Node (hardware), nunca o
- * `Math.random` do renderer, e devolve texto simples pelo IPC.
- */
+/** Gerador de senha com o `crypto` do Node, nunca o `Math.random` do renderer. */
 
 /** Teto de tamanho, o mesmo que a tela permite marcar. */
 export { MAX_GENERATOR_LENGTH };
@@ -84,10 +81,7 @@ export function assertGeneratorOptions(options: GeneratorOptions): void {
   }
 }
 
-/**
- * Gera a senha com as quantidades reservadas por categoria e as palavras
- * pessoais autorizadas.
- */
+/** Gera a senha com as cotas por categoria e as palavras pessoais autorizadas. */
 export function generateHighEntropyPassword(options: GeneratorOptions): string {
   const { length } = options;
   if (length <= 0) return '';

@@ -341,10 +341,7 @@ function hashMap(value: unknown): Record<string, string> | null {
   return result;
 }
 
-/**
- * Sela ids, hashes de conteúdo e a chave do cofre (AES-256-GCM + HKDF); o hash
- * por arquivo pega a troca de conteúdo entre dois ids que já existem.
- */
+/** Sela ids, hashes e a chave; o hash por arquivo pega conteúdo trocado entre ids. */
 export function sealManifest(
   vaultKey: Buffer,
   ids: string[],
@@ -365,10 +362,7 @@ export function sealManifest(
   );
 }
 
-/**
- * Abre o manifesto; qualquer forma inesperada lança (fail-closed). A v2 é a
- * única versão antiga aceita e é re-selada na v3 depois da migração.
- */
+/** Abre o manifesto fail-closed; a v2 é a única antiga e é re-selada na v3. */
 export function openManifest(vaultKey: Buffer, payload: SaltedPayload): ManifestContent {
   const m = currentMessages();
   const decoded = decryptRecord(payload, vaultKey);

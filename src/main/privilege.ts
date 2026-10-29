@@ -9,10 +9,7 @@ function hasVaultOverride(): boolean {
   return varLib !== undefined && varLib !== '';
 }
 
-/**
- * Pede autenticação de administrador via `pkexec` para criar a estrutura de `/var/lib/.guardinha`;
- * a senha fica com o PolicyKit. Com override de teste/dev nunca dispara.
- */
+/** Pede admin via `pkexec` para criar a estrutura; a senha fica com o PolicyKit. */
 export function setupVaultDirectory(): boolean {
   if (hasVaultOverride()) return false;
   try {

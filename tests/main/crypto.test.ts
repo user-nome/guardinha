@@ -196,13 +196,7 @@ describe('derivação por HKDF', () => {
   });
 });
 
-/**
- * Cryptographic Erase da chave em RAM. O `fill(0)` é o que impede que a chave
- * derivada do registro sobreviva à chamada que a usou: o Buffer é capturado por
- * referência no `createCipheriv`, então ele continua observável depois do
- * retorno. Um `fill(1)` aqui é um mutante que a suíte precisa matar, porque a
- * variante silenciosa é a chave inteira em memória até o GC.
- */
+/** A chave em RAM é zerada depois de cifrar, capturada por referência. */
 describe('apaga a chave derivada depois de usar', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -229,12 +223,7 @@ describe('apaga a chave derivada depois de usar', () => {
   });
 });
 
-/**
- * Os rótulos de domínio são contrato com os arquivos já gravados: mudá-los
- * invalida todo `.zke` e todo `.zka` que o usuário já tinha. A suíte fixava a
- * separação entre os domínios (que sobrevive a rótulo vazio em um dos lados),
- * mas não o valor. Aqui o HKDF é refeito à mão, com o rótulo escrito por extenso.
- */
+/** Rótulos do HKDF são contrato de disco; aqui o valor é refeito por extenso. */
 describe('rótulos de domínio do HKDF', () => {
   const esperado = (key: Buffer, salt: Buffer, info: string): Buffer =>
     Buffer.from(crypto.hkdfSync('sha512', key, salt, info, 32));

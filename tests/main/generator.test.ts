@@ -281,11 +281,7 @@ describe('assertGeneratorOptions', () => {
   });
 });
 
-/**
- * O que o gerador consome da fonte de entropia. O formato da saída já é
- * conferido acima; aqui a suíte fixa o material aleatório que entra e que um
- * pedido vazio não chega a acionar o gerador.
- */
+/** Material aleatório que entra, e pedido vazio que nem chega ao gerador. */
 describe('entropia do gerador', () => {
   afterEach(() => {
     vi.restoreAllMocks();

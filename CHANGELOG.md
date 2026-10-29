@@ -4,6 +4,25 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
+## [2.4.0] 2026-10-28
+
+### Adicionado
+
+- **Aviso de migração do cofre no login.** Depois de atualizar o app, um cofre
+  em formato anterior abre normalmente e o `MigrationModal` pede a senha mestra,
+  o PIN e a frase de recuperação para reembrulhar todos os métodos, reescrever
+  cada `.zke` e `.zka` e re-selar o manifesto na v3. A migração é tudo ou nada e
+  pode ser adiada para o próximo login.
+- **Canais `vault:migration-status` e `vault:migrate`** e o tipo
+  `VaultMigrationStatus`, com a contagem de credenciais e tokens a migrar,
+  consumidos pela tela de atualização.
+
+### Removido
+
+- **Snapshot de downgrade e migração incremental.** O `vault.zkv.v<versão>.bak`
+  não é mais gravado e não há caminho para reabrir um cofre migrado com o app
+  antigo: a atualização passa a ser explícita, com as credenciais em mãos.
+
 ## [2.3.1] - 2026-10-27
 
 ### Corrigido

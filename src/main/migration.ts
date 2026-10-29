@@ -1,65 +1,107 @@
+/** Migração explícita do cofre: reembrulha todos os métodos e reescreve os registros. */
 import { openManifest } from '@zero/main/container';
 import { MANIFEST_VERSION, VAULT_VERSION } from '@zero/main/container-format';
+import { normalizeRecoveryPhrase } from '@zero/main/crypto';
 import { vaultStorage } from '@zero/main/facade';
 import { currentMessages } from '@zero/main/i18n';
 import { isKdfUpToDate, keyUnwrapperFor } from '@zero/main/unwrapping';
 import { errorMessage } from '@zero/shared';
-import type { VaultContainerData } from '@zero/main/container';
+import type { VaultContainerData, WrappedMethod } from '@zero/main/container';
 import type { CredentialKind } from '@zero/main/unwrapping';
+import type { MigrationMethod, VaultMigrationInput, VaultMigrationStatus } from '@zero/types';
 
-/** Migração do container no desbloqueio: reembrulha só o método cuja credencial está em mãos. */
+/** Ordem em que a tela pede as credenciais; o PANIC fica de fora de propósito. */
+const MIGRATION_METHODS: readonly MigrationMethod[] = ['master', 'pin', 'recovery'];
 
-/** O que a credencial em mãos permite migrar agora. */
-export interface MigrationOptions {
-  /** Método cuja credencial está disponível neste desbloqueio. */
-  readonly kind: CredentialKind;
-  /** Credencial em claro, só para reembrulhar o método. */
-  readonly credential: string;
-  /** O blob lido estava no embrulho legado da v5. */
-  readonly legacyMethod: boolean;
-  /** O chamador já reembrulhou o método (resetPin): não pague o Argon2id de novo. */
-  readonly methodAlreadyWrapped?: boolean;
+/** Métodos presentes no container, na ordem em que a migração os reembrulha. */
+export function migrationMethodsFor(container: VaultContainerData): MigrationMethod[] {
+  return MIGRATION_METHODS.filter((kind) => container.methods[kind] !== undefined);
 }
 
-/** Monta o container migrado ou devolve `null` quando não há nada a fazer; adulteração lança. */
-export async function prepareMigration(
+/** Estado para a tela de atualização; `pending` cobre o cofre v6 que o fluxo antigo deixou pela metade. */
+export function migrationStatusFor(
+  container: VaultContainerData | null,
+  pending: boolean,
+): VaultMigrationStatus {
+  if (container === null) {
+    return {
+      needed: false,
+      fromVersion: VAULT_VERSION,
+      toVersion: VAULT_VERSION,
+      methods: [],
+      entries: 0,
+      authTokens: 0,
+    };
+  }
+  const needed = pending || container.version < VAULT_VERSION;
+  return {
+    needed,
+    fromVersion: container.version,
+    toVersion: VAULT_VERSION,
+    methods: needed ? migrationMethodsFor(container) : [],
+    entries: vaultStorage.listIds().length,
+    authTokens: vaultStorage.listAuthIds().length,
+  };
+}
+
+/** Mensagem da credencial recusada, sem dizer qual das outras está certa. */
+function wrongCredential(kind: MigrationMethod): string {
+  const m = currentMessages();
+  if (kind === 'master') return m.errors.wrongMaster;
+  if (kind === 'pin') return m.errors.wrongPin;
+  return m.errors.wrongRecovery;
+}
+
+/** Credencial do formulário; a frase passa pela mesma normalização da criação. */
+function credentialFor(kind: MigrationMethod, input: VaultMigrationInput): string {
+  const raw = input[kind];
+  if (raw === undefined || raw.trim() === '') {
+    throw new Error(currentMessages().errors.migrationIncomplete);
+  }
+  return kind === 'recovery' ? normalizeRecoveryPhrase(raw) : raw;
+}
+
+/** true quando a credencial abre exatamente a chave que já está na sessão. */
+async function opensSameKey(
+  method: WrappedMethod,
+  vaultKey: Buffer,
+  kind: MigrationMethod,
+  credential: string,
+): Promise<boolean> {
+  const unwrapper = keyUnwrapperFor(kind);
+  try {
+    const derived = await unwrapper.derive(method, credential);
+    try {
+      const unwrapped = unwrapper.unwrapDetailed(method, derived);
+      const same = unwrapped.vaultKey.equals(vaultKey);
+      unwrapped.vaultKey.fill(0);
+      return same;
+    } finally {
+      derived.fill(0);
+    }
+  } catch {
+    // credencial errada, linha adulterada ou salt inválido: a tela só diz "incorreta"
+    return false;
+  }
+}
+
+/** Confere que a credencial abre a mesma chave do cofre e reembrulha o método no formato atual. */
+async function verifyAndRewrap(
   container: VaultContainerData,
   vaultKey: Buffer,
-  options: MigrationOptions,
-): Promise<VaultContainerData | null> {
-  const method = container.methods[options.kind];
-  if (method === undefined) return null;
-
-  // sem manifesto não há o que re-selar: o campo nulo é adulteração, e criar
-  // um selo novo aqui aceitaria exclusões silenciosas como estado legítimo
-  if (container.manifest === null) return null;
-  const manifest = openManifest(vaultKey, container.manifest);
-
-  const needsVersion = container.version < VAULT_VERSION;
-  const needsManifest = manifest.version < MANIFEST_VERSION;
-  const needsMethod = options.legacyMethod || !isKdfUpToDate(options.kind, method);
-  if (!needsVersion && !needsManifest && !needsMethod) return null;
-
-  let nextManifest = container.manifest;
-  if (needsVersion || needsManifest) {
-    // antes de re-selar, o manifesto precisa bater com o diretório; custo de KDF sozinho não re-sela
-    vaultStorage.verifyManifestData(container, vaultKey);
-    nextManifest = vaultStorage.manifestFromDirectory(vaultKey, MANIFEST_VERSION);
+  kind: MigrationMethod,
+  credential: string,
+): Promise<WrappedMethod> {
+  const method = container.methods[kind];
+  /* v8 ignore next 4 -- `migrationMethodsFor` só devolve métodos presentes no
+     container; esta guarda cobre um chamador que monte a lista por conta própria. */
+  if (method === undefined) {
+    throw new Error(currentMessages().errors.migrationIncomplete);
   }
-
-  const next: VaultContainerData = {
-    ...container,
-    version: needsVersion ? VAULT_VERSION : container.version,
-    methods: { ...container.methods },
-    manifest: nextManifest,
-  };
-  if (needsMethod && options.methodAlreadyWrapped !== true) {
-    next.methods[options.kind] = await keyUnwrapperFor(options.kind).wrap(
-      vaultKey,
-      options.credential,
-    );
+  if (!(await opensSameKey(method, vaultKey, kind, credential))) {
+    throw new Error(wrongCredential(kind));
   }
-  return next;
+  return keyUnwrapperFor(kind).wrap(vaultKey, credential);
 }
 
 function warn(stage: string, error: unknown): void {
@@ -68,62 +110,83 @@ function warn(stage: string, error: unknown): void {
   );
 }
 
+/** true quando a versão do container ou do manifesto ainda é a antiga. */
+function needsMigration(container: VaultContainerData, vaultKey: Buffer): boolean {
+  if (container.version < VAULT_VERSION) return true;
+  if (container.manifest === null) return true;
+  return openManifest(vaultKey, container.manifest).version < MANIFEST_VERSION;
+}
+
 /**
- * Prepara a migração sem deixar a falha escapar. Devolve o próprio container
- * quando não há nada a fazer ou quando a migração não foi possível.
+ * Monta o container novo sem gravar: reembrulha cada método presente, confere o
+ * manifesto, reescreve todos os `.zke`/`.zka` e sela a v3. Devolve `null` quando
+ * não há nada a migrar; credencial errada, arquivo adulterado ou falha de disco lançam.
  */
-export async function migrateContainerBestEffort(
+export async function buildMigratedContainer(
   container: VaultContainerData,
   vaultKey: Buffer,
-  options: MigrationOptions,
-): Promise<VaultContainerData> {
+  input: VaultMigrationInput,
+  pending: boolean,
+): Promise<VaultContainerData | null> {
+  if (!pending && !needsMigration(container, vaultKey)) return null;
+
+  vaultStorage.verifyManifestData(container, vaultKey);
+
+  const methods: Partial<Record<MigrationMethod, WrappedMethod>> = {};
+  for (const kind of migrationMethodsFor(container)) {
+    methods[kind] = await verifyAndRewrap(container, vaultKey, kind, credentialFor(kind, input));
+  }
+
+  vaultStorage.reencryptRecords(vaultKey);
+  return {
+    ...container,
+    version: VAULT_VERSION,
+    methods: { ...container.methods, ...methods },
+    manifest: vaultStorage.manifestFromDirectory(vaultKey, MANIFEST_VERSION),
+  };
+}
+
+/** Grava o container migrado de uma vez; o erase continua barrando a escrita depois da destruição. */
+export function persistMigratedContainer(container: VaultContainerData): void {
+  vaultStorage.writeContainer(container);
+}
+
+/**
+ * Um cofre já na v6 pode ter sobrado meio migrado pelo fluxo incremental antigo:
+ * método embrulhado na v5 ou manifesto na v2. O aviso só aparece com a chave em mãos.
+ */
+export function hasLegacyFormat(
+  container: VaultContainerData,
+  vaultKey: Buffer,
+  legacyMethod: boolean,
+): boolean {
+  if (legacyMethod) return true;
+  if (container.manifest === null) return false;
   try {
-    return (await prepareMigration(container, vaultKey, options)) ?? container;
-  } catch (error) {
-    warn('adiada', error);
-    return container;
+    return openManifest(vaultKey, container.manifest).version < MANIFEST_VERSION;
+  } catch {
+    // manifesto ilegível não é caso de migração: a primeira operação de dados mostra o erro
+    return false;
   }
 }
 
-/**
- * Grava o container migrado, criando o snapshot de downgrade antes.
- *
- * `requireBackup` separa os dois casos: no desbloqueio, sem snapshot não há
- * downgrade e a migração é abortada com o arquivo antigo intacto; na
- * redefinição de PIN, o novo PIN já foi embrulhado e precisa ser gravado mesmo
- * assim, então a falta de snapshot é só um aviso.
- */
-export function persistMigration(
-  previous: VaultContainerData,
-  next: VaultContainerData,
-  requireBackup: boolean,
-): void {
-  if (next !== previous) {
-    try {
-      vaultStorage.backupContainer(previous.version);
-    } catch (error) {
-      if (requireBackup) throw error;
-      warn('sem snapshot', error);
-    }
-  }
-  vaultStorage.writeContainer(next);
-}
-
-/**
- * Prepara e grava a migração. A função nunca lança: o desbloqueio já provou a
- * credencial e não pode ser derrubado por uma migração que é conveniência de
- * formato.
- */
-export async function migrateAndPersist(
+/** Sobe o custo do Argon2id do método recém-usado; migração de formato não passa por aqui. */
+export async function refreshMethodKdf(
   container: VaultContainerData,
   vaultKey: Buffer,
-  options: MigrationOptions,
+  kind: CredentialKind,
+  credential: string,
 ): Promise<void> {
-  const next = await migrateContainerBestEffort(container, vaultKey, options);
-  if (next === container) return;
+  if (container.version < VAULT_VERSION) return;
+  const method = container.methods[kind];
+  if (method === undefined || isKdfUpToDate(kind, method)) return;
   try {
-    persistMigration(container, next, true);
+    const current = vaultStorage.readContainer();
+    if (current === null) return;
+    current.methods[kind] = await keyUnwrapperFor(kind).wrap(vaultKey, credential);
+    vaultStorage.writeContainer(current);
   } catch (error) {
-    warn('não gravada', error);
+    // reembrulho é conveniência de custo: falha de escrita não pode derrubar o desbloqueio
+    warn('com custo de KDF adiada', error);
   }
 }

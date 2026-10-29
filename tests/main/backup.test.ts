@@ -18,13 +18,7 @@ import { vaultSession } from '@zero/main/session';
 import { createVault } from '@zero/main/vault';
 import * as privilege from '@zero/main/privilege';
 
-/**
- * O backup integral é o caminho de quem formatou a máquina: o pacote é cópia
- * de bytes já cifrados, e a restauração tem que valer **sem** cofre nem sessão.
- * O que os testes provam: o pacote reúne contêiner, `.zke` e `.zka`; um byte
- * trocado derruba antes de encostar no disco; e a restauração devolve um cofre
- * funcional mesmo depois do Cryptographic Erase.
- */
+/** Backup `.gbk` de bytes já cifrados: exporta, valida e restaura sem sessão aberta. */
 
 const MASTER = 'senha-mestra-guardinha24';
 const PIN = '49201733';
@@ -37,10 +31,7 @@ function exportTo(name: string): string {
   return path.join(outDir, name);
 }
 
-/**
- * Abre uma sessão descartável: a guarda do P4 olha só `isUnlocked()`, porque a
- * restauração não decifra nada (o pacote é cópia do que já está cifrado).
- */
+/** Sessão descartável: a restauração só olha `isUnlocked()`, não decifra nada. */
 function markUnlocked(): void {
   vaultSession().adopt(Buffer.alloc(32, 7));
 }

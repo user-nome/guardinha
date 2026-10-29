@@ -1,9 +1,6 @@
 import type { Messages } from '@zero/messages/pt-BR';
 
-/**
- * 日本語; `pt-BR` é o canônico e o TypeScript confere a forma do objeto.
- * Nomes de marca, caminhos e identificadores técnicos não se traduzem.
- */
+/** 日本語; `pt-BR` é o canônico e o TypeScript confere a forma do objeto. */
 export const ja: Messages = {
   common: {
     close: '閉じる',
@@ -91,6 +88,26 @@ export const ja: Messages = {
     resetAction: '再設定して開く',
     resetting: '再設定しています…',
     backToPin: 'PIN に戻る',
+  },
+
+  /** Atualização do formato do cofre depois de uma atualização do app. */
+  migration: {
+    title: '金庫を更新',
+    subtitle:
+      'このバージョンは金庫を新しい形式で保存します。更新はここで、あなたの資格情報を使って行われます。' +
+      'データがコンピューターの外に出ることはありません。',
+    version: (from: number, to: number): string => `現在の形式: v${from}。新しい形式: v${to}。`,
+    summary: (entries: number, tokens: number): string =>
+      `${entries} 件の資格情報と ${tokens} 件の 2FA トークンを金庫の鍵で書き直します。`,
+    methodsHint: '金庫を開ける各資格情報を入力してください。どれも保存されません。',
+    masterLabel: 'マスターパスワード',
+    pinLabel: 'PIN',
+    recoveryLabel: 'リカバリーフレーズ',
+    action: '金庫を更新',
+    working: '更新しています…',
+    later: 'あとで',
+    warning: '更新するまで、金庫は古い形式のままです。',
+    success: '金庫を更新しました。',
   },
 
   /** Medidor de força: rótulos e motivos do medidor (o bloqueio é em `errors`). */
@@ -373,6 +390,8 @@ export const ja: Messages = {
         ? 'このバックアップは別のバージョンの Guardinha で作成され、このバージョンではもう読めません。'
         : `このバックアップは別のバージョンの Guardinha (形式 v${version}) で作成され、このバージョンではもう読めません。`,
     backupWriteFailed: '保存先にファイルを書き込めませんでした。',
+    migrationIncomplete: '金庫を更新するには、すべての資格情報を入力してください。',
+    migrationFailed: '金庫を更新できませんでした。',
     internal: '金庫内部のエラーです。',
     /** Guarda de origem do IPC: o emissor não é a página oficial do app. */
     foreignFrame: 'IPC ブロック：リクエストがアプリのページからではありません。',

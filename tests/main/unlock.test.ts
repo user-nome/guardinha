@@ -226,13 +226,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
     expect(result.status.attempts).toBe(1);
   });
 
-  /**
-   * Cryptographic Erase da chave de trabalho. O `fill(0)` do manipulador de
-   * integridade é o que impede que a chave derivada do Argon2id fique na pilha
-   * depois do desbloqueio dar certo; o Buffer é capturado por referência, então
-   * continua observável quando a cadeia termina. Um `fill(1)` passaria a suíte
-   * inteira se ela só conferisse o resultado do desbloqueio.
-   */
+  /** O `fill(0)` da chave derivada precisa acontecer no sucesso e na falha. */
   it('apaga a chave derivada depois de usar, no sucesso e na falha', async () => {
     resetAttempts();
     const container = await makeContainer();
@@ -252,11 +246,7 @@ describe('runUnlockChain (Chain of Responsibility)', () => {
     for (const buffer of derivadas) expect(buffer.every((byte) => byte === 0)).toBe(true);
   });
 
-  /**
-   * A resposta de falha carrega o estado do cofre, e a tela decide o que
-   * mostrar a partir dele. Um `true` trocado por `false` aqui mudaria a resposta
-   * que o renderer recebe sem quebrar nenhuma outra asserção.
-   */
+  /** A resposta de falha carrega o estado do cofre que a tela usa. */
   it('a resposta de falha diz que o cofre existe e continua travado', async () => {
     resetAttempts();
     const container = await makeContainer();
