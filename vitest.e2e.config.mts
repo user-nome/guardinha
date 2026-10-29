@@ -4,9 +4,11 @@ import { aliases } from './vitest.config.mts';
 /**
  * Configuração dos testes ponta a ponta (E2E).
  *
- * Diferente da suíte de `tests/**`, aqui o teste não importa o `src/`: ele
- * sobe o app já compilado (`out/`, via Playwright) ou o payload do `.deb`
- * (via CDP) e dirige a interface de verdade por um navegador. Por isso o
+ * Diferente da suíte de `tests/**`, aqui o teste não importa o `src/` para
+ * dirigir a interface: ele sobe o app já compilado (`out/`, via Playwright) ou
+ * o payload do `.deb` (via CDP) e dirige os fluxos por um navegador. A exceção
+ * é a fixture de cofre v5 (`e2e/support/legacy.ts`), que usa os módulos de
+ * formato do `src/` só para semear o disco antes de a janela abrir. Por isso o
  * ambiente é `node` (nada de jsdom) e há um worker só: os dois alvos disputam
  * o lock de instância única do Electron e portas de depuração, então não podem
  * rodar em paralelo.

@@ -49,13 +49,24 @@ opções, incluindo quantidades por classe, palavras pessoais literais e o limit
 combinado de 40%; criação, edição, exclusão e uso de tokens TOTP pelos dois formatos;
 configurações de pânico; troca de idioma; créditos; exportação e restauração de
 backup; bloqueio, login por PIN e senha mestra, redefinição do PIN, confirmação
-de destruição e PIN de coação. O auto-lock também roda nessa suíte, após cinco
-minutos reais de ociosidade.
+de destruição e PIN de coação. A migração explícita de um cofre v5 também roda
+nesse alvo: aviso no login, adiamento, recusa de credencial errada, migração
+completa com credencial e token preservados e o PIN de coação legado ainda
+abrindo o cofre decoy. O auto-lock roda na mesma suíte, após cinco minutos reais
+de ociosidade.
 
 Essa cobertura é de jornadas e integração entre o app compilado, o renderer, o
 IPC e o processo main; não significa que cada função ou ramo de todo o código
 seja exercitado por E2E. Os casos de validação e os ramos de erro ficam
-principalmente em `tests/**`, com dublês para dependências caras ou externas.
+principalmente em `tests/**`, com dublês para dependências caras ou externas. Na
+migração, por exemplo, credencial de cada método, manifesto adulterado, falha de
+escrita e cofre v6 parcial são cobertos por `tests/main/migration.test.ts`, não
+pelo E2E.
+
+O cofre v5 da jornada de migração é semeado antes de a janela abrir
+(`e2e/support/legacy.ts`). É a única fixture que importa módulos do `src/`
+(formato do container, AES e Argon2id) para não manter uma segunda implementação
+do binário dentro do teste; o app exercitado continua sendo o bundle compilado.
 
 O alvo empacotado continua sendo fumaça de instalação: criar cofre, adicionar e
 copiar credencial, bloquear e desbloquear. Não repete cada jornada da variante

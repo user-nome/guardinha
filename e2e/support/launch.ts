@@ -7,6 +7,7 @@ import path from 'node:path';
 import { chromium, _electron as electron } from 'playwright-core';
 import type { Browser, ElectronApplication, Page } from 'playwright-core';
 import { makeTempEnv, removeTempEnv, removeTree } from './env.ts';
+import type { TempEnv } from './env.ts';
 
 /**
  * Como subir o app e falar com ele.
@@ -45,9 +46,15 @@ export interface LaunchedApp {
   close(): Promise<void>;
 }
 
-export async function launchBundled(): Promise<LaunchedApp> {
+/** Prepara o diretório temporário antes de o app abrir (fixtures de formato antigo). */
+export interface LaunchOptions {
+  prepare?: (temp: TempEnv) => void | Promise<void>;
+}
+
+export async function launchBundled(options: LaunchOptions = {}): Promise<LaunchedApp> {
   const temp = makeTempEnv('guardinha-e2e-bundle-');
   try {
+    await options.prepare?.(temp);
     const app: ElectronApplication = await electron.launch({
       args: [path.join(REPO_ROOT, 'out', 'main', 'index.js'), '--no-sandbox'],
       cwd: REPO_ROOT,
