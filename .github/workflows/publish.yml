@@ -54,7 +54,7 @@ env:
   # A chave atual (substituída em 17/10/2026) tem frase. O runner é efêmero e
   # não tem acesso ao `~/.gnupg` local: os dois secrets precisam conter a chave
   # nova e sua frase. Ver `docs/build.md`.
-  GPG_FINGERPRINT: 816E5A36A995EB61986F500002D8689E0CD7D378
+  GPG_FINGERPRINT: 94DF612152F5CB9297F4F726C9693616EF528C2E
 
 jobs:
   resolver-versao:
