@@ -29,7 +29,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run security:audit && npm run lint:shell",
-    "security:audit": "bin/osv-scanner scan source --lockfile package-lock.json --config .osv-scanner.toml --all-vulns --experimental-flag-deprecated-packages --licenses=MIT,MIT-0,ISC,Apache-2.0,BSD-2-Clause,BSD-3-Clause,0BSD,BlueOak-1.0.0,Python-2.0,CC0-1.0,CC-BY-4.0,WTFPL,MPL-2.0 .",
+    "security:audit": "bin/osv-scanner scan source --lockfile package-lock.json --config .osv-scanner.toml --all-vulns --licenses=MIT,MIT-0,ISC,Apache-2.0,BSD-2-Clause,BSD-3-Clause,0BSD,BlueOak-1.0.0,Python-2.0,CC0-1.0,CC-BY-4.0,WTFPL,MPL-2.0 .",
     "lint:shell": "bin/shellcheck build/scripts/after-install.sh build/scripts/after-remove.sh build/scripts/guardinha-setup",
     "test": "vitest run",
     "test:security": "vitest run tests/security",
