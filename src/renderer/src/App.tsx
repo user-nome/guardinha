@@ -50,7 +50,7 @@ function Shell({ status, language, onLanguageChange, onRefresh }: ShellProps): J
     if (status === null || !status.exists || status.locked) setActiveTab('home');
   }, [status]);
 
-  // o aviso de formato antigo só aparece depois do login, quando a chave já pode conferir o manifesto
+  // o aviso de formato antigo só aparece depois do login, com a chave em mãos para conferir
   useEffect(() => {
     if (!unlocked) {
       setMigration(null);

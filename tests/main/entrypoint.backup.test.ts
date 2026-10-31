@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { app, BrowserWindow, dialog, ipcMain, resetElectronMock } from '../mocks/electron.ts';
 import type { IpcHandler } from '../mocks/electron.ts';
 
-// O `backup` é mockado aqui: o teste cobre a fronteira do canal, o diálogo nativo e o aviso de sessão.
+// O `backup` é mockado: aqui se testa o canal, o diálogo nativo e o aviso de sessão.
 vi.mock('@zero/main/backup/backup', () => ({
   exportBackup: vi.fn(() => ({ path: '/pendrive/cofre.gbk', files: 3, bytes: 2048 })),
   restoreBackup: vi.fn(() => ({ path: '/pendrive/cofre.gbk', files: 3 })),

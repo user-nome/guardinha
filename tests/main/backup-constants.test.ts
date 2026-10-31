@@ -38,7 +38,7 @@ describe('backup-constants', () => {
 
   it('BACKUP_FILE_PATH rejeita caminhos inválidos', () => {
     expect(BACKUP_FILE_PATH.test('vault.zkv.tmp')).toBe(false);
-    // O padrão aceita UUID com hífen: para rejeitar, é preciso caractere inválido ou estrutura errada.
+    // O padrão aceita UUID com hífen: rejeitar exige caractere inválido ou estrutura errada.
     expect(BACKUP_FILE_PATH.test('.entries/abc!.zke')).toBe(false);
     expect(BACKUP_FILE_PATH.test('.auth/def!.zka')).toBe(false);
     expect(BACKUP_FILE_PATH.test('../etc/passwd')).toBe(false);
