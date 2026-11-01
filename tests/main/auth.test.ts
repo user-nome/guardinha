@@ -208,11 +208,20 @@ describe('validações de formato', () => {
     expect(validateDomainFormat('não é domínio')).toBe(false);
   });
 
+  it('recusa URL com credenciais, esquema inseguro ou whitespace externo', () => {
+    expect(validateDomainFormat('https://example.com@evil.test')).toBe(false);
+    expect(validateDomainFormat('https://user:pass@example.com')).toBe(false);
+    expect(validateDomainFormat('http://example.com')).toBe(false);
+    expect(validateDomainFormat(' https://example.com')).toBe(false);
+    expect(validateDomainFormat('https://')).toBe(false);
+  });
+
   it('URL para abrir preserva o https:// já escrito e prefixa o hostname nu', () => {
     // O caminho com esquema explícito não pode virar `https://https://...`
     expect(openableUrl('https://example.com/path')).toBe('https://example.com/path');
-    expect(openableUrl('example.com')).toBe('https://example.com');
+    expect(openableUrl('example.com')).toBe('https://example.com/');
     expect(() => openableUrl('http://example.com')).toThrow();
+    expect(() => openableUrl('https://example.com@evil.test')).toThrow();
   });
 });
 

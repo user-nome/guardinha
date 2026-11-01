@@ -128,6 +128,10 @@ export async function deleteCredential(page: Page): Promise<void> {
 
 export async function copyCredentialPassword(app: LaunchedApp): Promise<void> {
   await app.page.getByTitle(pt.home.copyPass).click();
+  await app.page
+    .getByRole('alertdialog', { name: pt.home.copyPasswordConfirmTitle })
+    .getByRole('button', { name: pt.home.copyPasswordAnyway, exact: true })
+    .click();
   await waitForToast(app.page, pt.app.toastCopied);
   await expectClipboard(app, CREDENTIAL.password);
 }
@@ -247,6 +251,10 @@ export async function addTotpToken(app: LaunchedApp): Promise<void> {
   await code.waitFor({ state: 'visible' });
   expect(await code.innerText()).toMatch(/^\d{6}$/);
   await page.getByTitle(pt.common.copy).first().click();
+  await page
+    .getByRole('alertdialog', { name: pt.authenticator.copyConfirmTitle })
+    .getByRole('button', { name: pt.authenticator.copyAnyway, exact: true })
+    .click();
   await waitForToast(page, pt.authenticator.toastCopied);
 }
 

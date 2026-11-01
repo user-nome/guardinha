@@ -108,7 +108,7 @@ export function touch(): void {
 /** Bloqueia o cofre: a chave sai da memória e o auto-lock é cancelado. */
 export function lock(): VaultStatus {
   vaultSession().wipe();
-  // deixar a senha copiada no clipboard por 30 s anularia parte do gesto
+  // deixar a senha copiada no clipboard depois do lock anularia parte do gesto
   void secureClipboard.dispose();
   return getStatus();
 }

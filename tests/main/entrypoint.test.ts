@@ -113,7 +113,7 @@ describe('guarda de origem dos canais', () => {
 describe('canal shell:open-domain', () => {
   it('abre domínio válido no navegador do sistema', () => {
     call('shell:open-domain', appFrame(), 'exemplo.com');
-    expect(shell.openExternal).toHaveBeenCalledWith('https://exemplo.com');
+    expect(shell.openExternal).toHaveBeenCalledWith('https://exemplo.com/');
   });
 
   it('recusa http:// e não entrega a URL em claro ao navegador', () => {

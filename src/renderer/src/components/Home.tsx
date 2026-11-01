@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
-import { Copy, Globe, KeyRound, Pencil, Plus, Search, User } from 'lucide-react';
+import { Copy, Globe, KeyRound, Pencil, Plus, Search, ShieldAlert, User, X } from 'lucide-react';
 import { useMessages } from '@zero/renderer/i18n';
 import { CARD_GRID } from '@zero/renderer/card-grid';
 import { copyAndAutoClear } from '@zero/renderer/clipboard';
@@ -20,6 +20,7 @@ export function Home({ onToast }: HomeProps): JSX.Element {
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Credential | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [confirmPasswordCopy, setConfirmPasswordCopy] = useState<Credential | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Fora das dependências: recarregar a lista a cada troca de idioma seria à toa.
@@ -169,9 +170,7 @@ export function Home({ onToast }: HomeProps): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    void handleCopy(entry.password);
-                  }}
+                  onClick={() => setConfirmPasswordCopy(entry)}
                   title={m.home.copyPass}
                   className="p-2 rounded-lg bg-slate-800/60 text-slate-400 hover:text-emerald-400 hover:bg-slate-800"
                 >
@@ -201,6 +200,60 @@ export function Home({ onToast }: HomeProps): JSX.Element {
           onChanged={reload}
           onToast={onToast}
         />
+      )}
+      {confirmPasswordCopy !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 p-4 sm:p-6"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="password-copy-title"
+        >
+          <div className="my-auto w-full max-w-md rounded-xl border border-amber-700/50 bg-slate-900 p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+              <div className="min-w-0 space-y-2">
+                <h2 id="password-copy-title" className="text-sm font-semibold text-slate-100">
+                  {m.home.copyPasswordConfirmTitle}
+                </h2>
+                <p className="text-sm text-slate-300">{m.home.copyPasswordWarning}</p>
+                <p className="break-all rounded bg-slate-950 px-3 py-2 font-mono text-xs text-amber-300">
+                  {confirmPasswordCopy.domain !== ''
+                    ? confirmPasswordCopy.domain
+                    : m.home.copyPasswordNoDomain}
+                </p>
+                <p className="text-xs text-slate-400">{m.home.copyPasswordExposure}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmPasswordCopy(null)}
+                title={m.common.close}
+                className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmPasswordCopy(null)}
+                className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700"
+              >
+                {m.common.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const credential = confirmPasswordCopy;
+                  setConfirmPasswordCopy(null);
+                  void handleCopy(credential.password);
+                }}
+                className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400"
+              >
+                {m.home.copyPasswordAnyway}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Page>
   );

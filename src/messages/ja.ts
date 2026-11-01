@@ -152,6 +152,14 @@ export const ja: Messages = {
     entryCount: (n: number): string => `認証情報 ${n} 件`,
     copyUser: 'ユーザー名をコピー',
     copyPass: 'パスワードをコピー',
+    copyPasswordConfirmTitle: 'コピーする前に確認してください',
+    copyPasswordWarning:
+      'ブラウザーのアドレスバーが保存したドメインと完全に一致するか確認してください。' +
+      'Guardinha は現在開いているページを確認できません。',
+    copyPasswordNoDomain: 'ドメインが保存されていません',
+    copyPasswordExposure:
+      'クリップボードは 10 秒後に消去されます。露出を減らしますが、マルウェアやキーロガーによる即時取得は防げません。',
+    copyPasswordAnyway: 'それでもコピーする',
     openSite: 'ブラウザーでサイトを開く',
     toastSaved: '認証情報を保存しました。',
     toastRemoved: '認証情報を削除しました。',
@@ -253,6 +261,13 @@ export const ja: Messages = {
     loadError: 'トークンを読み込めませんでした。',
     toastSaved: 'トークンを保存しました。',
     toastRemoved: 'トークンを削除しました。',
+    copyConfirmTitle: 'コードをコピーする前に確認してください',
+    copyWarning:
+      'コードは想定したサービスでのみ使用してください。Guardinha は入力先のページを確認できません。',
+    copyExposure:
+      'クリップボードは 10 秒後に消去されます。露出を減らしますが、マルウェアやキーロガーによる即時取得は防げません。',
+    copyAnyway: 'それでもコードをコピーする',
+    copyExpired: 'このコードは期限切れです。次のコードを待ってから再試行してください。',
     toastCopied: 'コードをコピーしました。数秒で期限切れになります。',
     issuerFallback: 'サービスなし',
     expiresIn: (seconds: number): string => `${seconds} 秒後に期限切れ`,

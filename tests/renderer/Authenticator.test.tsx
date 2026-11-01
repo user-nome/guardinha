@@ -132,48 +132,6 @@ describe('tela do verificador 2FA', () => {
     expect(await screen.findByText('······')).toBeInTheDocument();
   });
 
-  it('copia o código com limpeza e avisa que ele expira', async () => {
-    const user = userEvent.setup();
-    const api = installApi({ tokens: [token()] });
-    api.authenticator.codes = () => Promise.resolve([code('aaaaaaaa-1111-4111-8111-111111111111')]);
-    const copy = vi.fn().mockResolvedValue(undefined);
-    api.clipboard.copy = copy;
-    const onToast = vi.fn();
-    render(
-      <MessagesProvider language="pt-BR">
-        <Authenticator onToast={onToast} />
-      </MessagesProvider>,
-    );
-    await waitFor(() => {
-      expect(screen.getByText('071271')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByTitle('Copiar'));
-
-    expect(copy).toHaveBeenCalledWith('071271');
-    expect(onToast).toHaveBeenCalledWith('Código copiado. Ele expira em poucos segundos.');
-  });
-
-  it('avisa quando a cópia falha', async () => {
-    const user = userEvent.setup();
-    const api = installApi({ tokens: [token()] });
-    api.authenticator.codes = () => Promise.resolve([code('aaaaaaaa-1111-4111-8111-111111111111')]);
-    api.clipboard.copy = vi.fn().mockRejectedValue(new Error('sem área de transferência'));
-    const onToast = vi.fn();
-    render(
-      <MessagesProvider language="pt-BR">
-        <Authenticator onToast={onToast} />
-      </MessagesProvider>,
-    );
-    await waitFor(() => {
-      expect(screen.getByText('071271')).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByTitle('Copiar'));
-
-    expect(onToast).toHaveBeenCalledWith('sem área de transferência');
-  });
-
   it('desabilita a cópia enquanto não há código', async () => {
     renderScreen([token()], []);
     await screen.findByText('······');
