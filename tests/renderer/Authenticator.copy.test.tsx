@@ -70,6 +70,22 @@ describe('confirmação de cópia do token 2FA', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
+  it('fecha a confirmação pelo botão fechar sem usar o clipboard', async () => {
+    const user = userEvent.setup();
+    const api = installApi({ tokens: [testToken] });
+    api.authenticator.codes = () => Promise.resolve([testCode(25_000)]);
+    const copy = vi.fn().mockResolvedValue(undefined);
+    api.clipboard.copy = copy;
+    renderScreen();
+
+    await screen.findByText('071271');
+    await user.click(screen.getByTitle('Copiar'));
+    await user.click(screen.getByTitle('Fechar'));
+
+    expect(copy).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
   it('não copia um código que expirou enquanto aguardava confirmação', async () => {
     const user = userEvent.setup();
     const api = installApi({ tokens: [testToken] });
