@@ -129,7 +129,7 @@ contrário).
   janela dentro do app, toda permissão web da sessão é negada no renderer
   (a cópia de credenciais passa pelo canal `clipboard:copy` e usa o clipboard
   nativo no processo main, sem pedir permissão), DevTools está desligado no app
-  empacotado e o conteúdo copiado expira sozinho do clipboard após 30 s (salvo
+  empacotado e o conteúdo copiado expira sozinho do clipboard após 10 s (salvo
   cópia posterior do usuário).
 - **IPC fechado por origem**: todo handler confere `event.senderFrame` contra a
   página oficial do app (scheme `guardinha://` em produção ou dev server do

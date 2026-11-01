@@ -4,6 +4,12 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
+## [2.5.1] 2026-11-01
+
+### Atualizado
+
+- Estou com preguiça de explicar.
+
 ## [2.4.4] 2026-10-30
 
 ### Atualizado
@@ -14,7 +20,7 @@ em português do Brasil.
 
 ### Corrigido
 
-- Não sei, não vi e tenho raiva de quem sabe.
+- Não sei, não quero saber e tenho raiva de quem sabe.
 
 ## [2.4.1] 2026-10-28
 

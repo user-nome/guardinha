@@ -138,6 +138,9 @@ chave `strength`.
 
 Copiar usuário ou senha passa pelo canal `clipboard:copy` e usa o clipboard
 nativo no processo main (`SecureClipboardProxy`, em `src/main/clipboard.ts`),
-que agenda a limpeza em 30 s. Se o usuário copiar outra coisa nesse intervalo,
-o app não sobrescreve. O mesmo vale para a senha gerada. O renderer não usa
+que agenda a limpeza em 10 s. Se o usuário copiar outra coisa nesse intervalo,
+o app não sobrescreve. Antes de copiar a senha, o app mostra o domínio salvo e
+pede que o usuário confira a barra de endereço do navegador; o Guardinha não
+consegue verificar qual página está aberta. A limpeza reduz o tempo de exposição,
+mas não impede captura imediata por malware ou keylogger. O renderer não usa
 `navigator.clipboard`: toda permissão web da sessão é negada.

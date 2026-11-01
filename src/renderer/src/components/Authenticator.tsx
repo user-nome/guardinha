@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JSX } from 'react';
-import { Copy, KeyRound, Plus, Trash2 } from 'lucide-react';
+import { Copy, KeyRound, Plus, ShieldAlert, Trash2, X } from 'lucide-react';
 import { richText, useMessages } from '@zero/renderer/i18n';
 import { CARD_GRID } from '@zero/renderer/card-grid';
 import { copyAndAutoClear } from '@zero/renderer/clipboard';
@@ -30,6 +30,7 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<AuthToken | 'new' | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<AuthToken | null>(null);
+  const [confirmCopy, setConfirmCopy] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // fora das dependências: um texto de toast não deve recarregar tokens e códigos
@@ -92,6 +93,16 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
       .catch((error: unknown) => {
         onToast(errorMessage(error, m.errors.internal));
       });
+  };
+
+  const handleConfirmCopy = (tokenId: string): void => {
+    const shown = codes[tokenId];
+    setConfirmCopy(null);
+    if (shown === undefined || shown.expiresAt <= Date.now()) {
+      onToast(m.authenticator.copyExpired);
+      return;
+    }
+    handleCopy(shown);
   };
 
   const handleRemove = (token: AuthToken): void => {
@@ -193,7 +204,9 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
                     </span>
                     <button
                       type="button"
-                      onClick={shown === undefined ? undefined : (): void => handleCopy(shown)}
+                      onClick={
+                        shown === undefined ? undefined : (): void => setConfirmCopy(token.id)
+                      }
                       disabled={shown === undefined}
                       title={m.common.copy}
                       className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-100 disabled:opacity-40"
@@ -252,6 +265,52 @@ export function Authenticator({ onToast }: AuthenticatorProps): JSX.Element {
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white"
               >
                 {m.common.delete}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmCopy !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/80 p-4 sm:p-6"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="authenticator-copy-title"
+        >
+          <div className="my-auto w-full max-w-md rounded-xl border border-amber-700/50 bg-slate-900 p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+              <div className="min-w-0 space-y-2">
+                <h2 id="authenticator-copy-title" className="text-sm font-semibold text-slate-100">
+                  {m.authenticator.copyConfirmTitle}
+                </h2>
+                <p className="text-sm text-slate-300">{m.authenticator.copyWarning}</p>
+                <p className="text-xs text-slate-400">{m.authenticator.copyExposure}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmCopy(null)}
+                title={m.common.close}
+                className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCopy(null)}
+                className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700"
+              >
+                {m.common.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmCopy(confirmCopy)}
+                className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-400"
+              >
+                {m.authenticator.copyAnyway}
               </button>
             </div>
           </div>

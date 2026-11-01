@@ -5,6 +5,11 @@ não abre conexão de rede, não tem conta, não tem servidor e não sincroniza 
 Ele roda em Electron, é escrito em TypeScript com React na interface e é
 empacotado como `.deb` para o Linux Mint 22.X (Zena).
 
+O funcionamento offline não significa que os sites abertos pelo navegador
+também sejam offline. Consulte [limites de segurança](responsabilidades.md)
+para saber o que o app protege e o que depende do navegador, do sistema e do
+serviço.
+
 O usuário cria um cofre com três credenciais (senha mestra de 24 caracteres,
 PIN de 8 dígitos e frase de recuperação escrita por ele mesmo) e guarda ali as
 senhas dos sites que quiser. O login do dia a dia é só pelo PIN.
@@ -26,7 +31,7 @@ senhas dos sites que quiser. O login do dia a dia é só pelo PIN.
   e detecta arquivo removido ou injetado de fora do app.
 - Guarda tokens TOTP em arquivos cifrados próprios (`.auth/<uuid>.zka`); o
   segredo nunca é devolvido ao renderer.
-- Copia usuário e senha com limpeza automática do clipboard após 30 s.
+- Copia usuário e senha com confirmação antes da senha e limpeza automática do clipboard após 10 s.
 - Abre o site da credencial no navegador padrão, gera senhas aleatórias e
   mede a força das credenciais enquanto o usuário digita.
 - Fala português do Brasil, chinês simplificado, coreano, japonês e inglês,

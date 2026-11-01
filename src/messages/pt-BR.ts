@@ -149,6 +149,15 @@ export const ptBR = {
     entryCount: (n: number): string => `${n} credencial(is)`,
     copyUser: 'Copiar usuário',
     copyPass: 'Copiar senha',
+    copyPasswordConfirmTitle: 'Confirme antes de copiar a senha',
+    copyPasswordWarning:
+      'Confira se o endereço na barra do navegador corresponde exatamente ao domínio cadastrado. ' +
+      'O Guardinha não consegue verificar qual página está aberta.',
+    copyPasswordNoDomain: 'Nenhum domínio cadastrado',
+    copyPasswordExposure:
+      'O clipboard será limpo em 10 segundos. Isso reduz a exposição, mas não impede captura ' +
+      'imediata por malware ou keylogger.',
+    copyPasswordAnyway: 'Copiar senha mesmo assim',
     openSite: 'Abrir o site em um navegador',
     toastSaved: 'Credencial salva.',
     toastRemoved: 'Credencial removida.',
@@ -249,6 +258,15 @@ export const ptBR = {
     loadError: 'Não foi possível carregar os tokens.',
     toastSaved: 'Token salvo.',
     toastRemoved: 'Token removido.',
+    copyConfirmTitle: 'Confirme antes de copiar o código',
+    copyWarning:
+      'Use o código apenas no serviço esperado. O Guardinha não consegue verificar em qual página ' +
+      'você vai inseri-lo.',
+    copyExposure:
+      'O clipboard será limpo em 10 segundos. Isso reduz a exposição, mas não impede captura ' +
+      'imediata por malware ou keylogger.',
+    copyAnyway: 'Copiar código mesmo assim',
+    copyExpired: 'Este código expirou. Aguarde o próximo código e tente novamente.',
     toastCopied: 'Código copiado. Ele expira em poucos segundos.',
     issuerFallback: 'Sem serviço',
     expiresIn: (seconds: number): string => `expira em ${seconds}s`,

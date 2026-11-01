@@ -56,7 +56,7 @@ describe('ciclo de vida do cofre (integração)', () => {
   });
 
   it('1b. o lock manual limpa o clipboard na hora', () => {
-    // O lock manual também limpa o clipboard: sem `dispose`, a senha sobrevivia 30 s.
+    // O lock manual também limpa o clipboard: sem `dispose`, a senha continuaria disponível.
     const dispose = vi.spyOn(secureClipboard, 'dispose').mockResolvedValue();
     try {
       lock();

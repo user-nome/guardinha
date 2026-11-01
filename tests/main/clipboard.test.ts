@@ -19,12 +19,12 @@ describe('SecureClipboardProxy', () => {
     vi.useRealTimers();
   });
 
-  it('limpa o clipboard 30 s depois quando o valor não mudou', async () => {
+  it('limpa o clipboard 10 s depois quando o valor não mudou', async () => {
     clipboard.readText.mockResolvedValue('senha-copiada');
     await proxy.copy('senha-copiada');
     expect(clipboard.writeText).toHaveBeenLastCalledWith('senha-copiada');
 
-    await vi.advanceTimersByTimeAsync(29_999);
+    await vi.advanceTimersByTimeAsync(9_999);
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(1);
@@ -35,7 +35,7 @@ describe('SecureClipboardProxy', () => {
     clipboard.readText.mockResolvedValue('outra-coisa');
     await proxy.copy('senha');
 
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(10_000);
     expect(clipboard.writeText).toHaveBeenCalledTimes(1);
     expect(clipboard.writeText).not.toHaveBeenCalledWith('');
   });
@@ -44,20 +44,20 @@ describe('SecureClipboardProxy', () => {
     clipboard.readText.mockRejectedValue(new Error('leitura negada'));
     await proxy.copy('senha');
 
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(10_000);
     expect(clipboard.writeText).toHaveBeenLastCalledWith('');
   });
 
   it('uma cópia nova reprograma a limpeza', async () => {
     clipboard.readText.mockResolvedValue('senha-b');
     await proxy.copy('senha-a');
-    await vi.advanceTimersByTimeAsync(20_000);
+    await vi.advanceTimersByTimeAsync(5_000);
     await proxy.copy('senha-b');
 
-    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(9_999);
     expect(clipboard.writeText).toHaveBeenCalledTimes(2);
 
-    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(1);
     expect(clipboard.writeText).toHaveBeenLastCalledWith('');
   });
 
@@ -69,7 +69,7 @@ describe('SecureClipboardProxy', () => {
     expect(clipboard.writeText).toHaveBeenLastCalledWith('');
 
     // e o temporizador cancelado não repete a limpeza
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(10_000);
     expect(clipboard.writeText).toHaveBeenCalledTimes(2);
   });
 

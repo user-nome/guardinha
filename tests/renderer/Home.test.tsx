@@ -234,7 +234,7 @@ describe('Home: ações', () => {
     expect(onToast).toHaveBeenCalledWith('Copiado para a área de transferência.');
   });
 
-  it('copia a senha', async () => {
+  it('pede confirmação e mostra o domínio antes de copiar a senha', async () => {
     const user = userEvent.setup();
     const api = installApi({ entries: ENTRIES });
     const copy = vi.fn().mockResolvedValue(undefined);
@@ -248,7 +248,55 @@ describe('Home: ações', () => {
 
     await user.click(first(screen.getAllByTitle('Copiar senha')));
 
+    expect(copy).not.toHaveBeenCalled();
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('github.com');
+    expect(screen.getByText(/Confira se o endereço na barra do navegador/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Copiar senha mesmo assim' }));
     expect(copy).toHaveBeenCalledWith('s3nh@-do-github');
+  });
+
+  it('permite cancelar a cópia da senha', async () => {
+    const user = userEvent.setup();
+    const api = installApi({ entries: ENTRIES });
+    const copy = vi.fn().mockResolvedValue(undefined);
+    api.clipboard.copy = copy;
+    render(
+      <MessagesProvider language="pt-BR">
+        <Home onToast={vi.fn()} />
+      </MessagesProvider>,
+    );
+    await screen.findByText('GitHub');
+
+    await user.click(first(screen.getAllByTitle('Copiar senha')));
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(copy).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('mostra quando não há domínio e fecha o aviso pelo botão de fechar', async () => {
+    const user = userEvent.setup();
+    const api = installApi({ entries: ENTRIES });
+    const copy = vi.fn().mockResolvedValue(undefined);
+    api.clipboard.copy = copy;
+    render(
+      <MessagesProvider language="pt-BR">
+        <Home onToast={vi.fn()} />
+      </MessagesProvider>,
+    );
+    await screen.findByText('Rede local');
+
+    const passwordButton = screen.getAllByTitle('Copiar senha')[2];
+    if (passwordButton === undefined)
+      throw new Error('senha da credencial sem domínio não encontrada');
+    await user.click(passwordButton);
+
+    expect(screen.getByText('Nenhum domínio cadastrado')).toBeInTheDocument();
+    await user.click(screen.getByTitle('Fechar'));
+
+    expect(copy).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
   it('avisa quando a cópia falha', async () => {

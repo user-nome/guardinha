@@ -149,6 +149,14 @@ export const ko: Messages = {
     entryCount: (n: number): string => `자격 증명 ${n}개`,
     copyUser: '사용자 이름 복사',
     copyPass: '비밀번호 복사',
+    copyPasswordConfirmTitle: '비밀번호 복사 전 확인',
+    copyPasswordWarning:
+      '브라우저 주소 표시줄이 저장된 도메인과 정확히 일치하는지 확인하세요. ' +
+      'Guardinha는 현재 열린 페이지를 확인할 수 없습니다.',
+    copyPasswordNoDomain: '저장된 도메인 없음',
+    copyPasswordExposure:
+      '클립보드는 10초 후 지워집니다. 노출을 줄이지만 악성 코드나 키로거의 즉각적인 캡처를 막지는 못합니다.',
+    copyPasswordAnyway: '그래도 비밀번호 복사',
     openSite: '브라우저에서 사이트 열기',
     toastSaved: '자격 증명을 저장했습니다.',
     toastRemoved: '자격 증명을 삭제했습니다.',
@@ -248,6 +256,13 @@ export const ko: Messages = {
     loadError: '토큰을 불러올 수 없습니다.',
     toastSaved: '토큰을 저장했습니다.',
     toastRemoved: '토큰을 삭제했습니다.',
+    copyConfirmTitle: '코드를 복사하기 전에 확인하세요',
+    copyWarning:
+      '예상한 서비스에서만 코드를 사용하세요. Guardinha는 코드를 입력할 페이지를 확인할 수 없습니다.',
+    copyExposure:
+      '클립보드는 10초 후 지워집니다. 노출을 줄이지만 악성 코드나 키로거의 즉각적인 캡처를 막지는 못합니다.',
+    copyAnyway: '그래도 코드 복사',
+    copyExpired: '이 코드는 만료되었습니다. 다음 코드가 나오면 다시 시도하세요.',
     toastCopied: '코드를 복사했습니다. 몇 초 뒤에 만료됩니다.',
     issuerFallback: '서비스 없음',
     expiresIn: (seconds: number): string => `${seconds}초 후 만료`,
