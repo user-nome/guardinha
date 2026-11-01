@@ -148,6 +148,13 @@ export const zhCN: Messages = {
     entryCount: (n: number): string => `${n} 条凭据`,
     copyUser: '复制用户名',
     copyPass: '复制密码',
+    copyPasswordConfirmTitle: '复制密码前请确认',
+    copyPasswordWarning:
+      '请确认浏览器地址栏与保存的域名完全一致。Guardinha 无法验证当前打开的页面。',
+    copyPasswordNoDomain: '未保存域名',
+    copyPasswordExposure:
+      '剪贴板会在 10 秒后清空。这可以减少暴露时间，但无法阻止恶意软件或键盘记录器立即窃取内容。',
+    copyPasswordAnyway: '仍然复制密码',
     openSite: '在浏览器中打开网站',
     toastSaved: '凭据已保存。',
     toastRemoved: '凭据已删除。',

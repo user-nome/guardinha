@@ -75,7 +75,17 @@ export function validateUsernameFormat(username: string): boolean {
 
 export function validateDomainFormat(domain: string): boolean {
   if (domain === '') return true;
-  return /^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(domain) || /^https:\/\//i.test(domain);
+  if (domain !== domain.trim()) return false;
+  const hasScheme = /^https:\/\//i.test(domain);
+  if (!hasScheme && !/^([a-z0-9-]+\.)+[a-z]{2,}(\/.*)?$/i.test(domain)) return false;
+  try {
+    const url = new URL(hasScheme ? domain : `https://${domain}`);
+    return (
+      url.protocol === 'https:' && url.hostname !== '' && url.username === '' && url.password === ''
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** URL com esquema; recusa domínio inválido e nunca rebaixa https para http. */
@@ -83,5 +93,5 @@ export function openableUrl(domain: string): string {
   if (domain === '' || !validateDomainFormat(domain)) {
     throw new Error(currentMessages().errors.invalidDomain);
   }
-  return /^https:\/\//i.test(domain) ? domain : `https://${domain}`;
+  return new URL(/^https:\/\//i.test(domain) ? domain : `https://${domain}`).href;
 }

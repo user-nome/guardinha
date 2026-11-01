@@ -151,6 +151,15 @@ export const en: Messages = {
     entryCount: (n: number): string => `${n} credential(s)`,
     copyUser: 'Copy username',
     copyPass: 'Copy password',
+    copyPasswordConfirmTitle: 'Confirm before copying the password',
+    copyPasswordWarning:
+      'Check that the browser address bar exactly matches the saved domain. ' +
+      'Guardinha cannot verify which page is open.',
+    copyPasswordNoDomain: 'No domain saved',
+    copyPasswordExposure:
+      'The clipboard is cleared after 10 seconds. This reduces exposure but cannot stop ' +
+      'immediate capture by malware or a keylogger.',
+    copyPasswordAnyway: 'Copy password anyway',
     openSite: 'Open the site in a browser',
     toastSaved: 'Credential saved.',
     toastRemoved: 'Credential removed.',

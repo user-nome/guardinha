@@ -45,7 +45,7 @@ entrypoints que o Electron exige) e arquivo no teto de ~500 linhas é quebrado.
 | `unwrapping.ts`    | Embrulho/desembrulho da chave por tipo de credencial (Strategy em registro)        |
 | `facade.ts`        | `VaultStorageFacade` (Fachada): fs, AES-256-GCM e manifesto num ponto só           |
 | `container.ts`     | Formatos binários do container, payloads e manifesto                               |
-| `clipboard.ts`     | `SecureClipboardProxy` (Proxy): clipboard nativo com limpeza em 30 s               |
+| `clipboard.ts`     | `SecureClipboardProxy` (Proxy): clipboard nativo com limpeza em 10 s               |
 | `protocol.ts`      | Scheme `guardinha://`, servidor de assets e guarda de origem do IPC                |
 | `entries.ts`       | CRUD de credenciais sobre a fachada (sem `fs` nem cifra na mão)                    |
 | `authenticator.ts` | Regras dos tokens de 2FA sobre a fachada; o segredo nunca sai daqui                |

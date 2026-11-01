@@ -261,7 +261,7 @@ function registerIpc(): void {
     return withSessionNotice(() => currentCodes());
   });
 
-  /** Copia para o clipboard nativo e limpa sozinho 30 s depois (no main). */
+  /** Copia para o clipboard nativo e limpa sozinho 10 s depois (no main). */
   ipcMain.handle('clipboard:copy', (event, value: string) => {
     assertAppFrame(event);
     if (typeof value !== 'string') {

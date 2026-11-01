@@ -73,11 +73,15 @@ renderer reconsulta o status e volta para a autenticação.
 
 | Método        | Canal            | Payload → retorno | Descrição                                                                                                                  |
 | ------------- | ---------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `copy(value)` | `clipboard:copy` | `string → void`   | Copia no clipboard nativo e limpa sozinho 30 s depois (`SecureClipboardProxy`, no main; salvo cópia posterior do usuário). |
+| `copy(value)` | `clipboard:copy` | `string → void`   | Copia no clipboard nativo e limpa sozinho 10 s depois (`SecureClipboardProxy`, no main; salvo cópia posterior do usuário). |
 
 A cópia mora no processo main: o renderer não pede permissão de clipboard ao
 sistema e o temporizador sobrevive a uma recarga da página. O canal só aceita
 texto (o handler recusa outro tipo de payload).
+
+A interface pede confirmação antes de copiar uma senha e mostra o domínio
+cadastrado para comparação manual com a barra de endereço. Isso não verifica a
+página aberta nem impede phishing em tempo real ou captura por malware.
 
 ## `window.api.entries`
 

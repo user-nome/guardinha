@@ -40,7 +40,7 @@ quem precisa mexer no código saber onde cada medida mora e o que ela protege.
 | Renderer servido por `guardinha://`                      | `src/main/protocol.ts` (`registerAppProtocol`)                              |
 | Fuses do Electron                                        | `package.json` (bloco `build.electronFuses`)                                |
 | CSP e preload com `contextIsolation`/`sandbox`           | `src/renderer/index.html`, `src/preload/index.ts`                           |
-| Limpeza do clipboard em 30 s, e na hora ao sair          | `src/main/clipboard.ts` (`SecureClipboardProxy`)                            |
+| Limpeza do clipboard em 10 s, e na hora ao bloquear      | `src/main/clipboard.ts` (`SecureClipboardProxy`)                            |
 | Erros do cofre sem eco de senha, PIN ou frase            | `src/main/vault.ts`, `src/main/entries.ts`, `src/messages/`                 |
 | Backup só do que já está cifrado, com digest e caminhos  | `src/main/backup/backup.ts`, `src/main/backup/backup-container.ts`          |
 | Auditoria de dependências e de scripts                   | `.osv-scanner.toml`, `npm run lint:shell`, `.github/workflows/codeql.yml`   |
@@ -95,6 +95,9 @@ faz I/O, mas somente para as preferências não sensíveis em
 - Clipboard só pelo canal `clipboard:copy` (`SecureClipboardProxy` no main);
   voltar a pedir permissão de clipboard no renderer é abrir de novo a permissão
   que a política da sessão nega.
+- A confirmação antes de copiar a senha é uma barreira de atenção, não prova da
+  origem da página: o app não inspeciona a aba do navegador. Malware com acesso
+  ao usuário ainda pode capturar teclado ou clipboard.
 - A chave do cofre só existe dentro do `VaultSessionManager` (Singleton):
   nenhuma cópia em variável de módulo ou em Buffer que escape do `adopt`/`wipe`.
   A sessão decoy do PIN de coação **não** guarda chave alguma.

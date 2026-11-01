@@ -192,7 +192,8 @@ modal.
 Slider de comprimento (0 a 72, padrão 24), chaves de maiúsculas, minúsculas,
 números e símbolos e cinco campos de entropia pessoal. A senha sai só com as
 categorias marcadas, e a última chave ligada não desliga. O botão gera no main,
-mostra a senha com medidor e copia com limpeza em 30 s.
+mostra a senha com medidor e copia com limpeza em 10 s; a cópia da senha pede
+confirmação para conferir o domínio cadastrado.
 
 ## Authenticator
 

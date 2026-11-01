@@ -149,6 +149,14 @@ export const ko: Messages = {
     entryCount: (n: number): string => `자격 증명 ${n}개`,
     copyUser: '사용자 이름 복사',
     copyPass: '비밀번호 복사',
+    copyPasswordConfirmTitle: '비밀번호 복사 전 확인',
+    copyPasswordWarning:
+      '브라우저 주소 표시줄이 저장된 도메인과 정확히 일치하는지 확인하세요. ' +
+      'Guardinha는 현재 열린 페이지를 확인할 수 없습니다.',
+    copyPasswordNoDomain: '저장된 도메인 없음',
+    copyPasswordExposure:
+      '클립보드는 10초 후 지워집니다. 노출을 줄이지만 악성 코드나 키로거의 즉각적인 캡처를 막지는 못합니다.',
+    copyPasswordAnyway: '그래도 비밀번호 복사',
     openSite: '브라우저에서 사이트 열기',
     toastSaved: '자격 증명을 저장했습니다.',
     toastRemoved: '자격 증명을 삭제했습니다.',

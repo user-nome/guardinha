@@ -149,6 +149,15 @@ export const ptBR = {
     entryCount: (n: number): string => `${n} credencial(is)`,
     copyUser: 'Copiar usuário',
     copyPass: 'Copiar senha',
+    copyPasswordConfirmTitle: 'Confirme antes de copiar a senha',
+    copyPasswordWarning:
+      'Confira se o endereço na barra do navegador corresponde exatamente ao domínio cadastrado. ' +
+      'O Guardinha não consegue verificar qual página está aberta.',
+    copyPasswordNoDomain: 'Nenhum domínio cadastrado',
+    copyPasswordExposure:
+      'O clipboard será limpo em 10 segundos. Isso reduz a exposição, mas não impede captura ' +
+      'imediata por malware ou keylogger.',
+    copyPasswordAnyway: 'Copiar senha mesmo assim',
     openSite: 'Abrir o site em um navegador',
     toastSaved: 'Credencial salva.',
     toastRemoved: 'Credencial removida.',
