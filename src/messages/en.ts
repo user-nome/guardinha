@@ -261,6 +261,15 @@ export const en: Messages = {
     loadError: 'Could not load the tokens.',
     toastSaved: 'Token saved.',
     toastRemoved: 'Token removed.',
+    copyConfirmTitle: 'Confirm before copying the code',
+    copyWarning:
+      'Use the code only with the intended service. Guardinha cannot verify which page you will ' +
+      'enter it on.',
+    copyExposure:
+      'The clipboard is cleared after 10 seconds. This reduces exposure but cannot stop ' +
+      'immediate capture by malware or a keylogger.',
+    copyAnyway: 'Copy code anyway',
+    copyExpired: 'This code has expired. Wait for the next code and try again.',
     toastCopied: 'Code copied. It expires in a few seconds.',
     issuerFallback: 'No service',
     expiresIn: (seconds: number): string => `expires in ${seconds}s`,

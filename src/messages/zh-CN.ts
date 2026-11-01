@@ -249,6 +249,12 @@ export const zhCN: Messages = {
     loadError: '无法加载令牌。',
     toastSaved: '令牌已保存。',
     toastRemoved: '令牌已删除。',
+    copyConfirmTitle: '复制验证码前请确认',
+    copyWarning: '请仅在预期的服务中使用此验证码。Guardinha 无法验证你将在哪个页面输入它。',
+    copyExposure:
+      '剪贴板会在 10 秒后清空。这可以减少暴露时间，但无法阻止恶意软件或键盘记录器立即窃取内容。',
+    copyAnyway: '仍然复制验证码',
+    copyExpired: '此验证码已过期。请等待下一个验证码后重试。',
     toastCopied: '验证码已复制，几秒后就会失效。',
     issuerFallback: '未指定服务',
     expiresIn: (seconds: number): string => `${seconds} 秒后失效`,

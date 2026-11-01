@@ -28,6 +28,7 @@ Depois, pelo assunto:
 | [Testes ponta a ponta](e2e.md)                 | O Playwright sobre o app compilado e o payload do `.deb`, e o job do CI          |
 | [Testes de mutação](mutation.md)               | O runner próprio, os operadores e o placar da varredura                          |
 | [Mapa de segurança](seguranca.md)              | Onde cada medida mora no código e o que não pode ser enfraquecido                |
+| [Limites de segurança](responsabilidades.md)   | O que o app protege e o que cabe à pessoa usuária e ao serviço                   |
 
 O texto normativo de segurança é o [`SECURITY.md`](../SECURITY.md) da raiz:
 versões suportadas, proteções, riscos aceitos, fora de escopo e como reportar

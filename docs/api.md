@@ -82,6 +82,8 @@ texto (o handler recusa outro tipo de payload).
 A interface pede confirmação antes de copiar uma senha e mostra o domínio
 cadastrado para comparação manual com a barra de endereço. Isso não verifica a
 página aberta nem impede phishing em tempo real ou captura por malware.
+Veja também [limites de segurança](responsabilidades.md) para a divisão de
+responsabilidades entre o app, a pessoa usuária e o serviço.
 
 ## `window.api.entries`
 

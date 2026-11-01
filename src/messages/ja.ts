@@ -261,6 +261,13 @@ export const ja: Messages = {
     loadError: 'トークンを読み込めませんでした。',
     toastSaved: 'トークンを保存しました。',
     toastRemoved: 'トークンを削除しました。',
+    copyConfirmTitle: 'コードをコピーする前に確認してください',
+    copyWarning:
+      'コードは想定したサービスでのみ使用してください。Guardinha は入力先のページを確認できません。',
+    copyExposure:
+      'クリップボードは 10 秒後に消去されます。露出を減らしますが、マルウェアやキーロガーによる即時取得は防げません。',
+    copyAnyway: 'それでもコードをコピーする',
+    copyExpired: 'このコードは期限切れです。次のコードを待ってから再試行してください。',
     toastCopied: 'コードをコピーしました。数秒で期限切れになります。',
     issuerFallback: 'サービスなし',
     expiresIn: (seconds: number): string => `${seconds} 秒後に期限切れ`,

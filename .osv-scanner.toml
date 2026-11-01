@@ -70,3 +70,15 @@ version = "1.0.30001816"
 license.override = ["CC-BY-4.0"]
 effectiveUntil = 2026-12-31
 reason = "deps.dev ainda não tem esta versão; licença conferida no tarball e no registro: CC-BY-4.0, igual à da 1.0.30001815"
+
+# electron-to-chromium 1.5.472: o scanner não reconhece a licença desta
+# versão, mas package-lock.json e o arquivo LICENSE do pacote confirmam ISC.
+# O override corrige só o metadado desta versão; a análise de vulnerabilidades
+# permanece ativa. Remover quando o scanner reconhecer a licença.
+[[PackageOverrides]]
+name = "electron-to-chromium"
+ecosystem = "npm"
+version = "1.5.472"
+license.override = ["ISC"]
+effectiveUntil = 2026-12-31
+reason = "licença ISC confirmada em package-lock.json e no arquivo LICENSE da versão 1.5.472; metadado do scanner retorna UNKNOWN"
