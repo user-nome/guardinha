@@ -1,42 +1,5 @@
 name: Qualidade
 
-# Gate de qualidade da branch de trabalho. Roda na `ajustes` e é chamado pelo
-# `publish.yml` como workflow reutilizável (`workflow_call`): a definição do
-# gate fica num arquivo só, e a `main` não dispara uma segunda execução de
-# qualidade além da que a publicação já usa.
-#
-# Gatilhos:
-# - push e pull_request na `ajustes`: a série de commits é conferida enquanto
-#   ela cresce;
-# - workflow_call: o `publish.yml` reaproveita estes jobs antes de publicar;
-# - schedule: a varredura mensal de mutação, que não faz sentido a cada push;
-# - workflow_dispatch: para rodar na mão quando um passo local ficou duvidoso.
-#
-# A porta de 100% de cobertura mora em `vitest.config.mts` (`thresholds`), não
-# aqui: assim o número é o mesmo para quem roda localmente e para o CI, e
-# `npm run test:coverage` sozinho já reprova abaixo da meta.
-#
-# Para a `ajustes` ficar realmente travada, marque "Verificar qualidade",
-# "Testes e cobertura" e "Testes E2E" como status checks obrigatórios nas regras
-# de proteção dela (Settings > Branches > Branch protection rules). Na `main` a
-# trava é o próprio `publish.yml`, que só publica depois deste gate.
-#
-# "Testes E2E" sobe o app compilado e o payload do `.deb` de verdade
-# (`docs/e2e.md`): compila com `dist:dir`, roda sob `xvfb` e instala o pacote
-# para conferir que ele resolve as dependências. É o único job que junta bundle,
-# IPC real e React montado.
-#
-# "Testes de mutação" roda em outro ritmo, porque a varredura completa leva
-# horas e o número que ela mede só muda quando alguém escreve teste novo: ela
-# dispara no agendamento mensal e no disparo manual, e **não** em push nem em
-# pull request. O `publish.yml` chama este workflow com `run_mutation: false`,
-# então a publicação nunca paga a varredura. Reprova abaixo de 65% (piso
-# ajustável pelo disparo manual), então a queda real aparece como build
-# vermelho sem virar trava de branch.
-#
-# Actions fixadas por SHA completo (com a tag na comentário) para não depender de
-# segurança da tag movível; o Dependabot (`github-actions`) atualiza os pins.
-
 on:
   push:
     branches:
@@ -45,9 +8,6 @@ on:
     branches:
       - ajustes
   schedule:
-    # Dia 1 de cada mês, 04:17 UTC. Fora da hora cheia de propósito: as
-    # execuções agendadas do GitHub se concentram em :00 e a fila nesse minuto é
-    # a pior.
     - cron: '17 4 1 * *'
   workflow_dispatch:
     inputs:
@@ -86,9 +46,6 @@ on:
 permissions:
   contents: read
 
-# Push seguido de outro push na mesma branch: cancela a corrida velha, que já
-# não interessa. Pull request nunca é cancelado, para o status não ficar
-# indefinido enquanto o autor corrige.
 concurrency:
   group: qualidade-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
@@ -96,16 +53,12 @@ concurrency:
 jobs:
   qualidade:
     name: Verificar qualidade
-    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
-    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
-    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
-    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
-    # Como sair do 24.04 está em `docs/build.md`.
+
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
           cache: npm
@@ -115,19 +68,12 @@ jobs:
       - name: Ferramentas de auditoria (binários fora do git; versões fixadas)
         run: |
           set -euo pipefail
-          # `bin/osv-scanner` e `bin/shellcheck` são gitignored (ver
-          # `.gitignore`): a pasta não existe no checkout do CI e o curl
-          # falharia com exit 23 (não consegue criar o arquivo). `mkdir -p`
-          # antes. Mesmas versões do `publish.yml` e de `docs/build.md`.
           mkdir -p bin
           curl -fsSL -o bin/osv-scanner \
             https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64
           curl -fsSL -o /tmp/shellcheck.tar.xz \
             https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
           chmod +x bin/osv-scanner
-          # O tarball tem shellcheck-v0.11.0/shellcheck; `--strip-components=1`
-          # joga o diretório fora e o tarball vai para /tmp (fora da pasta que
-          # o `npm run check` lê, para não sobrar lixo no workspace).
           tar -xJf /tmp/shellcheck.tar.xz --strip-components=1 -C bin shellcheck-v0.11.0/shellcheck
           rm -f /tmp/shellcheck.tar.xz
           bin/osv-scanner --version
@@ -138,26 +84,18 @@ jobs:
 
   cobertura:
     name: Testes e cobertura
-    # Runner fixado, não `ubuntu-latest`: em 19/10/2026 o rótulo `ubuntu-latest`
-    # do GitHub passa a apontar para Ubuntu 26.04 (actions/runner-images#14748).
-    # O `.deb` da build-deb é o artefato que o usuário instala, e trocar a imagem
-    # no meio da linha 1.x mudaria o ambiente de build sem decisão nenhuma.
-    # Como sair do 24.04 está em `docs/build.md`.
+
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
           cache: npm
 
       - run: npm ci
 
-      # Os três reporters vêm na linha de comando porque o Vitest **substitui**
-      # a lista do `vitest.config.mts` quando a flag aparece na linha de
-      # comando: passar só `json-summary` apagaria a tabela do texto e o
-      # relatório HTML (o artefato `cobertura-relatorio` sairia sem HTML).
       - name: Testes com cobertura
         run: npm run test:coverage -- --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary
 
@@ -165,9 +103,6 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          # O JS vai em aspas simples de propósito (o shell não deve expandir
-          # `$` e `${}` do programa); o shellcheck não sabe que é JS.
-          # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
             const file = "coverage/coverage-summary.json";
@@ -190,7 +125,7 @@ jobs:
 
       - name: Relatório HTML da cobertura
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: cobertura-relatorio
           path: coverage/
@@ -199,25 +134,19 @@ jobs:
 
   e2e:
     name: Testes E2E
-    # Sobe o app de verdade, então não cabe no "Verificar qualidade" (estático)
-    # nem no "Testes e cobertura" (jsdom): é o único job que junta bundle
-    # compilado, `guardinha://`, IPC real, Argon2id real e React montado. Roda
-    # em push e pull request porque é o que pega a quebra de integração.
+
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
           cache: npm
 
       - run: npm ci
 
-      # O Electron abre uma janela: precisa de display (Xvfb) e das bibliotecas
-      # gráficas. `libgtk-3-0t64` e `libatspi2.0-0t64` respondem pelos nomes
-      # antigos por `Provides`, que é o que o `.deb` declara.
       - name: Dependências de janela
         run: |
           set -euo pipefail
@@ -228,21 +157,12 @@ jobs:
             libxfixes3 libxrandr2 libxkbcommon0 libgtk-3-0t64 libxss1 \
             libxtst6 libatspi2.0-0t64 libuuid1 xdg-utils
 
-      # Um build serve aos dois alvos: `out/` para o compilado e `release/`
-      # (`.deb` e árvore descompactada) para o empacotado. O `--publish never`
-      # já vem no script `dist:dir` do package.json: sem ele o
-      # electron-builder detecta o CI, tentaria publicar sozinho ("Implicit
-      # publishing") e morreria sem GH_TOKEN.
       - name: Compila o app e o pacote
         run: npm run dist:dir
 
       - name: E2E do app compilado e do payload do .deb
         run: xvfb-run -a npm run test:e2e
 
-      # O E2E roda sobre o payload extraído do `.deb`: o perfil AppArmor do
-      # pacote nega a porta TCP do CDP (ver docs/e2e.md). Aqui o pacote é
-      # instalado de verdade, para conferir que resolve as dependências e deixa
-      # o binário e a ação do PolicyKit no lugar.
       - name: Instalação real do .deb
         run: |
           set -euo pipefail
@@ -252,36 +172,19 @@ jobs:
 
   mutacao:
     name: Testes de mutação
-    # A varredura completa leva horas, e o que ela mede muda devagar: só quando
-    # alguém escreve teste novo. Então ela **não** roda em push nem em pull
-    # request: roda no agendamento mensal e no disparo manual, que é a válvula
-    # de escape para remediar um arquivo específico. O `publish.yml` chama com
-    # `run_mutation: false`, então a release não paga a varredura.
-    #
-    # Este `if` é do job, e não do `on:` do workflow, porque "Verificar
-    # qualidade", "Testes e cobertura" e "Testes E2E" continuam no ritmo normal
-    # de push e PR. Job pulado aparece como *Skipped* na aba de checks, o que é
-    # o esperado aqui: não é status check obrigatório.
+
     if: >-
       github.event_name == 'schedule'
       || inputs.run_mutation
     runs-on: ubuntu-24.04
-    # Grupo próprio, e não o do workflow: lá, todo push cancela a execução
-    # anterior. A varredura só roda no agendamento e no disparo manual, então o
-    # grupo separado evita que uma execução de horas seja cancelada por um push
-    # que nada tem a ver com ela.
     concurrency:
       group: mutacao-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: ${{ github.event_name == 'push' }}
-    # O runner aborta cada mutante sozinho (240 s por padrão, `--timeout`).
-    # O teto abaixo é só para o job não ficar pendurado se algo travar fora do
-    # plano, e fica abaixo do limite de 6 h do runner hospedado, com folga para
-    # não morrer exatamente na borda.
     timeout-minutes: 330
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
           cache: npm
@@ -290,24 +193,14 @@ jobs:
 
       - name: Varredura de mutação
         env:
-          # Piso de 65% (o medido hoje é 69,4%). A folga é de propósito: o score
-          # depende da máquina, porque mutante que estoura os 240 s vira `timeout`
-          # e sai do denominador, e o runner do CI tem menos núcleo que a
-          # máquina onde a varredura foi escrita. Um piso colado no número
-          # medido daria build vermelho por causa do runner, não do código.
-          # Quem quiser um teto mais apertado usa o input do disparo manual.
-          MIN_SCORE: ${{ inputs.min_score || '65' }}
+          MIN_SCORE: ${{ inputs.min_score || '90' }}
           MUTATION_FILE: ${{ inputs.mutation_file }}
         run: |
           set -euo pipefail
           args=(--min-score "$MIN_SCORE")
           if [ -n "${MUTATION_FILE:-}" ]; then
-            # O `--file` se repete: um passo por arquivo, senão o runner
-            # interpretaria a lista inteira como um caminho só.
             IFS=',' read -ra arquivos <<< "$MUTATION_FILE"
             for arquivo in "${arquivos[@]}"; do
-              # O input vem de digitação: tira o espaço em volta de cada item,
-              # senão ` src/main/a.ts` vira um caminho que não existe.
               limpo="${arquivo#"${arquivo%%[![:space:]]*}"}"
               limpo="${limpo%"${limpo##*[![:space:]]}"}"
               [ -n "$limpo" ] && args+=(--file "$limpo")
@@ -319,9 +212,6 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          # O JS vai em aspas simples de propósito (o shell não deve expandir
-          # `$` e `${}` do programa); o shellcheck não sabe que é JS.
-          # shellcheck disable=SC2016
           node -e '
             const fs = require("node:fs");
             const file = "mutation/results.json";
@@ -349,7 +239,7 @@ jobs:
 
       - name: Relatório da varredura
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: mutacao-relatorio
           path: mutation/report.md
