@@ -4,6 +4,12 @@ Todos os lançamentos seguem [versionamento semântico](https://semver.org/lang/
 (`MAJOR.MINOR.PATCH`) e o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 em português do Brasil.
 
+## [2.5.2] 2026-11-02
+
+### Atualizado
+
+- Troquei a chave GPG.
+
 ## [2.5.1] 2026-11-01
 
 ### Atualizado
